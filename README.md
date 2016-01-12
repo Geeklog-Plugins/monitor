@@ -1,2 +1,2 @@
 # monitor
-Geeklog monitor plugin
+Geeklog monitor plugin (monitor)
