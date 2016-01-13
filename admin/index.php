@@ -1093,7 +1093,7 @@ switch ($action) {
     
     case 'resize_images' :	
     
-        $content .= "<form method=\"post\" action=\"{$_CONF['site_admin_url']}/plugins/monitor/index.php?action=resize_image\">";
+        $content .= "<form method=\"post\" action=\"{$_CONF['site_admin_url']}/plugins/monitor/index.php?action=resize_images\">";
         
         //List images from images folder
         $images_files = MONITOR_recursiveFiles();
@@ -1101,7 +1101,7 @@ switch ($action) {
         if ($_SESSION['imgtoresize'] > 0) {
             $content .= '<p>' . $LANG_MONITOR_1['resize_images_help'] . '</p>';
             $content .="<p>$images_files</p>";
-            $content .= "<input type=\"submit\" name=\"action\" value=\"{$LANG_MONITOR_1['resize_images']}\">";
+            $content .= "<input type=\"submit\" name=\"resize\" value=\"{$LANG_MONITOR_1['resize_images']}\">";
         } else {
             $content .= '<p>' . $LANG_MONITOR_1['no_images_to_resize'] . '</p>';
         }

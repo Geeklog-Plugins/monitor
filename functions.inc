@@ -338,7 +338,7 @@ function MONITOR_recursiveFiles( $folder= '' )
         if ($width > $maxwidth || $hreight > $maxwidth) {
             $_SESSION['imgtoresize'] ++;
             $size = intval(filesize($filepath)/1024);
-            if ($_REQUEST['action'] == $LANG_MONITOR_1['resize_images']) {
+            if ($_REQUEST['resize'] == $LANG_MONITOR_1['resize_images']) {
                 MONITOR_resizeImage($filepath);
             } else { 
                 $retval .= '<li><span style="color:red;font-weight:bold;">' . $file . ' | ' . $width . 'px/' . $height .'px | ' . $size . ' Ko</span></li>';
