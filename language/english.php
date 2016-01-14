@@ -81,6 +81,7 @@ $LANG_MONITOR_1 = array(
     'before_update'       => 'before you can update to',
     'not_available'       => 'Plugin not avaible in this repository',
     'ask_author'          => 'This plugin do not support this feature. Ask his author to change this.',
+    'github_limit'        => 'The rate limit on github allows you to make up to 60 requests per hour. Remaining is:',
 );
 
 // Messages for the plugin upgrade

@@ -515,7 +515,6 @@ function MONITOR_getListField_plugins($fieldname, $fieldvalue, $A, $icon_arr, $t
 
     case 'pi_dependencies':
            
-        //https://raw.githubusercontent.com/hostellerie/test/master/autoinstall.php
         if (PLG_checkDependencies($A['pi_name'])) {
             $retval = COM_getTooltip($LANG32[51], PLG_printDependencies($A['pi_name'], $A['pi_gl_version']));
         } else {
@@ -550,8 +549,7 @@ function MONITOR_getListField_plugins($fieldname, $fieldvalue, $A, $icon_arr, $t
                     if ($tag != '' && 'v'.$installed_version != $tag ) {
                         
                         $update = true;
-                        
-                        //TODO Check dependencies
+
                         $autoinstall_url = 'https://raw.githubusercontent.com/' . $_MONITOR_CONF['repository'] . '/' . $plugin . '/' . $tag . '/autoinstall.php';
 
                         $ch = curl_init();
@@ -577,8 +575,13 @@ function MONITOR_getListField_plugins($fieldname, $fieldvalue, $A, $icon_arr, $t
                     } else if ($tag == '') {
                         // The plugin is not available in this repo
                         $update = false;
-                        $title = $LANG_MONITOR_1['not_available'];
-                        $link = "https://github.com/{$_MONITOR_CONF['repository']}";
+                        if (is_string($releases['message'])) {
+                            $title = $releases['message'];
+                            $link = $releases['documentation_url'];
+                        } else {
+                            $title = $LANG_MONITOR_1['not_available'];
+                            $link = "https://github.com/{$_MONITOR_CONF['repository']}";
+                        }
                     } else {
                         // The plugin is up to date
                         $update = false;
@@ -610,10 +613,10 @@ function MONITOR_getListField_plugins($fieldname, $fieldvalue, $A, $icon_arr, $t
                     $sorting = "&amp;order=$ord&amp;direction=$dir&amp;prevorder=$old";
                 }
                 //Icons in update coloumn
-                if(!$update && in_array($plugin, $ready_plugins) & $available) {
+                if(!$update && in_array($plugin, $ready_plugins) && $available) {
                     $retval = str_replace('<img ', $LANG_MONITOR_1['up_to_date'] . ' <img title="' . $LANG_MONITOR_1['up_to_date'] . '" ', $icon_arr['enabled']);
                     $retval = $icon_arr['enabled'] . ' ' . $LANG_MONITOR_1['up_to_date'];
-                } else if(!$update && in_array($plugin, $ready_plugins) & !$available) {
+                } else if(!$update && in_array($plugin, $ready_plugins) && !$available) {
                     $retval = COM_createLink($icon_arr['info'] . ' ' . $title, $link.$sorting,
                             array('title' => ''));
                 } else if(!$update && !in_array($plugin, $ready_plugins)) {
@@ -667,7 +670,7 @@ function MONITOR_curlRequestOnGitApi($url)
     curl_setopt($ch, CURLOPT_USERAGENT, $_MONITOR_CONF['repository']);
     curl_setopt($ch, CURLOPT_HTTPGET, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_HEADER, $header); // returns header in output
+    curl_setopt($ch, CURLOPT_HEADER, true); // returns header in output
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 
     //Will return the response, if false it print the response
@@ -678,9 +681,20 @@ function MONITOR_curlRequestOnGitApi($url)
 
     // Closing
     curl_close($ch);
+    
+    list($headerContent, $jsonData) = explode("\r\n\r\n", $result, 2);
 
+    $headerContent = explode("\n", $headerContent);
+
+    foreach($headerContent as $header) {
+        if (stripos($header, 'X-RateLimit-Remaining:') !== false) {
+            $rate = substr ($header , strlen('X-RateLimit-Remaining:')  );
+            define("GITHUB_RATELIMIT",$rate);
+        }
+    }
+    
     //Decode the json in array
-    $return = json_decode($result,true);
+    $return = json_decode($jsonData,true);
 
     //Return array
     return $return;
@@ -912,6 +926,7 @@ function MONITOR_plugin_upload($plugin='')
                 $pi_version = DB_getItem($_TABLES['plugins'], 'pi_version',
                                          "pi_name = '$plugin'");
                 $code_version = PLG_chkVersion($plugin);
+                COM_errorLog('MONITOR - Reading' . $plugin  . ' plugin installed version: ' . $pi_version . ' and code version: ' . $code_version);
                 if (! empty($code_version) &&
                         ($code_version != $pi_version)) {
                     /**
@@ -1289,6 +1304,7 @@ switch ($action) {
         $msg = MONITOR_plugin_upload($pluginToUpdate);
         if ($msg != '') $content .= COM_showMessageText($MESSAGE[$msg]);
         if ($_MONITOR_CONF['repository'] != '') $content .= MONITOR_listplugins($token);
+        $content .=  '<p>' . $LANG_MONITOR_1['github_limit'] . ' <strong>'. GITHUB_RATELIMIT . '</strong></p>';
         
         break;
 }
