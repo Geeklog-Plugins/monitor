@@ -78,7 +78,9 @@ $LANG_MONITOR_1 = array(
     'up_to_date'          => 'This plugin is already up to date',
     'update_to'           => 'Update to',
     'need_upgrade'        => 'You need to upgrade to Geeklog v',
-    'before_update'       => 'before you can update to', 
+    'before_update'       => 'before you can update to',
+    'not_available'       => 'Plugin not avaible in this repository',
+    'ask_author'          => 'This plugin do not support this feature. Ask his author to change this.',
 );
 
 // Messages for the plugin upgrade

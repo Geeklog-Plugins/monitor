@@ -40,7 +40,7 @@ require_once '../../../lib-common.php';
 require_once '../../auth.inc.php';
 require_once $_CONF['path_system'] . 'lib-user.php';
 
-$ready_plugins = array('test','captcha','monitor');
+$ready_plugins = array('test','captcha','monitor','forum','ban');
 define('GITHUB_REPOSITORY', "https://api.github.com/repos/{$_MONITOR_CONF['repository']}/");
 
 /**
@@ -529,6 +529,8 @@ function MONITOR_getListField_plugins($fieldname, $fieldvalue, $A, $icon_arr, $t
         if (!PLG_checkDependencies($A['pi_name'])) {
             $retval = str_replace('<img ', '<img title="' . $LANG32[64] . '" ', $icon_arr['warning']);
         } else {
+            $available = false; // plugin in repository
+            $dependencie = true;
             $not_present = false;
             if ($A['pi_enabled'] == 1) {
                 $title  = '';
@@ -541,6 +543,7 @@ function MONITOR_getListField_plugins($fieldname, $fieldvalue, $A, $icon_arr, $t
                     //Get last release for this plugin
                     $releases = MONITOR_curlRequestOnGitApi($url);
                     $tag = $releases[0]['tag_name'];
+                    if ($tag != '') $available = true; 
                     //Is release newer
                     $installed_version = DB_getItem($_TABLES['plugins'], 'pi_version',
                                             "pi_name = '$plugin'");
@@ -567,14 +570,25 @@ function MONITOR_getListField_plugins($fieldname, $fieldvalue, $A, $icon_arr, $t
                             $title = $LANG_MONITOR_1['update_to'] . ' ' . $tag;
                             $link = $_CONF['site_admin_url'] . "/plugins/monitor/index.php?action=update_plugin&amp;plugin=$plugin";
                         } else {
+                            $dependencie = false;
                             $title = $LANG_MONITOR_1['need_upgrade'] . $gl_version . '+ ' . $LANG_MONITOR_1['before_update'] . ' ' . $plugin . ' ' . $tag;
                             $link = "https://www.geeklog.net";
                         }
+                    } else if ($tag == '') {
+                        // The plugin is not available in this repo
+                        $update = false;
+                        $title = $LANG_MONITOR_1['not_available'];
+                        $link = "https://github.com/{$_MONITOR_CONF['repository']}";
                     } else {
+                        // The plugin is up to date
                         $update = false;
                     }
                 } else {
                     $update = false;
+                    //Ask plugin author to change this :)
+                    $title = $LANG_MONITOR_1['ask_author'];
+                    $link = DB_getItem($_TABLES['plugins'], 'pi_homepage',
+                                            "pi_name = '$plugin'");
                 }
             } else {
                 $title  = 'Update this plugin';
@@ -596,10 +610,20 @@ function MONITOR_getListField_plugins($fieldname, $fieldvalue, $A, $icon_arr, $t
                     $sorting = "&amp;order=$ord&amp;direction=$dir&amp;prevorder=$old";
                 }
                 //Icons in update coloumn
-                if(!$update && in_array($plugin, $ready_plugins)) {
-                    $retval = str_replace('<img ', '<img title="' . $LANG_MONITOR_1['up_to_date'] . '" ', $icon_arr['enabled']);
+                if(!$update && in_array($plugin, $ready_plugins) & $available) {
+                    $retval = str_replace('<img ', $LANG_MONITOR_1['up_to_date'] . ' <img title="' . $LANG_MONITOR_1['up_to_date'] . '" ', $icon_arr['enabled']);
+                    $retval = $icon_arr['enabled'] . ' ' . $LANG_MONITOR_1['up_to_date'];
+                } else if(!$update && in_array($plugin, $ready_plugins) & !$available) {
+                    $retval = COM_createLink($icon_arr['info'] . ' ' . $title, $link.$sorting,
+                            array('title' => ''));
+                } else if(!$update && !in_array($plugin, $ready_plugins)) {
+                    $retval = COM_createLink($icon_arr['disabled'] . ' ' . $title, $link.$sorting,
+                            array('title' => ''));
                 } else if(!$update) {
                     $retval = str_replace('<img ', '<img title="' . $LANG_MONITOR_1['no_update'] . '" ', $icon_arr['disabled']);
+                } else if ($dependencie == false ){
+                    $retval = COM_createLink($icon_arr['warning'] . ' ' . $title, $link.$sorting,
+                            array('title' => ''));
                 } else {
                     $retval = COM_createLink($icon_arr['info'] . ' ' . $title, $link.$sorting,
                             array('title' => ''));

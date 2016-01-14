@@ -2,14 +2,14 @@
 
 /* Reminder: always indent with 4 spaces (no tabs). */
 // +---------------------------------------------------------------------------+
-// | Monitor Plugin 1.2                                                        |
+// | Monitor Plugin 1.3                                                        |
 // +---------------------------------------------------------------------------+
 // | functions.inc                                                             |
 // |                                                                           |
 // | This file does two things: 1) it implements the necessary Geeklog Plugin  |
 // | API methods and 2) implements all the common code needed by this plugin.  |
 // +---------------------------------------------------------------------------+
-// | Copyright (C) 2014 by the following authors:                              |
+// | Copyright (C) 2014-2016 by the following authors:                         |
 // |                                                                           |
 // | Authors: Ben - ben AT geeklog DOT fr                                      |
 // +---------------------------------------------------------------------------+
@@ -199,6 +199,7 @@ function plugin_upgrade_monitor()
             $c->add('repository', $_monitor_DEFAULT['repository'],
                         'text', 0, 0, 0, 20, true, 'monitor');
         case '1.3.0':
+        case '1.3.1':
         
 
         default : 
