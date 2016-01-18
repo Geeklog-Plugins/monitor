@@ -1136,6 +1136,9 @@ switch ($action) {
         
         //List images from images folder
         $images_files = MONITOR_recursiveFiles();
+        if (in_array('mediagallery', $_PLUGINS)) {
+            $images_files .= MONITOR_recursiveFiles($_MG_CONF['path_mediaobjects']);
+        }
         $content .= '<h2>' . $LANG_MONITOR_1['images_folder'] . '</h2>';
         if ($_SESSION['imgtoresize'] > 0) {
             $content .= '<p>' . $LANG_MONITOR_1['resize_images_help'] . '</p>';

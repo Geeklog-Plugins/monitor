@@ -317,13 +317,13 @@ function MONITOR_findErrorLog ($folder='') {
 
 function MONITOR_recursiveFiles( $folder= '' )
 {
-  global $_CONF, $LANG_MONITOR_1;
+  global $_CONF, $_MG_CONF, $LANG_MONITOR_1;
   
   set_time_limit(0);
   
   if ($folder == '') $folder = $_CONF['path_images'];
   $maxwidth = 1600;
-  
+
   $retval .= '<ul>'; 
   
   foreach( scandir( $folder ) as $file )
