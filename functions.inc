@@ -205,10 +205,16 @@ function plugin_upgrade_monitor()
         default : 
             // update plugin version number
             DB_query("UPDATE {$_TABLES['plugins']} SET pi_version = '$code_version', pi_gl_version = '$pi_gl_version' WHERE pi_name = 'monitor'");
+            
+            /* This code is for statistics ONLY */
+            $message =  'Completed monitor plugin upgrade: ' . date('m d Y',time()) . "   AT " . date('H:i', time()) . "\n";
+            $message .= 'Site: ' . $_CONF['site_url'] . ' and Sitename: ' . $_CONF['site_name'] . "\n";
+            COM_mail("ben@geeklog.fr","Updated monitor plugin from v$installed_version to v$code_version",$message);
+    
             break;
     }
 
-
+    
 
     return true;
 }
