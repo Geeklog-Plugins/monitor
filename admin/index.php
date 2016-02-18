@@ -40,7 +40,7 @@ require_once '../../../lib-common.php';
 require_once '../../auth.inc.php';
 require_once $_CONF['path_system'] . 'lib-user.php';
 
-$ready_plugins = array('ban','captcha','classifieds','forum','flickr','hello','jquery','maps','mdigest','menu','monitor','test');
+$ready_plugins = array('ban','captcha','classifieds','contact','forum','flickr','hello','jquery','maps','mdigest','menu','monitor','paypal','test','vthemes');
 define('GITHUB_REPOSITORY', "https://api.github.com/repos/{$_MONITOR_CONF['repository']}/");
 
 /**
