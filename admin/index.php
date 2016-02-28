@@ -1290,6 +1290,12 @@ switch ($action) {
         $result = DB_Query("SELECT * FROM {$_TABLES['monitor_ban']} WHERE bantype='profile'",1);
         $nrows = DB_numRows( $result );
         $content .= "<li>Profile $nrows IP Adress</li></ul>";
+        
+        if ( in_array('sphere', $_PLUGINS)) {
+            $last_run = DB_getItem($_TABLES['vars'],'value',"name='last_sphere_whatsnew'");	
+            $days_diff = floor((time() - $last_run)/(60*60*24));
+            $content .= "<hr><p>Sphere - Last newsletter " . $days_diff . "/{$_SPHERE_CONF['whatsnew_days']} days ago.</p><hr>" ;
+        }
 
         //Plugins updates
         $token = SEC_createToken();

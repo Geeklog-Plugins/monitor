@@ -276,7 +276,7 @@ function MONITOR_logEmail($logs)
         }
     }
     
-    //Find error_log files created by server
+    // Find error_log files created by server
     $message .= MONITOR_findErrorLog ();
     
     //List of emails to send logs to
@@ -307,12 +307,15 @@ function MONITOR_findErrorLog ($folder='') {
             
         } else {
             if ($file == 'error_log') {
-            //Read log file
-            $message .= "<p><b>Log File: " . $filepath . "</b></p><pre>";
-            $message .= implode('', file($filepath));
-            $message .= "</pre><hr>";
-            ob_flush();
-            flush();
+            // Too memory expensive. Files can be very big 
+            if (filesize ( $file ) < 25000) {
+                //Read log file
+                $message .= "<p><b>Log File: " . $filepath . "</b></p><pre>";
+                $message .= implode('', file($filepath));
+                $message .= "</pre><hr>";
+                ob_flush();
+                flush();
+            }
             //delelete log file
             unlink($filepath);
             }
@@ -386,16 +389,23 @@ function plugin_runScheduledTask_monitor ()
 {	
     global $_TABLES, $_PLUGINS;
     
-    //Check tables
+    // Check tables
     foreach ($_TABLES as $table) {
-        $resp = DB_query("CHECK TABLE {$table}  FAST QUICK;");
-        if(is_array($resp) && $resp['Msg_text'] != 'OK' && $resp['Msg_text'] != 'Table is already up to date') {
-            COM_errorLog("MONITOR - {$table}: {$resp['Msg_text']}");
+        $resp = DB_query("CHECK TABLE {$table} FAST;");
+        while ($A = DB_fetchArray($resp)) {
+            if ($A['Msg_type'] == 'Error') COM_errorLog("MONITOR - {$table} | {$A['Msg_type']}: {$A['Msg_text']}");
         }
+    }
+    // Sphere
+    //check last run date
+    if ( in_array('sphere', $_PLUGINS)) {
+		$last_run = DB_getItem($_TABLES['vars'],'value',"name='last_sphere_whatsnew'");	
+		$days_diff = floor((time() - $last_run)/(60*60*24));
+		COM_errorLog("Sphere - Last newsletter " . $days_diff . "/{$_SPHERE_CONF['whatsnew_days']} days ago." );
     }
     
     //TODO add custom name
-    MONITOR_logEmail(array('error.log','captcha.log','access.log','spamx.log', 'purepro_downloads.log', 'paypal_downloads.log', '404.log'));
+    MONITOR_logEmail(array('error.log','captcha.log','access.log','spamx.log', 'paypal_downloads.log', '404.log'));
     
     //Add number of IP banned last 24H
     $result = DB_Query("SELECT * FROM {$_TABLES['monitor_ban']} WHERE 1=1",1);
