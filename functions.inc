@@ -304,7 +304,6 @@ function MONITOR_findErrorLog ($folder='') {
         if( preg_match( '/^\./', $file ) ) continue; // not . and ..
         if( is_dir( $filepath ) ) {
             $retval .= MONITOR_findErrorLog ( $filepath );
-            
         } else {
             if ($file == 'error_log') {
             // Too memory expensive. Files can be very big 
@@ -389,8 +388,10 @@ function plugin_runScheduledTask_monitor ()
 {	
     global $_TABLES, $_PLUGINS;
     
+    $old_tables = array('commentspeedlimit','submitspeedlimit','tzcodes','userevent');
     // Check tables
     foreach ($_TABLES as $table) {
+        if (in_array($table, $old_tables)) continue;
         $resp = DB_query("CHECK TABLE {$table} FAST;");
         while ($A = DB_fetchArray($resp)) {
             if ($A['Msg_type'] == 'Error') COM_errorLog("MONITOR - {$table} | {$A['Msg_type']}: {$A['Msg_text']}");
