@@ -386,7 +386,7 @@ function MONITOR_resizeImage($img) {
     
 function plugin_runScheduledTask_monitor ()
 {	
-    global $_TABLES, $_PLUGINS;
+    global $_TABLES, $_PLUGINS, $_SPHERE_CONF;
     
     $old_tables = array('commentspeedlimit','submitspeedlimit','tzcodes','userevent');
     // Check tables
