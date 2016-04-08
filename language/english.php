@@ -110,7 +110,7 @@ $LANG_fs['monitor'] = array(
 */
 $LANG_confignames['monitor'] = array(
     //Main settings
-    'emails'  => 'List of emails to send the logs to (separated with a coma if more than on email is needed)',
+    'emails'  => 'List of emails to send the logs to (separated with a coma if more than one email is needed)',
     'repository'  => 'Name of the repository owner you want to use for plugins updates on Github (default is Geeklog-Plugins). Leave blank to disable this feature.'
 )
 

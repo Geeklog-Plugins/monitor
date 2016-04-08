@@ -261,11 +261,13 @@ function MONITOR_logEmail($logs)
     foreach ($logs as $log) {
         if (file_exists($_CONF['path_log'] . $log)) {			
             //Read log file
+            COM_errorLog("MONITOR - Reading $log file" );
             $message .= "<p><b>Log File: " . $log . "</b></p><pre>";
             $message .= implode('', file($_CONF['path_log'] . $log));
             $message .= "</pre><hr>";
             
             //delelete log file
+            COM_errorLog("MONITOR - Clearing $log file" );
             unlink($_CONF['path_log'] . $log);
             $timestamp = strftime( "%c" );
             $fd = fopen( $_CONF['path_log'] . $log, a );
@@ -275,9 +277,8 @@ function MONITOR_logEmail($logs)
             
         }
     }
-    
-    // Find error_log files created by server
-    $message .= MONITOR_findErrorLog ();
+
+    COM_errorLog("MONITOR - Log files sending start" );
     
     //List of emails to send logs to
     $to = explode(',', $_MONITOR_CONF['emails']);
@@ -291,6 +292,7 @@ function MONITOR_logEmail($logs)
     }
 }
 
+/*
 function MONITOR_findErrorLog ($folder='') {
 
     global $_CONF;
@@ -322,7 +324,7 @@ function MONITOR_findErrorLog ($folder='') {
     }
     return $message;
 }
-
+*/
 function MONITOR_recursiveFiles( $folder= '' )
 {
   global $_CONF, $_MG_CONF, $LANG_MONITOR_1;
