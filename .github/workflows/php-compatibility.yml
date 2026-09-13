@@ -113,3 +113,32 @@ jobs:
             exit 1
           fi
           echo 'Daily log rotation guardrails present.'
+
+      - name: Check read-only service contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f services.inc.php
+          test -f lib/MonitorServices.php
+          test -f docs/SERVICES.md
+          grep -q "plugin_wsEnabled_monitor" functions.inc
+          grep -q "services.inc.php" functions.inc
+          grep -q "service_get_status_monitor" services.inc.php
+          grep -q "service_get_changes_monitor" services.inc.php
+          grep -q "service_get_plugins_monitor" services.inc.php
+          grep -q "service_get_log_summary_monitor" services.inc.php
+          grep -q "service_get_log_archives_monitor" services.inc.php
+          grep -q "service_get_configuration_audit_monitor" services.inc.php
+          grep -q "SEC_hasRights('monitor.admin')" services.inc.php
+          grep -q "SEC_inGroup('Root')" services.inc.php
+          grep -q "schema_version" lib/MonitorServices.php
+          grep -q "include_remote" lib/MonitorServices.php
+          if grep -E -q "site_value|db_value|effective_value|['\"]sql['\"]|siteconfig_path" services.inc.php; then
+            echo 'Service callbacks must not expose configuration values, SQL or siteconfig paths.'
+            exit 1
+          fi
+          if grep -E -q "unlink\(|ftruncate\(|file_put_contents\(|DB_(insert|delete)|UPDATE |DELETE FROM|INSERT INTO" lib/MonitorServices.php services.inc.php; then
+            echo 'Monitor service layer must remain read-only.'
+            exit 1
+          fi
+          echo 'Read-only Monitor service contract guardrails present.'
