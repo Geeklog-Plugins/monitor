@@ -80,6 +80,7 @@ function MONITOR_SERVICE_changes()
     global $_CONF;
 
     require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorChanges.php';
+    require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorContentActivity.php';
 
     $history = MONITOR_CHANGES_readHistory();
     $count = count($history);
@@ -89,6 +90,14 @@ function MONITOR_SERVICE_changes()
         'from' => null,
         'to' => null,
         'changes' => array(),
+        'content_activity' => array(
+            'saved' => 0,
+            'deleted' => 0,
+            'count' => 0,
+            'items' => array(),
+            'retention_days' => 30,
+            'max_events' => 500
+        ),
         'log' => array(
             'available' => false,
             'rotated' => false,
@@ -108,6 +117,14 @@ function MONITOR_SERVICE_changes()
     $data['to'] = isset($current['timestamp']) ? (int) $current['timestamp'] : null;
     $data['changes'] = MONITOR_CHANGES_compare($previous, $current);
     $data['log'] = MONITOR_CHANGES_errorDelta($previous, $current);
+
+    if ($data['from'] !== null && $data['to'] !== null) {
+        $data['content_activity'] = MONITOR_ACTIVITY_summary(
+            $data['from'],
+            $data['to'],
+            100
+        );
+    }
 
     return MONITOR_SERVICE_envelope('monitor.get_changes', $data);
 }
