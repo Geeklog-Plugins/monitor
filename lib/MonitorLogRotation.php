@@ -120,6 +120,13 @@ function MONITOR_LOG_safeName($name)
     return trim($name, '-');
 }
 
+/**
+ * Archive one active log and truncate it only after the copy succeeds.
+ *
+ * @param string $path
+ * @param string $archiveDate
+ * @return array|false
+ */
 function MONITOR_LOG_archiveOne($path, $archiveDate)
 {
     if (!is_file($path) || !is_readable($path) || !is_writable($path)) {
@@ -127,8 +134,17 @@ function MONITOR_LOG_archiveOne($path, $archiveDate)
     }
 
     $size = @filesize($path);
-    if ($size === false || $size <= 0) {
-        return true;
+    if ($size === false) {
+        return false;
+    }
+
+    if ($size <= 0) {
+        return array(
+            'file' => '',
+            'log' => basename($path),
+            'size' => 0,
+            'path' => ''
+        );
     }
 
     if (!MONITOR_LOG_ensureArchiveDir()) {
@@ -170,7 +186,12 @@ function MONITOR_LOG_archiveOne($path, $archiveDate)
         return false;
     }
 
-    return true;
+    return array(
+        'file' => basename($archive),
+        'log' => $filename,
+        'size' => (int) $size,
+        'path' => $archive
+    );
 }
 
 function MONITOR_LOG_cleanupArchives($retentionDays)
@@ -197,6 +218,193 @@ function MONITOR_LOG_cleanupArchives($retentionDays)
     return $removed;
 }
 
+function MONITOR_LOG_formatBytes($bytes)
+{
+    $bytes = (float) $bytes;
+    $units = array('B', 'KiB', 'MiB', 'GiB');
+    $index = 0;
+
+    while ($bytes >= 1024 && $index < count($units) - 1) {
+        $bytes /= 1024;
+        $index++;
+    }
+
+    return number_format($bytes, $index === 0 ? 0 : 1) . ' ' . $units[$index];
+}
+
+function MONITOR_LOG_signature($line)
+{
+    $line = trim((string) $line);
+    $line = preg_replace('/^\[[^\]]+\]\s*/', '', $line);
+    $line = preg_replace('/\b0x[0-9a-f]+\b/i', '0x*', $line);
+    $line = preg_replace('/\b\d+\b/', '#', $line);
+    $line = preg_replace('/\s+/', ' ', $line);
+
+    if (strlen($line) > 180) {
+        $line = substr($line, 0, 177) . '...';
+    }
+
+    return $line;
+}
+
+/**
+ * Build bounded statistics for one archive.
+ *
+ * The scan stops after 50,000 lines so a pathological log cannot make the
+ * scheduled task unbounded. Pattern statistics are intended as hints only.
+ *
+ * @param string $path
+ * @return array
+ */
+function MONITOR_LOG_archiveStats($path)
+{
+    $stats = array(
+        'lines' => 0,
+        'issue_lines' => 0,
+        'truncated' => false,
+        'patterns' => array()
+    );
+
+    if (!is_file($path) || !is_readable($path)) {
+        return $stats;
+    }
+
+    $handle = @fopen($path, 'rb');
+    if ($handle === false) {
+        return $stats;
+    }
+
+    $limit = 50000;
+    while (($line = fgets($handle)) !== false) {
+        $stats['lines']++;
+        if (preg_match('/\b(error|warning|exception|fatal|critical)\b/i', $line)) {
+            $stats['issue_lines']++;
+            $signature = MONITOR_LOG_signature($line);
+            if ($signature !== '') {
+                if (!isset($stats['patterns'][$signature])) {
+                    $stats['patterns'][$signature] = 0;
+                }
+                $stats['patterns'][$signature]++;
+            }
+        }
+
+        if ($stats['lines'] >= $limit) {
+            $stats['truncated'] = !feof($handle);
+            break;
+        }
+    }
+    fclose($handle);
+
+    arsort($stats['patterns']);
+    $stats['patterns'] = array_slice($stats['patterns'], 0, 5, true);
+
+    return $stats;
+}
+
+/**
+ * Send one concise daily summary for the archives created by a rotation.
+ *
+ * The email setting is historical Monitor behavior. The summary is now based
+ * on the immutable daily archives instead of emailing and then clearing the
+ * only copy of the active log.
+ *
+ * @param array $rotation
+ * @return bool
+ */
+function MONITOR_LOG_sendDailySummary($rotation)
+{
+    global $_CONF, $_MONITOR_CONF, $LANG_MONITOR_1;
+
+    if (empty($_MONITOR_CONF['emails'])
+            || empty($rotation['archive_date'])
+            || empty($rotation['archives'])
+            || !is_array($rotation['archives'])) {
+        return false;
+    }
+
+    $archiveUrl = $_CONF['site_admin_url'] . '/plugins/monitor/log-archives.php';
+    $date = (string) $rotation['archive_date'];
+    $rows = '';
+    $topPatterns = array();
+
+    foreach ($rotation['archives'] as $archive) {
+        if (empty($archive['path']) || empty($archive['file'])) {
+            continue;
+        }
+
+        $stats = MONITOR_LOG_archiveStats($archive['path']);
+        $viewUrl = $archiveUrl . '?file=' . rawurlencode($archive['file']);
+        $rows .= '<tr>'
+              . '<td><code>' . htmlspecialchars($archive['log'], ENT_QUOTES, 'UTF-8') . '</code></td>'
+              . '<td>' . htmlspecialchars(MONITOR_LOG_formatBytes($archive['size']), ENT_QUOTES, 'UTF-8') . '</td>'
+              . '<td>' . (int) $stats['lines'] . (!empty($stats['truncated']) ? '+' : '') . '</td>'
+              . '<td>' . (int) $stats['issue_lines'] . '</td>'
+              . '<td><a href="' . htmlspecialchars($viewUrl, ENT_QUOTES, 'UTF-8') . '">'
+              . htmlspecialchars($LANG_MONITOR_1['log_archive_view'], ENT_QUOTES, 'UTF-8') . '</a></td>'
+              . '</tr>';
+
+        if (strcasecmp($archive['log'], 'error.log') === 0) {
+            foreach ($stats['patterns'] as $pattern => $count) {
+                if (!isset($topPatterns[$pattern])) {
+                    $topPatterns[$pattern] = 0;
+                }
+                $topPatterns[$pattern] += (int) $count;
+            }
+        }
+    }
+
+    if ($rows === '') {
+        return false;
+    }
+
+    arsort($topPatterns);
+    $topPatterns = array_slice($topPatterns, 0, 5, true);
+
+    $message = '<h2>' . htmlspecialchars($LANG_MONITOR_1['log_archive_title'], ENT_QUOTES, 'UTF-8')
+             . ' — ' . htmlspecialchars($date, ENT_QUOTES, 'UTF-8') . '</h2>'
+             . '<table border="1" cellpadding="6" cellspacing="0">'
+             . '<thead><tr>'
+             . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_archive_log'], ENT_QUOTES, 'UTF-8') . '</th>'
+             . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_archive_size'], ENT_QUOTES, 'UTF-8') . '</th>'
+             . '<th>Lines</th><th>' . htmlspecialchars($LANG_MONITOR_1['changes_logs'], ENT_QUOTES, 'UTF-8') . '</th>'
+             . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_archive_actions'], ENT_QUOTES, 'UTF-8') . '</th>'
+             . '</tr></thead><tbody>' . $rows . '</tbody></table>';
+
+    if (!empty($topPatterns)) {
+        $message .= '<h3>' . htmlspecialchars($LANG_MONITOR_1['changes_logs'], ENT_QUOTES, 'UTF-8') . '</h3><ol>';
+        foreach ($topPatterns as $pattern => $count) {
+            $message .= '<li><strong>' . (int) $count . ' ×</strong> '
+                     . htmlspecialchars($pattern, ENT_QUOTES, 'UTF-8') . '</li>';
+        }
+        $message .= '</ol>';
+    }
+
+    $message .= '<p><a href="' . htmlspecialchars($archiveUrl, ENT_QUOTES, 'UTF-8') . '">'
+             . htmlspecialchars($LANG_MONITOR_1['log_archive_title'], ENT_QUOTES, 'UTF-8')
+             . '</a></p>';
+
+    $sent = false;
+    foreach (explode(',', $_MONITOR_CONF['emails']) as $address) {
+        $contact = trim($address);
+        if ($contact === '') {
+            continue;
+        }
+
+        $mailResult = COM_mail(
+            $contact,
+            $_CONF['site_name'] . ' | ' . $LANG_MONITOR_1['log_archive_title'] . ' | ' . $date,
+            $message,
+            '',
+            true
+        );
+        if ($mailResult !== false) {
+            $sent = true;
+        }
+    }
+
+    return $sent;
+}
+
 /**
  * Rotate active Geeklog logs at most once for each calendar date.
  *
@@ -216,6 +424,9 @@ function MONITOR_LOG_rotateDaily()
         'failed' => 0,
         'removed' => 0,
         'date' => $today,
+        'archive_date' => '',
+        'archives' => array(),
+        'email_sent' => false,
         'baseline' => false
     );
 
@@ -247,16 +458,19 @@ function MONITOR_LOG_rotateDaily()
         return $result;
     }
 
+    $result['archive_date'] = $lastDate;
     $logs = glob(rtrim($_CONF['path_log'], '/\\') . DIRECTORY_SEPARATOR . '*.log');
     if (is_array($logs)) {
         foreach ($logs as $path) {
-            if (MONITOR_LOG_archiveOne($path, $lastDate)) {
-                $size = @filesize($path);
-                if ($size === 0) {
-                    $result['rotated']++;
-                }
-            } else {
+            $archive = MONITOR_LOG_archiveOne($path, $lastDate);
+            if ($archive === false) {
                 $result['failed']++;
+                continue;
+            }
+
+            if (!empty($archive['file'])) {
+                $result['archives'][] = $archive;
+                $result['rotated']++;
             }
         }
     }
@@ -266,6 +480,9 @@ function MONITOR_LOG_rotateDaily()
             'last_rotation_date' => $today,
             'updated_at' => time()
         ));
+        if (!empty($result['archives'])) {
+            $result['email_sent'] = MONITOR_LOG_sendDailySummary($result);
+        }
     }
 
     $result['removed'] = MONITOR_LOG_cleanupArchives(MONITOR_LOG_retentionDays());
