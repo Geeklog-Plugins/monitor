@@ -1,12 +1,11 @@
 <?php
 
-/* Reminder: always indent with 4 spaces (no tabs). */
 // +---------------------------------------------------------------------------+
-// | Monitor Plugin                                                            |
+// | Monitor Plugin 1.4.0                                                      |
 // +---------------------------------------------------------------------------+
 // | functions.inc                                                             |
 // |                                                                           |
-// | Geeklog Plugin API methods and common Monitor helpers.                    |
+// | Geeklog Plugin API methods and common Monitor runtime helpers.            |
 // +---------------------------------------------------------------------------+
 
 /**
@@ -18,9 +17,6 @@ if (isset($_SERVER['PHP_SELF']) &&
     die('This file can not be used on its own.');
 }
 
-/**
- * Language file include
- */
 $plugin_path = $_CONF['path'] . 'plugins/monitor/';
 $langfile = $plugin_path . 'language/' . $_CONF['language'] . '.php';
 
@@ -30,9 +26,6 @@ if (file_exists($langfile)) {
     require_once $plugin_path . 'language/english.php';
 }
 
-/**
- * Load Monitor configuration
- */
 require_once $_CONF['path_system'] . 'classes/config.class.php';
 $c = config::get_instance();
 $_MONITOR_CONF = $c->get_config('monitor');
@@ -41,60 +34,44 @@ $_TABLES['monitor_ban'] = $_DB_table_prefix . 'monitor_ban';
 
 /*
  * Keep legacy Monitor ban data readable during the 1.4.0 transition.
- * New automatic permanent bans are deliberately not created here.
+ * Monitor no longer creates automatic permanent bans itself.
  */
 MONITOR_banCheck();
 
 // +---------------------------------------------------------------------------+
-// | Geeklog Plugin API Implementation                                         |
+// | Geeklog Plugin API                                                        |
 // +---------------------------------------------------------------------------+
 
-/**
- * Return plugin entry for Command and Control.
- *
- * @return array
- */
 function plugin_cclabel_monitor()
 {
     global $_CONF, $LANG_MONITOR_1;
 
-    $retval = array();
-    if (SEC_hasRights('monitor.admin')) {
-        $retval = array(
-            $LANG_MONITOR_1['plugin_name'],
-            $_CONF['site_admin_url'] . '/plugins/monitor/index.php',
-            plugin_geticon_monitor()
-        );
+    if (!SEC_hasRights('monitor.admin')) {
+        return array();
     }
 
-    return $retval;
+    return array(
+        $LANG_MONITOR_1['plugin_name'],
+        $_CONF['site_admin_url'] . '/plugins/monitor/index.php',
+        plugin_geticon_monitor()
+    );
 }
 
-/**
- * Return plugin entry for the Admins Only block.
- *
- * @return array|null
- */
 function plugin_getadminoption_monitor()
 {
     global $_CONF, $LANG_MONITOR_1;
 
-    if (SEC_hasRights('monitor.admin')) {
-        return array(
-            $LANG_MONITOR_1['plugin_name'],
-            $_CONF['site_admin_url'] . '/plugins/monitor/index.php',
-            0
-        );
+    if (!SEC_hasRights('monitor.admin')) {
+        return null;
     }
 
-    return null;
+    return array(
+        $LANG_MONITOR_1['plugin_name'],
+        $_CONF['site_admin_url'] . '/plugins/monitor/index.php',
+        0
+    );
 }
 
-/**
- * Return the URL of the plugin icon.
- *
- * @return string
- */
 function plugin_geticon_monitor()
 {
     global $_CONF;
@@ -102,11 +79,6 @@ function plugin_geticon_monitor()
     return $_CONF['site_admin_url'] . '/plugins/monitor/images/monitor.png';
 }
 
-/**
- * Return the current plugin code version.
- *
- * @return string
- */
 function plugin_chkVersion_monitor()
 {
     global $_CONF;
@@ -118,16 +90,14 @@ function plugin_chkVersion_monitor()
 }
 
 /**
- * Update the plugin.
- *
- * The upgrade path remains compatible with older installations while removing
- * the historical third-party upgrade notification.
+ * Upgrade Monitor sequentially and only record 1.4.0 after required migrations
+ * have completed successfully.
  *
  * @return int|bool
  */
 function plugin_upgrade_monitor()
 {
-    global $_CONF, $_TABLES, $_MONITOR_CONF;
+    global $_CONF, $_TABLES, $_MONITOR_CONF, $_monitor_DEFAULT;
 
     require_once $_CONF['path'] . 'plugins/monitor/autoinstall.php';
     require_once $_CONF['path'] . 'plugins/monitor/install_defaults.php';
@@ -147,66 +117,103 @@ function plugin_upgrade_monitor()
         return 3002;
     }
 
+    /* Very old installations may not yet have the legacy security table. */
+    if (version_compare($installed_version, '1.1.1', '<')) {
+        if (!DB_checkTableExists('monitor_ban')) {
+            $sql = "CREATE TABLE {$_TABLES['monitor_ban']} ("
+                 . " bantype varchar(40) NOT NULL default '',"
+                 . " data varchar(255) NOT NULL default '',"
+                 . " created datetime NOT NULL,"
+                 . " access int(3) NOT NULL default '0',"
+                 . " KEY monitor_bantype_data (bantype, data),"
+                 . " KEY monitor_created (created)"
+                 . ") ENGINE=InnoDB";
+
+            if (!DB_query($sql, 1)) {
+                return 3003;
+            }
+        }
+    }
+
+    /* Preserve the historical email setting when upgrading old installations. */
+    if (version_compare($installed_version, '1.2.1', '<')) {
+        $c = config::get_instance();
+        if (!isset($_MONITOR_CONF['emails']) || $_MONITOR_CONF['emails'] == '') {
+            if (!$c->group_exists('monitor')) {
+                $c->add('sg_main', null, 'subgroup', 0, 0, null, 0, true, 'monitor');
+                $c->add('fs_main', null, 'fieldset', 0, 0, null, 0, true, 'monitor');
+            }
+            $c->add(
+                'emails',
+                $_CONF['site_mail'],
+                'text',
+                0,
+                0,
+                0,
+                10,
+                true,
+                'monitor'
+            );
+        }
+    }
+
+    /* Preserve the historical repository setting for existing installations. */
+    if (version_compare($installed_version, '1.3.0', '<')) {
+        $c = config::get_instance();
+        if (!isset($_MONITOR_CONF['repository']) || $_MONITOR_CONF['repository'] == '') {
+            $c->add(
+                'repository',
+                $_monitor_DEFAULT['repository'],
+                'text',
+                0,
+                0,
+                0,
+                20,
+                true,
+                'monitor'
+            );
+        }
+    }
+
+    /*
+     * 1.4.0 schema migration. It is deliberately idempotent so a failed or
+     * interrupted upgrade can be retried safely.
+     */
+    if (version_compare($installed_version, '1.4.0', '<')) {
+        if (!MONITOR_upgradeSecurityTable140()) {
+            COM_errorLog(
+                'MONITOR - Upgrade to 1.4.0 stopped before version update: '
+                . 'monitor_ban migration failed.'
+            );
+            return 3003;
+        }
+    }
+
     $inst_parms = plugin_autoinstall_monitor('monitor');
     $pi_gl_version = $inst_parms['info']['pi_gl_version'];
+    $safeCodeVersion = MONITOR_dbEscape($code_version);
+    $safeGlVersion = MONITOR_dbEscape($pi_gl_version);
 
-    switch ($installed_version) {
-        case '1.0':
-        case '1.1.0':
-            if (!DB_checkTableExists('monitor_ban')) {
-                $sql = "CREATE TABLE " . $_TABLES['monitor_ban'] . " ("
-                     . " bantype varchar(40) NOT NULL default '',"
-                     . " data varchar(255) NOT NULL default '',"
-                     . " created datetime NOT NULL,"
-                     . " access int(3) NOT NULL default '0'"
-                     . ") ENGINE=MyISAM";
-                DB_query($sql);
-            }
-            // Fall through intentionally for sequential legacy upgrades.
+    $updated = DB_query(
+        "UPDATE {$_TABLES['plugins']} "
+        . "SET pi_version = '{$safeCodeVersion}', "
+        . "pi_gl_version = '{$safeGlVersion}' "
+        . "WHERE pi_name = 'monitor'",
+        1
+    );
 
-        case '1.1.1':
-        case '1.2.0':
-            $c = config::get_instance();
-            if (!isset($_MONITOR_CONF['emails']) || $_MONITOR_CONF['emails'] == '') {
-                if (!$c->group_exists('monitor')) {
-                    $c->add('sg_main', null, 'subgroup', 0, 0, null, 0, true, 'monitor');
-                    $c->add('fs_main', null, 'fieldset', 0, 0, null, 0, true, 'monitor');
-                }
-                $c->add('emails', $_CONF['site_mail'],
-                    'text', 0, 0, 0, 10, true, 'monitor');
-            }
-            // Fall through intentionally.
-
-        case '1.2.1':
-            $c = config::get_instance();
-            if (!isset($_MONITOR_CONF['repository']) || $_MONITOR_CONF['repository'] == '') {
-                $c->add('repository', $_monitor_DEFAULT['repository'],
-                    'text', 0, 0, 0, 20, true, 'monitor');
-            }
-            // Fall through intentionally.
-
-        case '1.3.0':
-        case '1.3.1':
-        default:
-            $safeCodeVersion = MONITOR_dbEscape($code_version);
-            $safeGlVersion = MONITOR_dbEscape($pi_gl_version);
-            DB_query(
-                "UPDATE {$_TABLES['plugins']} "
-                . "SET pi_version = '{$safeCodeVersion}', "
-                . "pi_gl_version = '{$safeGlVersion}' "
-                . "WHERE pi_name = 'monitor'"
-            );
-            break;
+    if (!$updated) {
+        return 3003;
     }
+
+    COM_errorLog(
+        'MONITOR - Upgrade completed from ' . $installed_version
+        . ' to ' . $code_version . '.'
+    );
 
     return true;
 }
 
-/**
- * Automatic uninstall definition.
- *
- * @return array
- */
 function plugin_autouninstall_monitor()
 {
     return array(
@@ -219,16 +226,9 @@ function plugin_autouninstall_monitor()
 }
 
 // +---------------------------------------------------------------------------+
-// | General helpers                                                           |
+// | Database / upgrade helpers                                                |
 // +---------------------------------------------------------------------------+
 
-/**
- * Escape a string for Geeklog DB queries while keeping compatibility with
- * supported legacy Geeklog versions.
- *
- * @param string $value
- * @return string
- */
 function MONITOR_dbEscape($value)
 {
     $value = (string) $value;
@@ -241,26 +241,76 @@ function MONITOR_dbEscape($value)
 }
 
 /**
- * Return a formatted local timestamp without relying on deprecated strftime().
+ * Migrate the legacy Monitor security table for 1.4.0.
  *
- * @return string
+ * The table is retained for compatibility but is no longer intended to grow
+ * into a second full Ban engine.
+ *
+ * @return bool
  */
-function MONITOR_timestamp()
+function MONITOR_upgradeSecurityTable140()
 {
-    if (is_callable('COM_strftime')) {
-        return COM_strftime('%c');
+    global $_TABLES;
+
+    if (!DB_checkTableExists('monitor_ban')) {
+        $sql = "CREATE TABLE {$_TABLES['monitor_ban']} ("
+             . " bantype varchar(40) NOT NULL default '',"
+             . " data varchar(255) NOT NULL default '',"
+             . " created datetime NOT NULL,"
+             . " access int(3) NOT NULL default '0',"
+             . " KEY monitor_bantype_data (bantype, data),"
+             . " KEY monitor_created (created)"
+             . ") ENGINE=InnoDB";
+
+        return (bool) DB_query($sql, 1);
     }
 
-    return date('Y-m-d H:i:s');
+    $table = $_TABLES['monitor_ban'];
+
+    /* Convert old MyISAM installations. Re-running this statement is safe. */
+    if (!DB_query("ALTER TABLE {$table} ENGINE=InnoDB", 1)) {
+        return false;
+    }
+
+    $existingIndexes = array();
+    $result = DB_query("SHOW INDEX FROM {$table}", 1);
+    if (!$result) {
+        return false;
+    }
+
+    while ($row = DB_fetchArray($result)) {
+        if (isset($row['Key_name'])) {
+            $existingIndexes[$row['Key_name']] = true;
+        } elseif (isset($row['key_name'])) {
+            $existingIndexes[$row['key_name']] = true;
+        }
+    }
+
+    if (!isset($existingIndexes['monitor_bantype_data'])) {
+        if (!DB_query(
+            "ALTER TABLE {$table} ADD INDEX monitor_bantype_data (bantype, data)",
+            1
+        )) {
+            return false;
+        }
+    }
+
+    if (!isset($existingIndexes['monitor_created'])) {
+        if (!DB_query(
+            "ALTER TABLE {$table} ADD INDEX monitor_created (created)",
+            1
+        )) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
-/**
- * Read the tail of a file without loading an arbitrarily large log into memory.
- *
- * @param string $path
- * @param int    $maxBytes
- * @return string
- */
+// +---------------------------------------------------------------------------+
+// | Log helpers                                                               |
+// +---------------------------------------------------------------------------+
+
 function MONITOR_readTail($path, $maxBytes)
 {
     $maxBytes = max(1024, (int) $maxBytes);
@@ -280,8 +330,9 @@ function MONITOR_readTail($path, $maxBytes)
     }
 
     $readBytes = min($size, $maxBytes);
-    if ($size > $readBytes) {
-        fseek($handle, -$readBytes, SEEK_END);
+    if ($size > $readBytes && fseek($handle, -$readBytes, SEEK_END) !== 0) {
+        fclose($handle);
+        return '';
     }
 
     $data = fread($handle, $readBytes);
@@ -291,10 +342,7 @@ function MONITOR_readTail($path, $maxBytes)
 }
 
 /**
- * Email a bounded snapshot of selected logs.
- *
- * This function is intentionally non-destructive: sending a log snapshot no
- * longer deletes or truncates the source log.
+ * Email a bounded, non-destructive snapshot of selected logs.
  *
  * @param array $logs
  */
@@ -325,7 +373,6 @@ function MONITOR_logEmail($logs)
             continue;
         }
 
-        COM_errorLog('MONITOR - Reading log snapshot: ' . $log);
         $message .= '<p><b>Log File: '
                  . htmlspecialchars($log, ENT_QUOTES, 'UTF-8')
                  . '</b></p><pre>'
@@ -337,159 +384,31 @@ function MONITOR_logEmail($logs)
         return;
     }
 
-    $to = explode(',', $_MONITOR_CONF['emails']);
-    foreach ($to as $address) {
+    foreach (explode(',', $_MONITOR_CONF['emails']) as $address) {
         $contact = trim($address);
         if ($contact === '') {
             continue;
         }
 
-        $subject = $_CONF['site_name'] . ' | Log files';
-        COM_mail($contact, $subject, $message, '', true);
+        COM_mail(
+            $contact,
+            $_CONF['site_name'] . ' | Log files',
+            $message,
+            '',
+            true
+        );
     }
-}
-
-// +---------------------------------------------------------------------------+
-// | Image diagnostics                                                         |
-// +---------------------------------------------------------------------------+
-
-/**
- * Recursively list images larger than the Monitor threshold.
- *
- * @param string $folder
- * @return string
- */
-function MONITOR_recursiveFiles($folder = '')
-{
-    global $_CONF, $LANG_MONITOR_1;
-
-    set_time_limit(0);
-
-    if ($folder === '') {
-        $folder = $_CONF['path_images'];
-    }
-
-    if (!is_dir($folder) || !is_readable($folder)) {
-        return '';
-    }
-
-    $maxwidth = 1600;
-    $maxheight = 1600;
-    $retval = '<ul>';
-    $files = scandir($folder);
-
-    if ($files === false) {
-        return '';
-    }
-
-    foreach ($files as $file) {
-        if ($file === '.' || $file === '..' || strpos($file, '.') === 0) {
-            continue;
-        }
-
-        $filepath = $folder . '/' . $file;
-
-        if (is_dir($filepath)) {
-            $retval .= '<li>' . htmlspecialchars($file, ENT_QUOTES, 'UTF-8') . '</li>';
-            $retval .= MONITOR_recursiveFiles($filepath);
-            continue;
-        }
-
-        if (!is_file($filepath) || !is_readable($filepath)) {
-            continue;
-        }
-
-        $dimensions = @getimagesize($filepath);
-        if ($dimensions === false) {
-            continue;
-        }
-
-        $width = isset($dimensions[0]) ? (int) $dimensions[0] : 0;
-        $height = isset($dimensions[1]) ? (int) $dimensions[1] : 0;
-
-        if ($width <= $maxwidth && $height <= $maxheight) {
-            continue;
-        }
-
-        if (!isset($_SESSION['imgtoresize'])) {
-            $_SESSION['imgtoresize'] = 0;
-        }
-        $_SESSION['imgtoresize']++;
-
-        $size = filesize($filepath);
-        $size = ($size === false) ? 0 : (int) ($size / 1024);
-
-        $resizeRequested = isset($_POST['resize'])
-            && $_POST['resize'] == $LANG_MONITOR_1['resize_images'];
-
-        if ($resizeRequested) {
-            MONITOR_resizeImage($filepath);
-        } else {
-            $retval .= '<li><span style="color:red;font-weight:bold;">'
-                    . htmlspecialchars($file, ENT_QUOTES, 'UTF-8')
-                    . ' | ' . $width . 'px/' . $height . 'px | '
-                    . $size . ' Ko</span></li>';
-        }
-    }
-
-    $retval .= '</ul>';
-
-    return $retval;
-}
-
-/**
- * Resize a local image using the legacy SimpleImage helper.
- *
- * @param string $img
- * @return bool
- */
-function MONITOR_resizeImage($img)
-{
-    global $_CONF;
-
-    if (!is_file($img) || !is_readable($img) || !is_writable($img)) {
-        return false;
-    }
-
-    require_once $_CONF['path'] . 'plugins/monitor/class/simpleresize.class.php';
-
-    $maxwidth = 1600;
-    $maxheight = 1600;
-    $image = new SimpleImage();
-    $image->load($img);
-
-    if ($image->getWidth() > $maxwidth) {
-        $image->resizeToWidth($maxwidth);
-        $image->save($img);
-        COM_errorLog('MONITOR - Resizing image ' . $img);
-        return true;
-    }
-
-    if ($image->getHeight() > $maxheight) {
-        $image->resizeToHeight($maxheight);
-        $image->save($img);
-        COM_errorLog('MONITOR - Resizing image ' . $img);
-        return true;
-    }
-
-    return false;
 }
 
 // +---------------------------------------------------------------------------+
 // | Scheduled diagnostics                                                     |
 // +---------------------------------------------------------------------------+
 
-/**
- * Run bounded maintenance and diagnostic tasks.
- */
 function plugin_runScheduledTask_monitor()
 {
     global $_TABLES;
 
-    /*
-     * Legacy security observations are retained for 24 hours during the 1.4.0
-     * transition. Cleanup belongs here rather than on every frontend request.
-     */
+    /* Keep transitional observations bounded. */
     if (DB_checkTableExists('monitor_ban')) {
         DB_query(
             "DELETE FROM {$_TABLES['monitor_ban']} "
@@ -503,21 +422,21 @@ function plugin_runScheduledTask_monitor()
             1
         );
 
-        while ($row = DB_fetchArray($result)) {
-            if (!isset($row['bantype']) || !isset($row['total'])) {
-                continue;
+        if ($result) {
+            while ($row = DB_fetchArray($result)) {
+                if (!isset($row['bantype']) || !isset($row['total'])) {
+                    continue;
+                }
+
+                COM_errorLog(
+                    'MONITOR - Security observations: '
+                    . $row['bantype'] . ' = ' . (int) $row['total']
+                );
             }
-            COM_errorLog(
-                'MONITOR - Security observations: '
-                . $row['bantype'] . ' = ' . (int) $row['total']
-            );
         }
     }
 
-    /*
-     * Database table checks are diagnostics only. Keep failures in Geeklog's
-     * normal error log and avoid destructive repair operations.
-     */
+    /* Database checks are diagnostic only; no automatic repair is attempted. */
     foreach ($_TABLES as $table) {
         if (!is_string($table) || $table === '') {
             continue;
@@ -541,54 +460,14 @@ function plugin_runScheduledTask_monitor()
 }
 
 // +---------------------------------------------------------------------------+
-// | Input helpers                                                             |
-// +---------------------------------------------------------------------------+
-
-/**
- * Filter submitted variables.
- *
- * @param array $vars
- * @param array $arr
- */
-function MONITOR_filterVars($vars, &$arr)
-{
-    foreach ($vars as $var => $type) {
-        $value = isset($arr[$var]) ? $arr[$var] : '';
-
-        switch ($type) {
-            case 'number':
-                $arr[$var] = COM_applyFilter($value, true);
-                break;
-
-            case 'html':
-                $arr[$var] = COM_checkHTML($value, 'monitor.admin');
-                break;
-
-            case 'text':
-                $arr[$var] = htmlspecialchars(
-                    strip_tags(COM_stripslashes($value)),
-                    ENT_QUOTES,
-                    'UTF-8'
-                );
-                break;
-
-            case 'alpha':
-            default:
-                $arr[$var] = COM_applyFilter($value, false);
-                break;
-        }
-    }
-}
-
-// +---------------------------------------------------------------------------+
-// | Legacy security observation transition                                    |
+// | Transitional security observations                                       |
 // +---------------------------------------------------------------------------+
 
 /**
  * Return the directly connected client IP.
  *
- * Proxy supplied headers are intentionally not trusted here. A future trusted
- * proxy feature must explicitly validate the proxy before using forwarded IPs.
+ * Proxy-supplied headers are intentionally not trusted unless a future explicit
+ * trusted-proxy feature validates the immediate proxy first.
  *
  * @return string
  */
@@ -603,12 +482,6 @@ function MONITOR_getUserIP()
     return $ip;
 }
 
-/**
- * Record a bounded legacy security observation.
- *
- * @param string $type
- * @param string $ip
- */
 function MONITOR_recordSecurityObservation($type, $ip)
 {
     global $_TABLES;
@@ -634,11 +507,12 @@ function MONITOR_recordSecurityObservation($type, $ip)
         . "WHERE bantype = '{$safeType}' AND data = '{$safeIp}' LIMIT 1",
         1
     );
-    $row = DB_fetchArray($result);
+    $row = $result ? DB_fetchArray($result) : false;
 
     if (is_array($row) && isset($row['access'])) {
         DB_query(
-            "UPDATE {$_TABLES['monitor_ban']} SET access = access + 1 "
+            "UPDATE {$_TABLES['monitor_ban']} "
+            . "SET access = access + 1, created = NOW() "
             . "WHERE bantype = '{$safeType}' AND data = '{$safeIp}'",
             1
         );
@@ -653,13 +527,8 @@ function MONITOR_recordSecurityObservation($type, $ip)
 }
 
 /**
- * Transitional Monitor security check.
- *
- * Existing explicit legacy `banned` records remain enforceable so upgrades do
- * not unexpectedly unblock an address. Monitor no longer creates new permanent
- * bans from CAPTCHA/DokuWiki log scanning or repeated registration/contact
- * requests. Those signals are observations for Monitor; enforcement belongs to
- * the Ban plugin when available.
+ * Preserve only explicit legacy `banned` records during the transition.
+ * Detection signals are observations; enforcement belongs to Ban when present.
  */
 function MONITOR_banCheck()
 {
@@ -681,7 +550,7 @@ function MONITOR_banCheck()
         . "WHERE data = '{$safeIp}' AND bantype = 'banned' LIMIT 1",
         1
     );
-    $row = DB_fetchArray($result);
+    $row = $result ? DB_fetchArray($result) : false;
 
     if (is_array($row) && isset($row['bantype']) && $row['bantype'] === 'banned') {
         MONITOR_denyRequest($remoteAddress);
@@ -700,11 +569,6 @@ function MONITOR_banCheck()
     }
 }
 
-/**
- * Immediately deny a legacy blocked request.
- *
- * @param string $remoteAddress
- */
 function MONITOR_denyRequest($remoteAddress)
 {
     if (!headers_sent()) {
@@ -725,9 +589,7 @@ function MONITOR_denyRequest($remoteAddress)
 }
 
 /**
- * Backward-compatible wrapper retained for callers from older Monitor code.
- *
- * @param string $remoteAddress
+ * Backward-compatible wrapper for older Monitor callers.
  */
 function MONITOR_checkHtaccess($remoteAddress)
 {
@@ -737,5 +599,3 @@ function MONITOR_checkHtaccess($remoteAddress)
 
     MONITOR_denyRequest($remoteAddress);
 }
-
-?>
