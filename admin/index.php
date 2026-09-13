@@ -88,6 +88,10 @@ function MONITOR_ADMIN_navigation($active)
     }
 
     $html .= '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none" href="'
+          . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/plugins/monitor/log-archives.php')
+          . '">' . MONITOR_ADMIN_h($LANG_MONITOR_1['log_archive_title']) . '</a>';
+
+    $html .= '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none" href="'
           . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/logviewer.php')
           . '">Geeklog logs</a>';
 
@@ -202,7 +206,8 @@ function MONITOR_ADMIN_overview()
     $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:22px">';
 
     $actions = array(
-        array('Geeklog logs', $_CONF['site_admin_url'] . '/logviewer.php', 'Use the native Geeklog log viewer for complete log access.'),
+        array('Geeklog logs', $_CONF['site_admin_url'] . '/logviewer.php', 'Use the native Geeklog log viewer for complete current log access.'),
+        array($LANG_MONITOR_1['log_archive_title'], $_CONF['site_admin_url'] . '/plugins/monitor/log-archives.php', sprintf($LANG_MONITOR_1['log_archive_intro'], 90)),
         array($LANG_MONITOR_1['changes'], $_CONF['site_admin_url'] . '/plugins/monitor/changes.php', $LANG_MONITOR_1['changes_intro']),
         array('Security', $_CONF['site_admin_url'] . '/plugins/monitor/index.php?view=security', 'Review Monitor security observations and Ban integration.'),
         array('Plugins', $_CONF['site_admin_url'] . '/plugins/monitor/index.php?view=plugins', 'Review installed plugin versions and compatibility state.')
