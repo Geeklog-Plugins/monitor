@@ -43,6 +43,14 @@ $LANG_MONITOR_1 = array(
 $PLG_monitor_MESSAGE3002 = $LANG32[9];
 $PLG_monitor_MESSAGE3003 = 'Monitor could not complete its database migration. The installed version was not changed; review error.log and retry the upgrade.';
 
+// Localization of the Geeklog Configuration UI.
+// Geeklog 2.2.x configuration search/autocomplete expects the plugin section
+// metadata to exist alongside names, subgroups and fieldsets.
+$LANG_configsections['monitor'] = array(
+    'label' => 'Monitor',
+    'title' => 'Monitor Configuration'
+);
+
 $LANG_configsubgroups['monitor'] = array(
     'sg_main' => 'Main Settings'
 );
