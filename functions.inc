@@ -487,9 +487,18 @@ function plugin_runScheduledTask_monitor()
         }
     }
 
-    /* Database checks are diagnostic only; no automatic repair is attempted. */
-    foreach ($_TABLES as $table) {
+    /*
+     * Database checks are diagnostic only; no automatic repair is attempted.
+     * $_TABLES can contain legacy entries or plugin table names that are no
+     * longer physically present. Skip them before issuing CHECK TABLE so the
+     * scheduled task does not generate false database errors.
+     */
+    foreach ($_TABLES as $tableKey => $table) {
         if (!is_string($table) || $table === '') {
+            continue;
+        }
+
+        if (!DB_checkTableExists($tableKey)) {
             continue;
         }
 
