@@ -35,6 +35,34 @@ function MONITOR_ACTIVITY_path()
 }
 
 /**
+ * Normalize retention for a journal event list.
+ *
+ * @param array $events
+ * @return array
+ */
+function MONITOR_ACTIVITY_prune($events)
+{
+    $cutoff = time() - (30 * 86400);
+    $kept = array();
+
+    foreach ($events as $event) {
+        if (!is_array($event)) {
+            continue;
+        }
+        $timestamp = isset($event['timestamp']) ? (int) $event['timestamp'] : 0;
+        if ($timestamp >= $cutoff) {
+            $kept[] = $event;
+        }
+    }
+
+    if (count($kept) > 500) {
+        $kept = array_slice($kept, -500);
+    }
+
+    return array_values($kept);
+}
+
+/**
  * Read the current journal.
  *
  * @return array
@@ -56,51 +84,14 @@ function MONITOR_ACTIVITY_read()
         return array();
     }
 
-    return $decoded['events'];
+    return MONITOR_ACTIVITY_prune($decoded['events']);
 }
 
 /**
- * Persist a bounded journal.
+ * Append one lifecycle observation under one exclusive read/modify/write lock.
  *
  * Retention is deliberately both time- and count-bounded: 30 days / 500 events.
  * The journal contains only object identity and lifecycle metadata, never content.
- *
- * @param array $events
- * @return bool
- */
-function MONITOR_ACTIVITY_write($events)
-{
-    $path = MONITOR_ACTIVITY_path();
-    if ($path === '' || !is_array($events) || !is_writable(dirname($path))) {
-        return false;
-    }
-
-    $cutoff = time() - (30 * 86400);
-    $kept = array();
-    foreach ($events as $event) {
-        $timestamp = isset($event['timestamp']) ? (int) $event['timestamp'] : 0;
-        if ($timestamp >= $cutoff) {
-            $kept[] = $event;
-        }
-    }
-
-    if (count($kept) > 500) {
-        $kept = array_slice($kept, -500);
-    }
-
-    $json = json_encode(array(
-        'format' => 1,
-        'events' => array_values($kept)
-    ));
-    if (!is_string($json) || $json === '') {
-        return false;
-    }
-
-    return @file_put_contents($path, $json, LOCK_EX) !== false;
-}
-
-/**
- * Append one lifecycle observation.
  *
  * @param string $event saved|deleted
  * @param string $id
@@ -130,7 +121,29 @@ function MONITOR_ACTIVITY_record($event, $id, $type, $subType, $oldId)
         return true;
     }
 
-    $events = MONITOR_ACTIVITY_read();
+    $path = MONITOR_ACTIVITY_path();
+    if ($path === '' || !is_writable(dirname($path))) {
+        return false;
+    }
+
+    $handle = @fopen($path, 'c+');
+    if ($handle === false || !@flock($handle, LOCK_EX)) {
+        if (is_resource($handle)) {
+            @fclose($handle);
+        }
+        return false;
+    }
+
+    @rewind($handle);
+    $raw = stream_get_contents($handle);
+    $events = array();
+    if (is_string($raw) && $raw !== '') {
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded) && isset($decoded['events']) && is_array($decoded['events'])) {
+            $events = $decoded['events'];
+        }
+    }
+
     $events[] = array(
         'timestamp' => time(),
         'event' => $event,
@@ -139,8 +152,29 @@ function MONITOR_ACTIVITY_record($event, $id, $type, $subType, $oldId)
         'sub_type' => $subType,
         'old_id' => ($event === 'saved' && $oldId !== '' && $oldId !== $id) ? $oldId : ''
     );
+    $events = MONITOR_ACTIVITY_prune($events);
 
-    return MONITOR_ACTIVITY_write($events);
+    $json = json_encode(array(
+        'format' => 1,
+        'events' => $events
+    ));
+
+    $written = false;
+    if (is_string($json) && $json !== '') {
+        @rewind($handle);
+        if (@ftruncate($handle, 0)) {
+            $bytes = @fwrite($handle, $json);
+            if ($bytes !== false && $bytes === strlen($json)) {
+                @fflush($handle);
+                $written = true;
+            }
+        }
+    }
+
+    @flock($handle, LOCK_UN);
+    @fclose($handle);
+
+    return $written;
 }
 
 /**
