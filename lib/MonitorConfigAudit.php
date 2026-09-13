@@ -13,16 +13,6 @@ if (isset($_SERVER['PHP_SELF']) &&
     die('This file can not be used on its own.');
 }
 
-/**
- * Extract $_CONF keys assigned in siteconfig.php without executing the file.
- *
- * Values are intentionally not parsed. Geeklog has already loaded siteconfig.php
- * before the plugin runs, so the active runtime $_CONF value is the authoritative
- * value for a key found in the file.
- *
- * @param string $path
- * @return array
- */
 function MONITOR_CONFIG_AUDIT_siteconfigKeys($path)
 {
     $keys = array();
@@ -55,38 +45,18 @@ function MONITOR_CONFIG_AUDIT_siteconfigKeys($path)
     return array_values($result);
 }
 
-/**
- * Decode one serialized Geeklog configuration value.
- *
- * @param string $raw
- * @return array
- */
 function MONITOR_CONFIG_AUDIT_decode($raw)
 {
     if ($raw === 'unset') {
-        return array(
-            'unset' => true,
-            'value' => null,
-            'valid' => true
-        );
+        return array('unset' => true, 'value' => null, 'valid' => true);
     }
 
     $value = @unserialize($raw);
     $valid = !($value === false && $raw !== serialize(false));
 
-    return array(
-        'unset' => false,
-        'value' => $value,
-        'valid' => $valid
-    );
+    return array('unset' => false, 'value' => $value, 'valid' => $valid);
 }
 
-/**
- * Return whether a configuration key conventionally represents a path.
- *
- * @param string $key
- * @return bool
- */
 function MONITOR_CONFIG_AUDIT_isPathKey($key)
 {
     if (strpos($key, 'path_') === 0) {
@@ -97,12 +67,34 @@ function MONITOR_CONFIG_AUDIT_isPathKey($key)
 }
 
 /**
- * Check a physical path value where applicable.
+ * Sensitive values are never printed and never included in candidate SQL.
  *
  * @param string $key
- * @param mixed  $value
- * @return array
+ * @return bool
  */
+function MONITOR_CONFIG_AUDIT_isSensitiveKey($key)
+{
+    $key = strtolower((string) $key);
+    $patterns = array(
+        'password',
+        'passwd',
+        'secret',
+        'token',
+        'private_key',
+        'apikey',
+        'api_key',
+        'auth_key'
+    );
+
+    foreach ($patterns as $pattern) {
+        if (strpos($key, $pattern) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function MONITOR_CONFIG_AUDIT_pathState($key, $value)
 {
     if (!MONITOR_CONFIG_AUDIT_isPathKey($key) ||
@@ -110,18 +102,9 @@ function MONITOR_CONFIG_AUDIT_pathState($key, $value)
         return array('checked' => false, 'exists' => null);
     }
 
-    return array(
-        'checked' => true,
-        'exists' => file_exists($value)
-    );
+    return array('checked' => true, 'exists' => file_exists($value));
 }
 
-/**
- * Render a value as readable diagnostic text.
- *
- * @param mixed $value
- * @return string
- */
 function MONITOR_CONFIG_AUDIT_displayValue($value)
 {
     if ($value === true) {
@@ -143,14 +126,6 @@ function MONITOR_CONFIG_AUDIT_displayValue($value)
     return (string) $value;
 }
 
-/**
- * Collect the active site's configuration audit.
- *
- * This function is read-only. SQL statements are returned as suggestions only.
- * It never executes configuration updates.
- *
- * @return array
- */
 function MONITOR_CONFIG_AUDIT_collect()
 {
     global $_CONF, $_TABLES;
@@ -195,7 +170,6 @@ function MONITOR_CONFIG_AUDIT_collect()
                 'value' => $decoded['value'],
                 'unset' => $decoded['unset'],
                 'valid' => $decoded['valid'],
-                'raw' => isset($row['value']) ? $row['value'] : '',
                 'type' => isset($row['type']) ? $row['type'] : '',
                 'subgroup' => isset($row['subgroup']) ? $row['subgroup'] : '',
                 'tab' => isset($row['tab']) ? $row['tab'] : ''
@@ -203,21 +177,13 @@ function MONITOR_CONFIG_AUDIT_collect()
         }
     }
 
-    $fileOnlyNormal = array(
-        'path',
-        'path_system',
-        'site_enabled',
-        'default_charset'
-    );
+    $fileOnlyNormal = array('path', 'path_system', 'site_enabled', 'default_charset');
 
     $keys = $siteKeys;
     foreach ($dbValues as $key => $value) {
-        if (isset($siteKeyMap[$key])) {
-            continue;
+        if (!isset($siteKeyMap[$key])) {
+            $keys[] = $key;
         }
-        // Database-only keys are not a file-vs-DB conflict, but including them
-        // makes the audit useful as a complete view of the active Core config.
-        $keys[] = $key;
     }
     $keys = array_values(array_unique($keys));
     natcasesort($keys);
@@ -232,18 +198,20 @@ function MONITOR_CONFIG_AUDIT_collect()
         'database_only' => 0,
         'db_unset' => 0,
         'invalid_paths' => 0,
-        'decode_errors' => 0
+        'decode_errors' => 0,
+        'redacted' => 0
     );
 
     foreach ($keys as $key) {
         $siteExists = isset($siteKeyMap[$key]);
         $dbExists = isset($dbValues[$key]);
-        $siteValue = ($siteExists && array_key_exists($key, $_CONF))
-            ? $_CONF[$key]
-            : null;
-        $dbValue = ($dbExists && !$dbValues[$key]['unset'])
-            ? $dbValues[$key]['value']
-            : null;
+        $siteValue = ($siteExists && array_key_exists($key, $_CONF)) ? $_CONF[$key] : null;
+        $dbValue = ($dbExists && !$dbValues[$key]['unset']) ? $dbValues[$key]['value'] : null;
+        $sensitive = MONITOR_CONFIG_AUDIT_isSensitiveKey($key);
+
+        if ($sensitive) {
+            $summary['redacted']++;
+        }
 
         if ($siteExists) {
             $priority = 'siteconfig.php';
@@ -256,7 +224,6 @@ function MONITOR_CONFIG_AUDIT_collect()
             $effective = null;
         }
 
-        $status = '';
         if ($dbExists && !$dbValues[$key]['valid']) {
             $status = 'DB DECODE ERROR';
             $summary['decode_errors']++;
@@ -286,7 +253,7 @@ function MONITOR_CONFIG_AUDIT_collect()
         }
 
         $sql = '';
-        if ($siteExists && $dbExists && !$dbValues[$key]['unset'] &&
+        if (!$sensitive && $siteExists && $dbExists && !$dbValues[$key]['unset'] &&
                 $dbValues[$key]['valid'] && $siteValue !== $dbValue) {
             $canSuggest = true;
             if (MONITOR_CONFIG_AUDIT_isPathKey($key)) {
@@ -315,7 +282,8 @@ function MONITOR_CONFIG_AUDIT_collect()
             'effective_value' => $effective,
             'status' => $status,
             'path' => $pathState,
-            'sql' => $sql
+            'sql' => $sql,
+            'sensitive' => $sensitive
         );
     }
 
