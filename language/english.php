@@ -11,6 +11,7 @@
  */
 
 global $LANG32;
+global $LANG_configsections, $LANG_confignames, $LANG_configsubgroups, $LANG_tab, $LANG_fs;
 
 $LANG_MONITOR_1 = array(
     'plugin_name'           => 'Monitor',
@@ -44,8 +45,8 @@ $PLG_monitor_MESSAGE3002 = $LANG32[9];
 $PLG_monitor_MESSAGE3003 = 'Monitor could not complete its database migration. The installed version was not changed; review error.log and retry the upgrade.';
 
 // Localization of the Geeklog Configuration UI.
-// Geeklog 2.2.x configuration search/autocomplete expects the plugin section
-// metadata to exist alongside names, subgroups and fieldsets.
+// Geeklog 2.2.x configuration search/autocomplete expects these arrays to be
+// available in global scope when config.class.php builds its UI metadata.
 $LANG_configsections['monitor'] = array(
     'label' => 'Monitor',
     'title' => 'Monitor Configuration'
@@ -53,6 +54,10 @@ $LANG_configsections['monitor'] = array(
 
 $LANG_configsubgroups['monitor'] = array(
     'sg_main' => 'Main Settings'
+);
+
+$LANG_tab['monitor'] = array(
+    0 => 'Main'
 );
 
 $LANG_fs['monitor'] = array(
