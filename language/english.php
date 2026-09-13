@@ -70,3 +70,15 @@ $LANG_configsubgroups =& $GLOBALS['LANG_configsubgroups'];
 $LANG_tab =& $GLOBALS['LANG_tab'];
 $LANG_fs =& $GLOBALS['LANG_fs'];
 $LANG_confignames =& $GLOBALS['LANG_confignames'];
+
+/*
+ * Early Monitor 1.4.0 development builds could persist an incomplete 2.2.x
+ * configuration hierarchy. Repair it only when the Geeklog configuration UI
+ * is being opened; normal frontend requests remain read-only.
+ */
+if (isset($_SERVER['SCRIPT_NAME'])
+        && basename($_SERVER['SCRIPT_NAME']) === 'configuration.php'
+        && isset($_CONF['path'])) {
+    require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorConfigCompat.php';
+    MONITOR_repairConfiguration140();
+}
