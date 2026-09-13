@@ -96,26 +96,6 @@ jobs:
           fi
           echo 'Changes monitoring guardrails present.'
 
-      - name: Check content lifecycle observation guardrails
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f lib/MonitorContentActivity.php
-          grep -q "plugin_itemsaved_monitor" services.inc.php
-          grep -q "plugin_itemdeleted_monitor" services.inc.php
-          grep -q "MONITOR_ACTIVITY_record('saved'" services.inc.php
-          grep -q "MONITOR_ACTIVITY_record('deleted'" services.inc.php
-          grep -q "monitor-content-activity-" lib/MonitorContentActivity.php
-          grep -q "30 \* 86400" lib/MonitorContentActivity.php
-          grep -q "count(\$kept) > 500" lib/MonitorContentActivity.php
-          grep -q "flock(\$handle, LOCK_EX)" lib/MonitorContentActivity.php
-          grep -q "content_activity" lib/MonitorServices.php
-          if grep -q "path_public_html" lib/MonitorContentActivity.php; then
-            echo 'Content activity journal must stay outside public_html.'
-            exit 1
-          fi
-          echo 'Content lifecycle observation guardrails present.'
-
       - name: Check daily log rotation guardrails
         shell: bash
         run: |
@@ -162,3 +142,37 @@ jobs:
             exit 1
           fi
           echo 'Read-only Monitor service contract guardrails present.'
+
+      - name: Check lifecycle observation guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f lib/MonitorContentActivity.php
+          grep -q "plugin_itemsaved_monitor" functions.inc
+          grep -q "plugin_itemdeleted_monitor" functions.inc
+          grep -q "MONITOR_ACTIVITY_record" functions.inc
+          grep -q "monitor-content-activity-" lib/MonitorContentActivity.php
+          grep -q "30 \* 86400" lib/MonitorContentActivity.php
+          grep -q "array_slice(\$kept, -500)" lib/MonitorContentActivity.php
+          grep -q "LOCK_EX" lib/MonitorContentActivity.php
+          grep -q "content_activity" lib/MonitorServices.php
+          if grep -E -q "content|title|description|body|text" lib/MonitorContentActivity.php; then
+            echo 'Lifecycle journal must contain identity metadata only, not copied content.'
+            exit 1
+          fi
+          echo 'Lifecycle observation guardrails present.'
+
+      - name: Check oversized media locator guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f lib/MonitorMediaDiagnostics.php
+          grep -q "MONITOR_MEDIA_oversizedImages" lib/MonitorHealth.php
+          grep -q "relative_path" lib/MonitorMediaDiagnostics.php
+          grep -q "filemanager/index.php?Type=Root" lib/MonitorHealth.php
+          grep -q "maxItems" lib/MonitorMediaDiagnostics.php
+          if grep -E -q "unlink\(|rename\(|copy\(|file_put_contents\(|ftruncate\(" lib/MonitorMediaDiagnostics.php; then
+            echo 'Media locator must remain read-only.'
+            exit 1
+          fi
+          echo 'Oversized media locator guardrails present.'
