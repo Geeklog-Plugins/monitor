@@ -43,8 +43,8 @@ if (!empty($media['available']) && !empty($media['items'])) {
 }
 
 $fileManager = isset($_CONF['site_url'])
-    ? rtrim($_CONF['site_url'], '/') . '/filemanager/index.php?Type=Root'
-    : '/filemanager/index.php?Type=Root';
+    ? rtrim($_CONF['site_url'], '/') . '/filemanager/index.php'
+    : '/filemanager/index.php';
 
 echo json_encode(array(
     'ok' => !empty($media['available']),
