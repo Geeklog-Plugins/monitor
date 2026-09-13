@@ -12,7 +12,7 @@ The guiding model is:
 
 Monitor should prefer read-only observation and diagnostics. State-changing actions must be deliberate, permission-checked, CSRF-protected and narrowly scoped.
 
-The current modernization compatibility target follows the Geeklog development memorandum:
+Compatibility target:
 
 - Geeklog **2.1.1 through 2.2.2**
 - PHP **5.6 through 8.1**
@@ -21,630 +21,428 @@ New code must use the common safe subset of those versions unless Monitor explic
 
 ---
 
+# Current stabilization status
+
+The 1.4.0 modernization baseline has now been validated on real Geeklog installations.
+
+Validated in September 2026:
+
+- [x] Monitor installs and operates on Geeklog 2.1.1;
+- [x] Monitor admin pages operate on Geeklog 2.2.2;
+- [x] Monitor Configuration opens correctly on Geeklog 2.2.2;
+- [x] the Geeklog 2.2.x `COM_createHTMLDocument()` rendering path is used instead of removed `COM_siteHeader()` / `COM_siteFooter()` APIs;
+- [x] the native configuration hierarchy follows the official Polls pattern: `subgroup -> tab -> fieldset -> settings`;
+- [x] text configuration fields use `selection_array = NULL` rather than an invalid numeric selection id;
+- [x] existing malformed Monitor 1.4.0 configuration rows can be repaired idempotently before Geeklog builds the configuration UI;
+- [x] configuration language metadata is available to the Geeklog 2.2.x autocomplete/configuration UI;
+- [x] PHP 5.6 syntax CI passes;
+- [x] PHP 8.1 syntax CI passes;
+- [x] security/API regression guard passes;
+- [x] installable archive generation passes;
+- [x] the generated archive excludes dotfiles and dot-directories;
+- [x] the generated archive is committed under `dist/` and also published as a GitHub Actions artifact.
+
+Still requiring dedicated validation before declaring every release gate complete:
+
+- [ ] Ban-present runtime integration test;
+- [ ] complete scheduled-task runtime test;
+- [ ] two-site shared-files/multisite upgrade test;
+- [ ] interrupted database migration/retry test on a disposable installation.
+
+The Geeklog configuration lessons discovered during this work have also been incorporated into the development memorandum, using the official Polls plugin and Geeklog `ConfigInterface`/`config.class.php` as reference implementations.
+
+---
+
 ## Design principles
 
 ### 1. Monitor first, modify second
 
-The dashboard should explain what is wrong before offering to change anything.
-
-Automatic changes to plugin files, logs, images, configuration or security state should not happen simply because Monitor detected an issue.
+The dashboard should explain what is wrong before offering to change anything. Automatic changes to plugin files, logs, images, configuration or security state should not happen simply because Monitor detected an issue.
 
 ### 2. Remove historical duplication
 
-Monitor currently contains functionality that overlaps with Geeklog Core and other plugins. Version 1.4.0 should remove or reduce duplicated functionality where a maintained Geeklog API or specialized plugin is the better owner.
+Monitor should remove or reduce functionality that overlaps with Geeklog Core or specialized plugins where a maintained API or dedicated plugin is the better owner.
 
 ### 3. Small, testable responsibilities
 
-Large controller files should progressively be split into focused helpers/services while keeping the plugin understandable and compatible with PHP 5.6.
-
-Avoid creating a framework inside the plugin.
+Large controllers should progressively be split into focused helpers/services while keeping the plugin understandable and PHP 5.6 compatible. Avoid creating a framework inside the plugin.
 
 ### 4. Safe by default
 
 - validate all input;
 - escape output for its rendering context;
-- use Geeklog ACL checks for all privileged operations;
+- use Geeklog ACL checks for privileged operations;
 - use Geeklog CSRF tokens for state-changing actions;
-- require POST for state changes;
+- require POST for mutations;
 - keep TLS certificate verification enabled;
-- avoid trusting proxy-supplied IP headers unless trusted proxies are explicitly configured;
+- do not trust proxy-supplied IP headers by default;
 - never block PHP workers with artificial sleeps;
 - do not silently transmit site information to third parties.
 
 ### 5. Multisite-aware
 
-Plugin files may be shared while database/configuration state is site-specific.
-
-Monitor must:
-
-- operate only in the active site's context;
-- derive paths from the active `$_CONF` configuration;
-- avoid modifying sibling sites;
-- tolerate the previous persisted Monitor state until the active site completes its upgrade;
-- keep upgrades restartable and non-destructive.
+Plugin files may be shared while database/configuration state is site-specific. Monitor must operate only in the active site's context, derive paths from active `$_CONF`, avoid modifying sibling sites, tolerate previous persisted state during upgrades and keep migrations restartable.
 
 ---
 
 # Positioning: Monitor and Ban
 
-## Do not build a second full Ban plugin inside Monitor
+Monitor must not become a second full Ban plugin.
 
-The existing Geeklog Ban plugin already provides a specialized enforcement engine with features such as:
+## Monitor owns
 
-- exact IP bans;
-- IPv4 ranges and CIDR;
-- regular-expression IP rules;
-- HTTP Referer rules;
-- User-Agent rules;
-- Script Name rules;
-- whitelist records;
-- permanent and TTL-based bans;
-- Stop Forum Spam integration;
-- automatic banning based on GUS traffic history;
-- ban logging and notifications.
-
-Reimplementing these features in Monitor would increase complexity, duplicate security-sensitive code and work against the 1.4.0 simplification objective.
-
-## Recommended responsibility split
-
-### Monitor owns
-
-- detection of suspicious or unhealthy conditions;
+- health and diagnostic checks;
 - security observations and counters;
-- correlation of logs and recent events;
-- health checks;
-- diagnostics;
+- log/event correlation;
 - severity classification;
-- alerts;
-- recommendations;
-- visibility into Ban status when Ban is installed;
-- requesting a ban through a stable Ban integration when explicitly configured.
+- alerts and recommendations;
+- Ban capability/status visibility;
+- explicit requests to Ban through an isolated adapter when supported.
 
-### Ban owns
+## Ban owns
 
 - persistent allow/deny rules;
 - IP/range/CIDR matching;
 - User-Agent/Referer/Script blocking;
 - whitelist semantics;
-- ban TTL enforcement;
+- TTL enforcement;
 - external block-list enforcement;
-- final access-denial decision.
+- final access-denial decisions.
 
-## Compatibility issue
+Ban remains optional because Monitor supports Geeklog 2.1.1 while current Ban releases require newer Geeklog versions.
 
-Ban 2.0.5 currently requires Geeklog 2.2.1 or newer, while Monitor 1.4.0 targets Geeklog 2.1.1 through 2.2.2.
-
-Monitor therefore **must not require Ban**.
-
-On older Geeklog installations Monitor should still provide diagnostics, logging and alerts. A future modernization of Ban should be considered separately if compatibility with Geeklog 2.1.1-2.2.2 is desired.
-
-## Monitor security fallback
-
-Monitor should not keep its current general-purpose `monitor_ban` implementation as a competing ban engine.
-
-During the 1.4.0 transition:
-
-1. preserve existing installations and data;
-2. stop expanding the legacy Monitor ban feature;
-3. replace unsafe request-time behaviour with safe observation/counters;
-4. when Ban is installed, prefer an explicit integration adapter;
-5. when Ban is absent, alert/recommend rather than silently creating permanent blocking rules;
-6. decide after migration testing whether the legacy `monitor_ban` table can be retired in a later release.
-
-A very small emergency protection mechanism may remain only if it solves a Monitor-specific need that cannot be delegated safely. It must be temporary, bounded, IPv4/IPv6-safe, proxy-aware, non-blocking and disabled or conservative by default.
-
-## Future Ban integration contract
-
-Monitor must not query or mutate Ban tables directly.
-
-Prefer a small capability adapter so Monitor can ask questions such as:
-
-- is Ban installed and enabled?
-- can this installation accept an IP ban request?
-- is this IP currently allowed, blocked or unknown?
-- can a temporary ban be requested with a reason and TTL?
-
-The existing Ban helper/API can be used behind the adapter where available, but Monitor should not couple its architecture to a specific internal Ban function or SQL schema.
-
-This leaves room to modernize Ban independently and expose a cleaner public capability later.
+During the 1.4.0 transition, legacy `monitor_ban` data remains readable, but Monitor no longer expands its own general-purpose automatic ban engine.
 
 ---
 
 # Phase 0 - Baseline and regression inventory
 
-Before adding features, document and test the existing Monitor behaviour.
+- [x] inventory major administration actions and unsafe historical behaviour;
+- [x] inventory filesystem/log/image operations;
+- [x] inventory Monitor database/configuration state;
+- [x] identify historical third-party telemetry;
+- [x] identify hard-coded legacy integrations;
+- [x] establish Geeklog/PHP compatibility targets;
+- [x] add PHP 5.6 / 8.1 CI syntax coverage;
+- [x] add security/API regression guards.
 
-- [ ] inventory all existing administration actions;
-- [ ] inventory every state-changing request;
-- [ ] inventory filesystem reads/writes/deletes;
-- [ ] inventory database tables and configuration values;
-- [ ] inventory network calls;
-- [ ] inventory integrations with other plugins;
-- [ ] identify functionality that can be removed rather than ported;
-- [ ] identify code paths required only for historical plugins;
-- [ ] establish a Geeklog/PHP compatibility test matrix.
+Runtime matrix:
 
-Target matrix:
-
-| Geeklog | PHP | Expected |
+| Geeklog | PHP | Status |
 |---|---:|---|
-| 2.1.1 | 5.6 | supported |
-| 2.1.1 | 7.x | supported |
-| 2.2.2 | 7.x | supported |
-| 2.2.2 | 8.1 | supported |
+| 2.1.1 | 5.6-compatible code | validated for Monitor installation/runtime |
+| 2.1.1 | 7.x/8.x where Geeklog supports it | expected from common code path |
+| 2.2.2 | 8.1 | validated for Monitor admin/configuration runtime |
 
 ---
 
 # Phase 1 - Security baseline (P0)
 
-Release-blocking work.
-
 ## Client IP handling
 
-- [ ] use `REMOTE_ADDR` as the default source of the client IP;
-- [ ] validate addresses with `FILTER_VALIDATE_IP`;
-- [ ] do not trust `HTTP_CLIENT_IP` or `X-Forwarded-For` by default;
-- [ ] add optional trusted-proxy configuration only if necessary;
-- [ ] support IPv4 and IPv6 wherever possible;
-- [ ] never interpolate unvalidated IP values directly into SQL.
+- [x] use `REMOTE_ADDR` as the default source;
+- [x] validate IPs with `FILTER_VALIDATE_IP`;
+- [x] do not trust `HTTP_CLIENT_IP` / `X-Forwarded-For` automatically;
+- [x] avoid interpolating unvalidated IP data into SQL;
+- [ ] add trusted-proxy configuration only if a real requirement appears.
 
-## Remove request blocking
+## Request blocking and mutations
 
-- [ ] remove all `sleep(60)` calls from ban/security request paths;
-- [ ] use an immediate `403` or `429` where blocking is still required;
-- [ ] move expensive processing out of frontend requests.
+- [x] remove historical `sleep(60)` behaviour;
+- [x] use immediate denial for retained explicit legacy banned records;
+- [x] keep expensive legacy scans out of frontend request paths;
+- [x] use ACL checks on Monitor administration;
+- [x] protect log clearing with POST + Geeklog CSRF token;
+- [x] remove state-changing plugin deployment/update actions from the Monitor dashboard.
 
-## CSRF and HTTP methods
+## Network/privacy
 
-- [ ] inventory all mutations;
-- [ ] require POST for mutations;
-- [ ] add `SEC_createToken()` / `SEC_checkToken()` protection;
-- [ ] retain independent `monitor.admin` ACL checks on every privileged endpoint.
-
-Actions include at least:
-
-- clearing/rotating logs;
-- resizing images;
-- uploading/changing user photos;
-- plugin update/install operations if retained;
-- future security actions and ban requests.
-
-## TLS/network security
-
-- [ ] remove every `CURLOPT_SSL_VERIFYPEER = false`;
-- [ ] enable peer and host verification;
-- [ ] define connection and total timeouts;
-- [ ] handle GitHub/API failures without warnings or partial state changes;
-- [ ] avoid downloading executable code unless explicitly requested by an administrator.
+- [x] remove TLS verification bypass from the old updater path by removing that deployment path;
+- [x] remove historical third-party upgrade telemetry email;
+- [x] avoid automatic executable-code deployment from normal Monitor requests.
 
 ## Output safety
 
-- [ ] escape log contents before HTML rendering;
-- [ ] escape filenames, plugin metadata and remote API values according to context;
-- [ ] ensure remote error messages cannot inject admin HTML/JavaScript.
-
-## Privacy
-
-- [ ] remove the historical automatic upgrade notification email to a third-party address;
-- [ ] document every optional outbound request;
-- [ ] do not transmit site URL/name/version information without explicit configuration.
+- [x] escape log content before HTML rendering;
+- [x] bound log reads;
+- [x] constrain selectable log files to the configured log directory.
 
 ---
 
 # Phase 2 - PHP 5.6-8.1 correctness (P0)
 
-- [ ] initialize variables and arrays before use;
-- [ ] fix unquoted `fopen(..., a)` modes;
-- [ ] remove/rework deprecated `strftime()` use;
-- [ ] fix `$hreight` typo and image dimension checks;
-- [ ] guard access to `$_GET`, `$_POST`, `$_REQUEST`, `$_SERVER`, `$_FILES` keys;
-- [ ] check native function return values before using them;
-- [ ] remove warnings caused by PHP 8 stricter argument handling;
-- [ ] keep syntax PHP 5.6 compatible;
-- [ ] use Geeklog-compatible date/log helpers when available with safe fallback.
+- [x] initialize previously unsafe variables;
+- [x] remove unquoted `fopen(..., a)` usage;
+- [x] replace deprecated/unsafe historical date handling with compatibility helpers;
+- [x] guard relevant superglobal accesses;
+- [x] remove the obsolete image resize path containing the `$hreight` defect;
+- [x] preserve PHP 5.6-compatible syntax;
+- [x] PHP 5.6 lint passes in CI;
+- [x] PHP 8.1 lint passes in CI.
 
 ---
 
 # Phase 3 - Remove legacy attack surface and code (P0/P1)
 
-## Remove TimThumb
+- [x] remove bundled TimThumb;
+- [x] remove `admin/timthumb-config.php`;
+- [x] remove the legacy `SimpleImage` resize helper;
+- [x] remove remote image-fetch/webshot responsibilities;
+- [x] remove or isolate historical hard-coded plugin integrations that do not belong in Monitor;
+- [x] introduce an isolated Ban adapter instead of Ban-table coupling.
 
-- [ ] remove bundled TimThumb from `admin/images.php`;
-- [ ] remove `admin/timthumb-config.php` if no longer used;
-- [ ] use a small local image resize helper or Geeklog image facilities instead;
-- [ ] do not support remote image fetching/webshots as part of Monitor.
-
-## Remove dead/historical integrations
-
-Review direct special cases for:
-
-- Sphere;
-- DokuWiki;
-- MediaGallery;
-- Classifieds;
-- PayPal;
-- other legacy plugins.
-
-For each integration:
-
-- [ ] keep only if it serves a current Monitor responsibility;
-- [ ] otherwise remove it;
-- [ ] avoid hard-coded knowledge of another plugin's private tables/files;
-- [ ] prefer a capability/API adapter when integration is still useful.
+Image management direction: Monitor detects oversized images and recommends action. It does not silently resize or convert source images.
 
 ---
 
-# Phase 4 - Database and persistence modernization (P1)
+# Phase 4 - Database, configuration and persistence modernization (P1)
 
-## `monitor_ban` transition
+## Legacy security table
 
-- [ ] keep legacy data readable during the upgrade window;
-- [ ] stop using the table as a general duplicate of Ban;
-- [ ] determine whether security counters/events need a new neutral storage model;
-- [ ] do not delete the legacy table until migration is verified and a later release explicitly retires it.
+- [x] preserve legacy `monitor_ban` data through the transition;
+- [x] stop treating it as a general replacement for Ban;
+- [x] migrate retained table to InnoDB where required;
+- [x] add useful indexes;
+- [x] make the 1.4.0 table migration idempotent/retryable;
+- [ ] decide in a later release whether the legacy table can be retired completely.
 
-If the table is temporarily retained:
+## Geeklog native configuration
 
-- [ ] migrate MyISAM to InnoDB where supported;
-- [ ] add useful indexes for `bantype`, `data` and `created`;
-- [ ] validate/cast/escape all values;
-- [ ] make migrations idempotent and restartable.
+- [x] use `config::get_instance()` and `get_config('monitor')`;
+- [x] use the official configuration hierarchy `sg_main -> tab_main -> fs_main -> settings`;
+- [x] use `NULL` for `selection_array` when no selection list exists;
+- [x] provide `$LANG_configsections`, `$LANG_configsubgroups`, `$LANG_tab`, `$LANG_fs` and `$LANG_confignames` metadata;
+- [x] support `english.php` and `english_utf-8.php` loading paths;
+- [x] repair previously persisted malformed 1.4.0 configuration rows on Geeklog 2.2.x;
+- [x] validate the configuration page on Geeklog 2.2.2 with PHP warnings enabled.
 
-## Event/history storage
-
-Consider a small site-scoped history table only if it materially improves Monitor.
-
-Possible fields:
-
-- timestamp;
-- severity (`info`, `warning`, `error`, `security`);
-- check/event identifier;
-- short message;
-- structured context where practical;
-- resolved state where useful.
-
-Retention must be configurable and bounded.
+The canonical implementation reference is the official Geeklog Polls plugin plus the core `ConfigInterface` and `config.class.php` contract.
 
 ---
 
 # Phase 5 - Monitoring engine (P1)
 
-Introduce a small common result structure for health checks.
+Implemented baseline:
 
-Example conceptual result:
+- [x] common health result/status model;
+- [x] Geeklog version check;
+- [x] PHP version check;
+- [x] path checks;
+- [x] disk-space diagnostic where available;
+- [x] Monitor code/persisted-version visibility;
+- [x] Ban capability/status check;
+- [x] read-only oversized-image diagnostic with bounded scan;
+- [ ] scheduled-task last-run state;
+- [ ] HTTPS/site URL consistency diagnostic;
+- [ ] stale obsolete-file diagnostic.
 
-```text
-id: logs.error_size
-status: warning
-summary: error.log is larger than the configured threshold
-value: 18 MB
-recommendation: inspect or rotate the log
-```
-
-Standard states:
-
-- `ok`
-- `info`
-- `warning`
-- `error`
-
-Checks should be independent and fail gracefully.
-
-Initial checks:
-
-- [ ] Geeklog version;
-- [ ] PHP version;
-- [ ] database connection/type/version where safely available;
-- [ ] writable data/log/image paths;
-- [ ] log file sizes and recent errors;
-- [ ] scheduled-task last-run state where determinable;
-- [ ] plugin version/update visibility;
-- [ ] Monitor code version vs persisted version;
-- [ ] disk free space where safely available;
-- [ ] configured image library availability;
-- [ ] HTTPS/site URL consistency;
-- [ ] stale/obsolete Monitor files after upgrade;
-- [ ] Ban plugin availability/status when installed.
-
-Do not treat an unavailable optional capability as a site failure.
+Oversized image scanning is bounded and read-only; a future detailed inventory should preferably be scheduled/cached rather than repeatedly scanning large image trees from the dashboard.
 
 ---
 
 # Phase 6 - Reference dashboard (P1)
 
-Create a focused administration dashboard rather than a long page of unrelated tools.
-
-Suggested sections:
-
-## Overview
-
-- global state;
-- number of warnings/errors;
-- last Monitor scheduled run;
-- last significant event.
-
-## Environment
-
-- site context;
-- Geeklog version;
-- PHP version;
-- database information;
-- active paths/state relevant to diagnostics.
-
-## Logs
-
-- file;
-- size;
-- recent warning/error count where practical;
-- last modification;
-- safe viewer link.
-
-## Plugins
-
-- installed version;
-- code version;
-- available upstream version where known;
-- dependency/compatibility state;
-- recommendation.
-
-## Security
-
-- suspicious-event counts;
-- Monitor security observations;
-- Ban installed/enabled status;
-- recent Ban activity if exposed through a safe integration;
-- recommendations.
+- [x] focused Overview view;
+- [x] environment/health information;
+- [x] Logs view;
+- [x] read-only Plugins view;
+- [x] Security view;
+- [x] Ban capability visibility;
+- [x] Geeklog 2.2.2-compatible rendering using `COM_createHTMLDocument()`;
+- [x] real-runtime validation on Geeklog 2.1.1 and 2.2.2;
+- [ ] move more presentation markup into `.thtml` only where it materially improves maintainability.
 
 ---
 
 # Phase 7 - Safe log viewer (P1)
 
-Replace whole-file loading and destructive email-and-clear behaviour.
-
-- [ ] list only files located in the configured log directory;
-- [ ] prevent path traversal;
-- [ ] show tail 50/100/500 lines without reading huge files unnecessarily;
-- [ ] HTML-escape every displayed line;
+- [x] allowlisted log directory/files;
+- [x] prevent arbitrary path access;
+- [x] bounded tail reads;
+- [x] HTML escape log content;
+- [x] clear only by explicit POST + CSRF;
+- [x] never clear a log merely because it was emailed;
 - [ ] optional search/filter;
-- [ ] optional severity filter where recognizable;
-- [ ] allow download when permitted;
-- [ ] rotation/clear only by explicit POST + CSRF;
-- [ ] never automatically delete a log merely because it was emailed;
-- [ ] handle large files safely.
+- [ ] optional severity filtering;
+- [ ] optional explicit download action.
 
 ---
 
 # Phase 8 - Alerts and state changes (P2)
 
-Monitor should alert on meaningful transitions, not continuously repeat the same problem.
-
-Examples:
+Target design remains transition-based alerting rather than repeated spam:
 
 ```text
 OK -> WARNING : notify
 WARNING -> WARNING : no duplicate notification
 WARNING -> ERROR : notify
-ERROR -> OK : recovery notification (optional)
+ERROR -> OK : optional recovery notification
 ```
 
-Potential alerts:
-
-- low disk space;
-- scheduled task failure/staleness;
-- rapidly growing error log;
-- repeated authentication/CAPTCHA/security events;
-- plugin update becoming available;
-- important compatibility problem.
-
-Email remains optional. The design should allow future consumers without coupling Monitor directly to Hello or another plugin.
+- [ ] persistent alert-state model;
+- [ ] low disk alert;
+- [ ] scheduled task staleness alert;
+- [ ] rapidly growing error-log alert;
+- [ ] security-event threshold alert;
+- [ ] optional recovery notifications.
 
 ---
 
 # Phase 9 - Plugin update advisor (P1/P2)
 
-Modernize the current update feature around **advice first**.
+The old executable-code updater has been removed from the admin workflow.
 
-Default behaviour:
+- [x] show local plugin/version state read-only;
+- [x] do not deploy code from a normal Monitor request;
+- [ ] add safe remote release metadata discovery if operationally useful;
+- [ ] evaluate Geeklog/PHP compatibility metadata;
+- [ ] link to source/release and recommend an action.
 
-1. discover current installed/code version;
-2. discover available release metadata;
-3. evaluate known Geeklog/PHP compatibility when possible;
-4. show release/source link;
-5. recommend an action.
-
-Do not automatically deploy executable code during a normal Monitor page request.
-
-If direct installation is retained as an advanced feature:
-
-- [ ] disabled by default or clearly separated;
-- [ ] explicit administrator POST;
-- [ ] CSRF protected;
-- [ ] TLS verification mandatory;
-- [ ] archive validation;
-- [ ] path validation;
-- [ ] rollback on extraction/deployment failure;
-- [ ] shared-files/multisite warning;
-- [ ] never assume all sites sharing files have already migrated their persistent state.
-
-A future dedicated updater/deployment component may be a better long-term owner.
+A dedicated updater/deployment component remains preferable to rebuilding deployment responsibilities inside Monitor.
 
 ---
 
 # Phase 10 - Scheduled tasks (P1)
 
-Move maintenance work away from frontend requests.
+Current scheduled work includes bounded legacy-observation cleanup and diagnostic table checks.
 
-Candidates:
-
-- retention cleanup;
-- security/event aggregation;
-- log statistics;
-- database health checks that should not run per request;
-- update metadata refresh;
-- stale temporary-data cleanup.
-
-Scheduled work must be bounded and avoid expensive full-table/full-filesystem scans on every run.
+- [x] remove destructive log-email/clear behaviour;
+- [x] keep scheduled work diagnostic rather than auto-repairing database tables;
+- [ ] review/limit `CHECK TABLE ... FAST` scope and MySQL-specific cost;
+- [ ] add scheduled health snapshot/cache if dashboard checks become expensive;
+- [ ] complete runtime scheduled-task test on both target Geeklog generations.
 
 ---
 
 # Phase 11 - Multisite and shared-files safety (P1)
 
-- [ ] all persistent data remains site-scoped;
-- [ ] configuration belongs to the active site;
-- [ ] no sibling database/filesystem scanning;
-- [ ] code 1.4.0 remains safe while a site's persisted Monitor state is still 1.3.x;
-- [ ] upgrade one site without requiring immediate upgrade of every site sharing files;
-- [ ] record/diagnose current-site code/state mismatches;
-- [ ] test at least two Geeklog sites sharing Monitor files with separate databases/configurations.
-
-Monitor may report that shared files are in use when this can be determined safely, but it must not become a multisite control plane.
+- [x] derive active paths/configuration from the current site;
+- [x] keep persisted state site-scoped;
+- [x] make schema migration idempotent;
+- [x] avoid requiring sibling sites to upgrade simultaneously at code level;
+- [ ] validate two sites sharing Monitor files with separate databases/configurations;
+- [ ] explicitly test upgrade of site A while site B still has previous persisted state.
 
 ---
 
 # Phase 12 - UI, templates and maintainability (P1)
 
-- [ ] move substantial presentation markup into `.thtml` templates;
-- [ ] keep business logic out of templates;
-- [ ] use `COM_createHTMLDocument()` where supported with a compatibility fallback for older Geeklog;
-- [ ] use Geeklog CSS/JS registration APIs where compatible;
-- [ ] avoid inline JavaScript generated from unescaped PHP values;
-- [ ] split oversized admin controllers into focused helpers without overengineering;
-- [ ] centralize common validation and rendering helpers.
+- [x] remove old monolithic/unsafe updater responsibilities from the admin page;
+- [x] use `COM_createHTMLDocument()` for compatible rendering across 2.1.1-2.2.2;
+- [x] isolate health and Ban capability logic into helpers;
+- [x] keep PHP 5.6-compatible implementation style;
+- [ ] further template/controller separation where it makes the plugin simpler rather than more abstract.
 
-Suggested internal separation (names are illustrative, not mandatory):
+Current internal separation includes:
 
 ```text
 functions.inc
 lib/MonitorHealth.php
-lib/MonitorLogs.php
-lib/MonitorSecurity.php
-lib/MonitorUpdates.php
+lib/MonitorCompat.php
+lib/MonitorConfigCompat.php
 lib/MonitorBanAdapter.php
 admin/index.php
-admin/logs.php (optional)
-templates/*.thtml
 ```
-
-PHP 5.6 compatibility must be preserved; namespaces/type declarations are not required for this modernization.
 
 ---
 
 # Phase 13 - Installation and upgrade quality (P1)
 
-- [ ] set Monitor code version to 1.4.0 only when migrations are ready;
-- [ ] define accurate Geeklog compatibility metadata;
-- [ ] sequential upgrade path from existing releases;
-- [ ] idempotent checks before creating/changing persisted state;
-- [ ] do not mark 1.4.0 installed until required migrations succeed;
-- [ ] preserve previous data on failure;
-- [ ] remove historical third-party upgrade telemetry email;
-- [ ] clean obsolete files only when safe;
-- [ ] test fresh install and upgrade separately.
+- [x] code version set to 1.4.0 with real migration path;
+- [x] minimum Geeklog metadata set to 2.1.1;
+- [x] sequential migration logic;
+- [x] idempotent schema changes;
+- [x] do not mark 1.4.0 installed until required schema migration succeeds;
+- [x] preserve previous data on migration failure;
+- [x] remove historical telemetry;
+- [x] fresh package build validated;
+- [x] configuration compatibility validated on 2.1.1/2.2.2;
+- [ ] execute deliberate interrupted-migration/retry test.
 
 ---
 
 # Phase 14 - Documentation and release quality (P1)
 
-Rewrite the README around the new positioning.
-
-Documentation should include:
-
-- [ ] purpose and non-goals;
-- [ ] compatibility matrix;
-- [ ] installation/upgrade instructions;
-- [ ] security model;
-- [ ] trusted-proxy guidance if supported;
-- [ ] Ban integration behaviour;
-- [ ] scheduled-task behaviour;
-- [ ] log handling and retention;
-- [ ] multisite/shared-files considerations;
-- [ ] privacy/outbound network calls;
-- [ ] troubleshooting;
-- [ ] migration notes for legacy `monitor_ban` users.
-
-Consider adding:
-
-- `CHANGELOG.md`
-- `SECURITY.md`
-- lightweight test/check scripts compatible with the project policy.
+- [x] README rewritten around Monitor's current positioning;
+- [x] upgrade validation document exists;
+- [x] Geeklog API compatibility notes documented;
+- [x] CI/build workflows documented by repository structure;
+- [x] installable archive generated under `dist/`;
+- [x] configuration API lessons contributed back to the Geeklog development memorandum;
+- [ ] add/complete `CHANGELOG.md` before final release if not already present;
+- [ ] consider `SECURITY.md` for public release maintenance expectations.
 
 ---
 
 # Features explicitly not targeted for Monitor 1.4.0
 
-To keep the release focused, Monitor 1.4.0 should not attempt to become:
+Monitor 1.4.0 is not intended to become:
 
-- a replacement web application firewall;
-- a complete replacement for the Ban plugin;
-- a full SIEM/log analytics platform;
+- a replacement WAF;
+- a full replacement for Ban;
+- a SIEM/log analytics platform;
 - a backup system;
-- a deployment manager for every plugin;
-- a multisite administration manager;
-- a generic file manager;
+- a general deployment manager;
+- a multisite control plane;
+- a file manager;
 - an image CDN/proxy;
-- an external uptime monitoring service.
-
-These may integrate with Monitor later, but should not inflate the core plugin.
+- an external uptime service.
 
 ---
 
-# Proposed 1.4.0 release gates
-
-Monitor 1.4.0 should not be released until all of the following are true:
+# 1.4.0 release gates
 
 ## Security
 
-- [ ] no state-changing GET actions;
-- [ ] CSRF protection on mutations;
-- [ ] no TLS verification bypass;
-- [ ] no artificial request `sleep()` defence;
-- [ ] safe client-IP handling;
-- [ ] safe log HTML rendering;
-- [ ] no silent external telemetry.
+- [x] no retained state-changing GET action in the modernized admin workflow;
+- [x] CSRF protection on retained mutations;
+- [x] no TLS verification bypass in retained Monitor network/deployment behaviour;
+- [x] no artificial request `sleep()` defence;
+- [x] safe direct client-IP handling;
+- [x] safe log HTML rendering;
+- [x] no silent external telemetry.
 
 ## Compatibility
 
-- [ ] tested on Geeklog 2.1.1 and 2.2.2;
-- [ ] tested on PHP 5.6 and PHP 8.1 at minimum;
-- [ ] no known PHP 8 warnings/fatals in normal Monitor workflows;
-- [ ] safe shared-files transition from the previous persisted state.
+- [x] Monitor runtime tested on Geeklog 2.1.1;
+- [x] Monitor admin/configuration runtime tested on Geeklog 2.2.2;
+- [x] PHP 5.6 lint CI passes;
+- [x] PHP 8.1 lint CI passes;
+- [x] no known PHP 8 warning/fatal remains in the tested normal Monitor/configuration workflows;
+- [ ] two-site shared-files upgrade transition test.
 
 ## Simplification
 
-- [ ] TimThumb removed;
-- [ ] obsolete integrations removed or isolated;
-- [ ] legacy ban behaviour reduced/transitioned;
-- [ ] expensive frontend scans removed;
-- [ ] dashboard responsibilities clearly separated.
+- [x] TimThumb removed;
+- [x] obsolete image resizing implementation removed;
+- [x] obsolete integrations removed or isolated;
+- [x] legacy ban behaviour reduced/transitioned;
+- [x] expensive historical frontend scans removed;
+- [x] dashboard responsibilities narrowed to monitoring/diagnostics.
 
 ## Reference-quality monitoring
 
-- [ ] structured health checks;
-- [ ] useful overview dashboard;
-- [ ] safe log viewer;
-- [ ] scheduled maintenance;
-- [ ] actionable recommendations;
-- [ ] clear Ban integration/status visibility.
+- [x] structured health checks;
+- [x] useful overview dashboard;
+- [x] safe log viewer baseline;
+- [x] bounded scheduled maintenance baseline;
+- [x] actionable recommendations;
+- [x] Ban integration/status visibility;
+- [ ] transition-based alert engine.
 
 ---
 
 # Longer-term direction after 1.4.0
 
-Possible future work should be driven by real operational value rather than feature count.
+Potential future work should be driven by operational value rather than feature count:
 
-Candidates include:
-
-- stable machine-readable health summary for future connectors;
-- lifecycle/security event exposure through a common Geeklog event contract;
+- stable machine-readable health summary for connectors;
+- lifecycle/security events through a common Geeklog capability/event contract;
 - optional Hello notification integration;
-- improved plugin-release compatibility metadata;
-- optional integration with a modernized Ban API;
-- exportable diagnostic report for support/debugging;
+- improved plugin release compatibility metadata;
+- optional modernized Ban API integration;
+- exportable support/diagnostic report;
 - privacy-safe trend history.
-
-The 1.4.0 architecture should make these possible without requiring them now.
-
----
 
 ## North star
 
