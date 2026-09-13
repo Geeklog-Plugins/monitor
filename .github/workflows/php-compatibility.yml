@@ -1,0 +1,62 @@
+name: PHP compatibility
+
+on:
+  push:
+    branches:
+      - monitor-1.4.0
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  php-lint:
+    name: PHP ${{ matrix.php }} syntax
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php:
+          - '5.6'
+          - '8.1'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Lint PHP and INC files
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find . -type f \( -name '*.php' -o -name '*.inc' \) -print0)
+
+  security-regressions:
+    name: Security regression guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Reject known unsafe patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if grep -R -n -E \
+            --include='*.php' --include='*.inc' \
+            'CURLOPT_SSL_VERIFYPEER[[:space:]]*(=>|,)[[:space:]]*false|sleep[[:space:]]*\([[:space:]]*60[[:space:]]*\)|ben@geeklog\.fr' \
+            .; then
+            echo 'Known unsafe/deprecated Monitor pattern detected.'
+            exit 1
+          fi
+
+          echo 'No guarded regression pattern found.'
