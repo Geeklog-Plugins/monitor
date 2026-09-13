@@ -357,6 +357,22 @@ function MONITOR_ADMIN_pluginBadge($state)
          . MONITOR_ADMIN_h($labels[$state]) . '</span>';
 }
 
+function MONITOR_ADMIN_enabledBadge($enabled)
+{
+    global $LANG_MONITOR_1;
+
+    $enabled = (bool) $enabled;
+    $label = $enabled
+        ? $LANG_MONITOR_1['plugin_catalog_enabled']
+        : ucfirst($LANG_MONITOR_1['changes_disabled']);
+    $style = $enabled
+        ? 'background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;'
+        : 'background:#f5f5f5;color:#555;border:1px solid #d7dde2;';
+
+    return '<span style="display:inline-block;padding:3px 8px;border-radius:12px;font-weight:bold;font-size:.9em;'
+         . $style . '">' . MONITOR_ADMIN_h($label) . '</span>';
+}
+
 function MONITOR_ADMIN_pluginCard($plugin)
 {
     global $LANG_MONITOR_1;
@@ -365,15 +381,17 @@ function MONITOR_ADMIN_pluginCard($plugin)
     $html = '<section id="plugin-' . MONITOR_ADMIN_h($anchor) . '" style="border:1px solid #d7dde2;border-radius:8px;padding:13px;background:#fff">';
     $html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">'
           . '<strong style="font-size:1.08em">' . MONITOR_ADMIN_h($plugin['name']) . '</strong>'
-          . MONITOR_ADMIN_pluginBadge($plugin['state']) . '</div>';
+          . '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+          . MONITOR_ADMIN_enabledBadge(!empty($plugin['enabled_bool']))
+          . MONITOR_ADMIN_pluginBadge($plugin['state']) . '</div></div>';
 
     $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin-top:11px;font-size:.93em">'
           . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_installed_version']) . '</span><br><strong>'
           . MONITOR_ADMIN_h($plugin['installed']) . '</strong></div>'
           . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_version']) . '</span><br><strong>'
           . MONITOR_ADMIN_h($plugin['remote_label']) . '</strong></div>'
-          . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_enabled']) . '</span><br><strong>'
-          . MONITOR_ADMIN_h($plugin['enabled']) . '</strong></div>'
+          . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_enabled']) . '</span><br>'
+          . MONITOR_ADMIN_enabledBadge(!empty($plugin['enabled_bool'])) . '</div>'
           . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_geeklog']) . '</span><br><strong>'
           . MONITOR_ADMIN_h($plugin['gl_version']) . '</strong></div>'
           . '</div>';
@@ -434,6 +452,8 @@ function MONITOR_ADMIN_plugins()
     $installedNames = array();
     $updatesAvailable = 0;
     $withoutRepository = 0;
+    $enabledCount = 0;
+    $disabledCount = 0;
 
     $result = DB_query(
         "SELECT pi_name, pi_version, pi_enabled, pi_gl_version, pi_homepage "
@@ -445,6 +465,13 @@ function MONITOR_ADMIN_plugins()
             $name = isset($row['pi_name']) ? (string) $row['pi_name'] : '';
             if ($name === '') {
                 continue;
+            }
+
+            $enabled = !empty($row['pi_enabled']);
+            if ($enabled) {
+                $enabledCount++;
+            } else {
+                $disabledCount++;
             }
 
             $installed = isset($row['pi_version']) ? (string) $row['pi_version'] : '';
@@ -486,8 +513,9 @@ function MONITOR_ADMIN_plugins()
             $installedPlugins[] = array(
                 'name' => $name,
                 'installed' => $installed === '' ? $LANG_MONITOR_1['plugin_catalog_unknown'] : $installed,
-                'enabled' => !empty($row['pi_enabled'])
+                'enabled' => $enabled
                     ? $LANG_MONITOR_1['plugin_catalog_yes'] : $LANG_MONITOR_1['plugin_catalog_no'],
+                'enabled_bool' => $enabled,
                 'gl_version' => !empty($row['pi_gl_version'])
                     ? $row['pi_gl_version'] : $LANG_MONITOR_1['plugin_catalog_unknown'],
                 'remote_label' => $remoteLabel,
@@ -547,6 +575,8 @@ function MONITOR_ADMIN_plugins()
 
     $html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px">'
           . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_installed'], count($installedPlugins), 'info')
+          . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_enabled'], $enabledCount, 'ok')
+          . MONITOR_ADMIN_summaryCard(ucfirst($LANG_MONITOR_1['changes_disabled']), $disabledCount, 'info')
           . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_updates'], $updatesAvailable, $updatesAvailable > 0 ? 'warning' : 'ok')
           . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_discover'], count($recent), 'info')
           . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_unmatched'], $withoutRepository, 'info')
