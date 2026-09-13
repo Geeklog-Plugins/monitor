@@ -1,206 +1,206 @@
 <?php
 /**
-* File: SimpleImage.php
-* Author: Simon Jarvis
-* Modified by: Miguel Fermín
-* Based in: http://www.white-hat-web-design.co.uk/articles/php-image-resizing.php
-*
-* This program is free software; you can redistribute it and/or
-* modify it under the terms of the GNU General Public License
-* as published by the Free Software Foundation; either version 2
-* of the License, or (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details:
-* http://www.gnu.org/licenses/gpl.html
-*/
- 
-class SimpleImage 
+ * Minimal image resize helper for Monitor.
+ *
+ * Keeps the original image format and transparency. The implementation uses
+ * only GD functions available in the Monitor PHP 5.6-8.1 compatibility range.
+ */
+class SimpleImage
 {
-	var $image;
-	var $image_type;
-	 
-	function __construct($filename = null){
-	    if (!empty($filename)) {
-	        $this->load($filename);
-	    }    
-	}
-	 
-	function load($filename)
-	{
-	    $image_info = getimagesize($filename);
-	    $this->image_type = $image_info[2];
-	 
-	    if ($this->image_type == IMAGETYPE_JPEG) {
-	        $this->image = imagecreatefromjpeg($filename);
-	    } elseif ($this->image_type == IMAGETYPE_GIF) {
-	        $this->image = imagecreatefromgif($filename);
-	    } elseif ($this->image_type == IMAGETYPE_PNG) {
-	        $this->image = imagecreatefrompng($filename);
-	    } else {
-	    throw new Exception("The file you're trying to open is not supported");
-	    }
-	}
-	 
-	function save($filename, $image_type=IMAGETYPE_JPEG, $compression=75, $permissions=null)
-	{
-	    if ($image_type == IMAGETYPE_JPEG) {
-	        imagejpeg($this->image,$filename,$compression);
-	    } elseif ($image_type == IMAGETYPE_GIF) {
-	        imagegif($this->image,$filename);
-	    } elseif ($image_type == IMAGETYPE_PNG) {
-	        imagepng($this->image,$filename);
-	    }
-	 
-	    if ($permissions != null) {
-	        chmod($filename,$permissions);
-	    }
-	}
-	 
-	function output($image_type=IMAGETYPE_JPEG, $quality = 80)
-	{
-	    if ($image_type == IMAGETYPE_JPEG) {
-	        header("Content-type: image/jpeg");
-	        imagejpeg($this->image, null, $quality);
-	    } elseif ($image_type == IMAGETYPE_GIF) {
-	        header("Content-type: image/gif");
-	        imagegif($this->image);
-	    } elseif ($image_type == IMAGETYPE_PNG) {
-	        header("Content-type: image/png");
-	        imagepng($this->image);
-	    }
-	}
-	 
-	function getWidth()
-	{
-	    return imagesx($this->image);
-	}
-	 
-	function getHeight()
-	{
-	    return imagesy($this->image);
-	}
-	 
-	function resizeToHeight($height)
-	{
-	    $ratio = $height / $this->getHeight();
-	    $width = round($this->getWidth() * $ratio);
-	    $this->resize($width,$height);
-	}
-	 
-	function resizeToWidth($width)
-	{
-	    $ratio = $width / $this->getWidth();
-	    $height = round($this->getHeight() * $ratio);
-	    $this->resize($width,$height);
-	}
-	 
-	function square($size)
-	{
-	    $new_image = imagecreatetruecolor($size, $size);
-	 
-	    if ($this->getWidth() > $this->getHeight()) {
-	        $this->resizeToHeight($size);
-	        imagecolortransparent($new_image, imagecolorallocate($new_image, 0, 0, 0));
-	        imagealphablending($new_image, false);
-	        imagesavealpha($new_image, true);
-	        imagecopy($new_image, $this->image, 0, 0, ($this->getWidth() - $size) / 2, 0, $size, $size);
-	 
-	    } else {
-	        $this->resizeToWidth($size);
-	        imagecolortransparent($new_image, imagecolorallocate($new_image, 0, 0, 0));
-	        imagealphablending($new_image, false);
-	        imagesavealpha($new_image, true);
-	        imagecopy($new_image, $this->image, 0, 0, 0, ($this->getHeight() - $size) / 2, $size, $size);
-	 
-	}
-	 
-	    $this->image = $new_image;
-	}
-	function scale($scale)
-	{
-	    $width = $this->getWidth() * $scale/100;
-	    $height = $this->getHeight() * $scale/100;
-	    $this->resize($width,$height);
-	}
-	function resize($width,$height) { 
-		$new_image = imagecreatetruecolor($width, $height); 
-		if( $this->image_type == IMAGETYPE_GIF || $this->image_type == IMAGETYPE_PNG ) { 
-			$current_transparent = imagecolortransparent($this->image); 
-			if($current_transparent != -1) { 
-				$transparent_color = imagecolorsforindex($this->image, $current_transparent); 
-				$current_transparent = imagecolorallocate($new_image, $transparent_color['red'], $transparent_color['green'], $transparent_color['blue']); 
-				imagefill($new_image, 0, 0, $current_transparent); 
-				imagecolortransparent($new_image, $current_transparent); 
-			} elseif( $this->image_type == IMAGETYPE_PNG) { 
-				imagealphablending($new_image, false); 
-				$color = imagecolorallocatealpha($new_image, 0, 0, 0, 127); 
-				imagefill($new_image, 0, 0, $color); 
-				imagesavealpha($new_image, true); 
-			} 
-		} 
-		imagecopyresampled($new_image, $this->image, 0, 0, 0, 0, $width, $height, $this->getWidth(), $this->getHeight()); 
-		$this->image = $new_image;	
-	}
-	// See more at: http://www.white-hat-web-design.co.uk/blog/retaining-transparency-with-php-image-resizing/#sthash.lsHK1ZOm.dpufimage = $new_image;
+    var $image = null;
+    var $image_type = null;
 
-	 
-	function cut($x, $y, $width, $height)
-	{
-	    $new_image = imagecreatetruecolor($width, $height);	
-	 
-	    imagecolortransparent($new_image, imagecolorallocate($new_image, 0, 0, 0));
-	    imagealphablending($new_image, false);
-	    imagesavealpha($new_image, true);
-	 
-	    imagecopy($new_image, $this->image, 0, 0, $x, $y, $width, $height);
-	 
-	    $this->image = $new_image;
-	}
-	 
-	function maxarea($width, $height = null)
-	{
-	    $height = $height ? $height : $width;
-	    if ($this->getWidth() > $width) {
-	    $this->resizeToWidth($width);
-	    }
-	    if ($this->getHeight() > $height) {
-	        $this->resizeToheight($height);
-	    }
-	}
-	 
-	function cutFromCenter($width, $height)
-	{
-	    if ($width < $this->getWidth() && $width > $height) {
-	        $this->resizeToWidth($width);
-	    }
-	    if ($height < $this->getHeight() && $width < $height) {
-	        $this->resizeToHeight($height);
-	    }
-	    $x = ($this->getWidth() / 2) - ($width / 2);
-	    $y = ($this->getHeight() / 2) - ($height / 2);
-	    return $this->cut($x, $y, $width, $height);
-	}
-	 
-	function maxareafill($width, $height, $red = 0, $green = 0, $blue = 0)
-	{
-	    $this->maxarea($width, $height);
-	    $new_image = imagecreatetruecolor($width, $height);
-	    $color_fill = imagecolorallocate($new_image, $red, $green, $blue);
-	    imagefill($new_image, 0, 0, $color_fill);
-	    imagecopyresampled(	$new_image,
-	        $this->image,
-	        floor(($width - $this->getWidth())/2),
-	        floor(($height-$this->getHeight())/2),
-	        0, 0,
-	        $this->getWidth(),
-	        $this->getHeight(),
-	        $this->getWidth(),
-	        $this->getHeight()
-	    );
-	    $this->image = $new_image;
-	}
+    function __construct($filename = null)
+    {
+        if (!empty($filename)) {
+            $this->load($filename);
+        }
+    }
 
+    function load($filename)
+    {
+        if (!is_file($filename) || !is_readable($filename)) {
+            throw new Exception('Image file is not readable');
+        }
+
+        $imageInfo = @getimagesize($filename);
+        if ($imageInfo === false || !isset($imageInfo[2])) {
+            throw new Exception('Unable to read image information');
+        }
+
+        $this->image_type = (int) $imageInfo[2];
+        $image = false;
+
+        if ($this->image_type === IMAGETYPE_JPEG && function_exists('imagecreatefromjpeg')) {
+            $image = @imagecreatefromjpeg($filename);
+        } elseif ($this->image_type === IMAGETYPE_GIF && function_exists('imagecreatefromgif')) {
+            $image = @imagecreatefromgif($filename);
+        } elseif ($this->image_type === IMAGETYPE_PNG && function_exists('imagecreatefrompng')) {
+            $image = @imagecreatefrompng($filename);
+        } else {
+            throw new Exception('Unsupported image type or missing GD support');
+        }
+
+        if ($image === false) {
+            throw new Exception('Unable to decode image');
+        }
+
+        $this->destroy();
+        $this->image = $image;
+
+        return true;
+    }
+
+    function save($filename, $image_type = null, $compression = 85, $permissions = null)
+    {
+        if (!$this->isLoaded()) {
+            return false;
+        }
+
+        if ($image_type === null) {
+            $image_type = $this->image_type;
+        }
+
+        $saved = false;
+
+        if ($image_type === IMAGETYPE_JPEG && function_exists('imagejpeg')) {
+            $quality = max(0, min(100, (int) $compression));
+            $saved = imagejpeg($this->image, $filename, $quality);
+        } elseif ($image_type === IMAGETYPE_GIF && function_exists('imagegif')) {
+            $saved = imagegif($this->image, $filename);
+        } elseif ($image_type === IMAGETYPE_PNG && function_exists('imagepng')) {
+            /* Convert JPEG-style quality (0-100) to PNG compression (9-0). */
+            $quality = max(0, min(100, (int) $compression));
+            $pngCompression = (int) round(9 - ($quality * 9 / 100));
+            $saved = imagepng($this->image, $filename, $pngCompression);
+        }
+
+        if ($saved && $permissions !== null) {
+            @chmod($filename, $permissions);
+        }
+
+        return (bool) $saved;
+    }
+
+    function getWidth()
+    {
+        return $this->isLoaded() ? imagesx($this->image) : 0;
+    }
+
+    function getHeight()
+    {
+        return $this->isLoaded() ? imagesy($this->image) : 0;
+    }
+
+    function resizeToHeight($height)
+    {
+        $height = (int) $height;
+        $currentHeight = $this->getHeight();
+
+        if ($height <= 0 || $currentHeight <= 0) {
+            return false;
+        }
+
+        $ratio = $height / $currentHeight;
+        $width = (int) round($this->getWidth() * $ratio);
+
+        return $this->resize($width, $height);
+    }
+
+    function resizeToWidth($width)
+    {
+        $width = (int) $width;
+        $currentWidth = $this->getWidth();
+
+        if ($width <= 0 || $currentWidth <= 0) {
+            return false;
+        }
+
+        $ratio = $width / $currentWidth;
+        $height = (int) round($this->getHeight() * $ratio);
+
+        return $this->resize($width, $height);
+    }
+
+    function resize($width, $height)
+    {
+        $width = (int) round($width);
+        $height = (int) round($height);
+
+        if (!$this->isLoaded() || $width <= 0 || $height <= 0) {
+            return false;
+        }
+
+        $newImage = imagecreatetruecolor($width, $height);
+        if ($newImage === false) {
+            return false;
+        }
+
+        $this->prepareTransparency($newImage);
+
+        $resized = imagecopyresampled(
+            $newImage,
+            $this->image,
+            0,
+            0,
+            0,
+            0,
+            $width,
+            $height,
+            $this->getWidth(),
+            $this->getHeight()
+        );
+
+        if (!$resized) {
+            imagedestroy($newImage);
+            return false;
+        }
+
+        imagedestroy($this->image);
+        $this->image = $newImage;
+
+        return true;
+    }
+
+    function prepareTransparency($image)
+    {
+        if ($this->image_type === IMAGETYPE_PNG) {
+            imagealphablending($image, false);
+            $transparent = imagecolorallocatealpha($image, 0, 0, 0, 127);
+            imagefill($image, 0, 0, $transparent);
+            imagesavealpha($image, true);
+        } elseif ($this->image_type === IMAGETYPE_GIF) {
+            $transparentIndex = imagecolortransparent($this->image);
+            if ($transparentIndex >= 0) {
+                $color = imagecolorsforindex($this->image, $transparentIndex);
+                $transparent = imagecolorallocate(
+                    $image,
+                    $color['red'],
+                    $color['green'],
+                    $color['blue']
+                );
+                imagefill($image, 0, 0, $transparent);
+                imagecolortransparent($image, $transparent);
+            }
+        }
+    }
+
+    function isLoaded()
+    {
+        return is_resource($this->image)
+            || (class_exists('GdImage', false) && $this->image instanceof GdImage);
+    }
+
+    function destroy()
+    {
+        if ($this->isLoaded()) {
+            imagedestroy($this->image);
+        }
+        $this->image = null;
+    }
+
+    function __destruct()
+    {
+        $this->destroy();
+    }
 }
