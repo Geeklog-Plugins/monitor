@@ -221,11 +221,7 @@ function MONITOR_ADMIN_overview()
     $html .= '</div>';
 
     if ($needsAttention > 0) {
-        $html .= MONITOR_ADMIN_renderChecks(
-            $checks,
-            array('error', 'warning'),
-            'Needs attention'
-        );
+        $html .= MONITOR_ADMIN_renderChecks($checks, array('error', 'warning'), 'Needs attention');
     }
 
     $html .= MONITOR_ADMIN_renderChecks(
@@ -274,10 +270,8 @@ function MONITOR_ADMIN_security()
             $rows++;
             $html .= '<tr><td>'
                   . MONITOR_ADMIN_h(isset($row['bantype']) ? $row['bantype'] : '')
-                  . '</td><td>'
-                  . (int) (isset($row['total']) ? $row['total'] : 0)
-                  . '</td><td>'
-                  . MONITOR_ADMIN_h(isset($row['last_seen']) ? $row['last_seen'] : '')
+                  . '</td><td>' . (int) (isset($row['total']) ? $row['total'] : 0)
+                  . '</td><td>' . MONITOR_ADMIN_h(isset($row['last_seen']) ? $row['last_seen'] : '')
                   . '</td></tr>';
         }
     }
@@ -300,16 +294,15 @@ function MONITOR_ADMIN_pluginBadge($state)
         'update' => $LANG_MONITOR_1['plugin_catalog_update'],
         'ahead' => $LANG_MONITOR_1['plugin_catalog_ahead'],
         'unknown' => $LANG_MONITOR_1['plugin_catalog_unknown'],
-        'no_release' => $LANG_MONITOR_1['plugin_catalog_no_release'],
+        'no_version' => $LANG_MONITOR_1['plugin_catalog_no_version'],
         'no_repository' => $LANG_MONITOR_1['plugin_catalog_no_repository']
     );
-
     $styles = array(
         'current' => 'background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;',
         'update' => 'background:#fff3e0;color:#8a4300;border:1px solid #ffcc80;',
         'ahead' => 'background:#e3f2fd;color:#0d47a1;border:1px solid #90caf9;',
         'unknown' => 'background:#f5f5f5;color:#555;border:1px solid #d7dde2;',
-        'no_release' => 'background:#f5f5f5;color:#555;border:1px solid #d7dde2;',
+        'no_version' => 'background:#f5f5f5;color:#555;border:1px solid #d7dde2;',
         'no_repository' => 'background:#f5f5f5;color:#555;border:1px solid #d7dde2;'
     );
 
@@ -319,8 +312,7 @@ function MONITOR_ADMIN_pluginBadge($state)
 
     return '<span style="display:inline-block;padding:3px 8px;border-radius:12px;font-weight:bold;font-size:.9em;'
          . $styles[$state] . '">'
-         . MONITOR_ADMIN_h($labels[$state])
-         . '</span>';
+         . MONITOR_ADMIN_h($labels[$state]) . '</span>';
 }
 
 function MONITOR_ADMIN_pluginCard($plugin)
@@ -330,16 +322,13 @@ function MONITOR_ADMIN_pluginCard($plugin)
     $html = '<section style="border:1px solid #d7dde2;border-radius:8px;padding:13px;background:#fff">';
     $html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">'
           . '<strong style="font-size:1.08em">' . MONITOR_ADMIN_h($plugin['name']) . '</strong>'
-          . MONITOR_ADMIN_pluginBadge($plugin['state'])
-          . '</div>';
+          . MONITOR_ADMIN_pluginBadge($plugin['state']) . '</div>';
 
-    $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:11px;font-size:.93em">'
+    $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin-top:11px;font-size:.93em">'
           . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_installed_version']) . '</span><br><strong>'
           . MONITOR_ADMIN_h($plugin['installed']) . '</strong></div>'
-          . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_code_version']) . '</span><br><strong>'
-          . MONITOR_ADMIN_h($plugin['code']) . '</strong></div>'
-          . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_release']) . '</span><br><strong>'
-          . MONITOR_ADMIN_h($plugin['release_label']) . '</strong></div>'
+          . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_version']) . '</span><br><strong>'
+          . MONITOR_ADMIN_h($plugin['remote_label']) . '</strong></div>'
           . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_enabled']) . '</span><br><strong>'
           . MONITOR_ADMIN_h($plugin['enabled']) . '</strong></div>'
           . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_geeklog']) . '</span><br><strong>'
@@ -350,9 +339,9 @@ function MONITOR_ADMIN_pluginCard($plugin)
         $html .= '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:12px;font-size:.92em">'
               . '<a href="' . MONITOR_ADMIN_h($plugin['repository_url']) . '" target="_blank" rel="noopener noreferrer">'
               . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_open_repository']) . '</a>';
-        if ($plugin['release_url'] !== '') {
-            $html .= '<a href="' . MONITOR_ADMIN_h($plugin['release_url']) . '" target="_blank" rel="noopener noreferrer">'
-                  . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_open_release']) . '</a>';
+        if ($plugin['remote_url'] !== '') {
+            $html .= '<a href="' . MONITOR_ADMIN_h($plugin['remote_url']) . '" target="_blank" rel="noopener noreferrer">'
+                  . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_open_version']) . '</a>';
         }
         $html .= '</div>';
     }
@@ -360,6 +349,31 @@ function MONITOR_ADMIN_pluginCard($plugin)
     $html .= '</section>';
 
     return $html;
+}
+
+function MONITOR_ADMIN_discoveryCard($repo)
+{
+    global $LANG_MONITOR_1;
+
+    $html = '<section style="border:1px solid #d7dde2;border-radius:8px;padding:12px;background:#fff">'
+          . '<strong>' . MONITOR_ADMIN_h($repo['name']) . '</strong>';
+
+    if (!empty($repo['description'])) {
+        $html .= '<div style="margin-top:6px;color:#555;font-size:.93em">'
+              . MONITOR_ADMIN_h($repo['description']) . '</div>';
+    }
+    if (!empty($repo['updated_at'])) {
+        $html .= '<div style="margin-top:8px;font-size:.88em;color:#666">'
+              . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_updated']) . ': '
+              . MONITOR_ADMIN_h(substr($repo['updated_at'], 0, 10)) . '</div>';
+    }
+    if (!empty($repo['url'])) {
+        $html .= '<div style="margin-top:8px"><a href="' . MONITOR_ADMIN_h($repo['url'])
+              . '" target="_blank" rel="noopener noreferrer">'
+              . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_open_repository']) . '</a></div>';
+    }
+
+    return $html . '</section>';
 }
 
 function MONITOR_ADMIN_plugins()
@@ -370,8 +384,7 @@ function MONITOR_ADMIN_plugins()
     $catalog = MONITOR_PLUGIN_CATALOG_repositories($refresh);
     $owner = isset($catalog['owner']) ? $catalog['owner'] : '';
     $repositories = isset($catalog['repositories']) && is_array($catalog['repositories'])
-        ? $catalog['repositories']
-        : array();
+        ? $catalog['repositories'] : array();
 
     $installedPlugins = array();
     $installedNames = array();
@@ -391,44 +404,37 @@ function MONITOR_ADMIN_plugins()
             }
 
             $installed = isset($row['pi_version']) ? (string) $row['pi_version'] : '';
-            $code = '';
-            if (function_exists('PLG_chkVersion')) {
-                $codeValue = PLG_chkVersion($name);
-                if (is_string($codeValue)) {
-                    $code = $codeValue;
-                }
-            }
-
             $repo = MONITOR_PLUGIN_CATALOG_matchRepository($name, $repositories);
-            $release = null;
             $state = 'no_repository';
             $repositoryUrl = '';
-            $releaseUrl = '';
-            $releaseLabel = $LANG_MONITOR_1['plugin_catalog_unknown'];
+            $remoteUrl = '';
+            $remoteLabel = $LANG_MONITOR_1['plugin_catalog_no_repository'];
 
             if (is_array($repo)) {
                 $repositoryUrl = isset($repo['url']) ? $repo['url'] : '';
-                if (!empty($catalog['available'])) {
-                    $release = MONITOR_PLUGIN_CATALOG_release(
+                $remote = !empty($catalog['available'])
+                    ? MONITOR_PLUGIN_CATALOG_latestVersion(
                         $owner,
                         isset($repo['name']) ? $repo['name'] : '',
                         $refresh
-                    );
-                }
+                    )
+                    : null;
 
-                if (is_array($release)) {
-                    $releaseLabel = isset($release['tag']) ? $release['tag'] : '';
-                    $releaseUrl = isset($release['url']) ? $release['url'] : '';
-                    $state = MONITOR_PLUGIN_CATALOG_versionState($installed, $releaseLabel);
+                if (is_array($remote)) {
+                    $remoteLabel = isset($remote['tag']) ? $remote['tag'] : '';
+                    $remoteUrl = isset($remote['url']) ? $remote['url'] : '';
+                    $state = MONITOR_PLUGIN_CATALOG_versionState(
+                        $installed,
+                        isset($remote['version']) ? $remote['version'] : ''
+                    );
                     if ($state === 'update') {
                         $updatesAvailable++;
                     }
                 } else {
-                    $releaseLabel = $LANG_MONITOR_1['plugin_catalog_no_release'];
-                    $state = 'no_release';
+                    $remoteLabel = $LANG_MONITOR_1['plugin_catalog_no_version'];
+                    $state = 'no_version';
                 }
             } else {
-                $releaseLabel = $LANG_MONITOR_1['plugin_catalog_no_repository'];
                 $withoutRepository++;
             }
 
@@ -436,22 +442,20 @@ function MONITOR_ADMIN_plugins()
             $installedPlugins[] = array(
                 'name' => $name,
                 'installed' => $installed === '' ? $LANG_MONITOR_1['plugin_catalog_unknown'] : $installed,
-                'code' => $code === '' ? $LANG_MONITOR_1['plugin_catalog_unknown'] : $code,
                 'enabled' => !empty($row['pi_enabled'])
-                    ? $LANG_MONITOR_1['plugin_catalog_yes']
-                    : $LANG_MONITOR_1['plugin_catalog_no'],
+                    ? $LANG_MONITOR_1['plugin_catalog_yes'] : $LANG_MONITOR_1['plugin_catalog_no'],
                 'gl_version' => !empty($row['pi_gl_version'])
-                    ? $row['pi_gl_version']
-                    : $LANG_MONITOR_1['plugin_catalog_unknown'],
-                'release_label' => $releaseLabel,
+                    ? $row['pi_gl_version'] : $LANG_MONITOR_1['plugin_catalog_unknown'],
+                'remote_label' => $remoteLabel,
                 'state' => $state,
                 'repository_url' => $repositoryUrl,
-                'release_url' => $releaseUrl
+                'remote_url' => $remoteUrl
             );
         }
     }
 
-    $discoverable = array();
+    $recent = array();
+    $legacy = array();
     foreach ($repositories as $repo) {
         if (!MONITOR_PLUGIN_CATALOG_isDiscoverable($repo)) {
             continue;
@@ -462,12 +466,18 @@ function MONITOR_ADMIN_plugins()
             continue;
         }
 
-        $discoverable[] = $repo;
+        if (MONITOR_PLUGIN_CATALOG_discoveryState($repo) === 'active') {
+            $recent[] = $repo;
+        } else {
+            $legacy[] = $repo;
+        }
     }
 
-    usort($discoverable, function ($a, $b) {
-        return strcasecmp($a['name'], $b['name']);
-    });
+    $sortRepos = function ($a, $b) {
+        return strcmp($b['updated_at'], $a['updated_at']);
+    };
+    usort($recent, $sortRepos);
+    usort($legacy, $sortRepos);
 
     $html = '<div style="padding:13px;border:1px solid #d7dde2;border-radius:8px;background:#fafbfc;margin-bottom:16px">'
           . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_intro']);
@@ -494,7 +504,7 @@ function MONITOR_ADMIN_plugins()
     $html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px">'
           . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_installed'], count($installedPlugins), 'info')
           . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_updates'], $updatesAvailable, $updatesAvailable > 0 ? 'warning' : 'ok')
-          . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_discover'], count($discoverable), 'info')
+          . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_discover'], count($recent), 'info')
           . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_unmatched'], $withoutRepository, 'info')
           . '</div>';
 
@@ -508,36 +518,27 @@ function MONITOR_ADMIN_plugins()
     $html .= '<h3>' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_discover']) . '</h3>';
     $html .= '<p style="color:#555">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_discover_intro']) . '</p>';
 
-    if (empty($discoverable)) {
+    if (empty($recent)) {
         $html .= '<p>' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_none_discoverable']) . '</p>';
-        return $html;
+    } else {
+        $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">';
+        foreach ($recent as $repo) {
+            $html .= MONITOR_ADMIN_discoveryCard($repo);
+        }
+        $html .= '</div>';
     }
 
-    $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">';
-    foreach ($discoverable as $repo) {
-        $html .= '<section style="border:1px solid #d7dde2;border-radius:8px;padding:12px;background:#fff">'
-              . '<strong>' . MONITOR_ADMIN_h($repo['name']) . '</strong>';
-
-        if (!empty($repo['description'])) {
-            $html .= '<div style="margin-top:6px;color:#555;font-size:.93em">'
-                  . MONITOR_ADMIN_h($repo['description']) . '</div>';
+    if (!empty($legacy)) {
+        $html .= '<details style="margin-top:20px"><summary style="cursor:pointer;font-weight:bold">'
+              . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_legacy_discover'])
+              . ' (' . count($legacy) . ')</summary>'
+              . '<p style="color:#555">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_legacy_intro']) . '</p>'
+              . '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">';
+        foreach ($legacy as $repo) {
+            $html .= MONITOR_ADMIN_discoveryCard($repo);
         }
-
-        if (!empty($repo['updated_at'])) {
-            $html .= '<div style="margin-top:8px;font-size:.88em;color:#666">'
-                  . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_updated']) . ': '
-                  . MONITOR_ADMIN_h(substr($repo['updated_at'], 0, 10)) . '</div>';
-        }
-
-        if (!empty($repo['url'])) {
-            $html .= '<div style="margin-top:8px"><a href="' . MONITOR_ADMIN_h($repo['url'])
-                  . '" target="_blank" rel="noopener noreferrer">'
-                  . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_open_repository']) . '</a></div>';
-        }
-
-        $html .= '</section>';
+        $html .= '</div></details>';
     }
-    $html .= '</div>';
 
     return $html;
 }
@@ -580,5 +581,3 @@ $T->parse('output', 'admin');
 $body = $T->finish($T->get_var('output'));
 $display = COM_createHTMLDocument($body, array('pagetitle' => $title));
 COM_output($display);
-
-?>
