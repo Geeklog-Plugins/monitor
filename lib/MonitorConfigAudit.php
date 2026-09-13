@@ -66,12 +66,6 @@ function MONITOR_CONFIG_AUDIT_isPathKey($key)
     return in_array($key, array('backup_path', 'rdf_file'), true);
 }
 
-/**
- * Sensitive values are never printed and never included in candidate SQL.
- *
- * @param string $key
- * @return bool
- */
 function MONITOR_CONFIG_AUDIT_isSensitiveKey($key)
 {
     $key = strtolower((string) $key);
@@ -126,6 +120,15 @@ function MONITOR_CONFIG_AUDIT_displayValue($value)
     return (string) $value;
 }
 
+/**
+ * Compare only keys explicitly assigned in the active siteconfig.php.
+ *
+ * Database-only Core configuration is deliberately outside the primary scope:
+ * this audit exists to reveal when siteconfig.php masks or diverges from an
+ * equivalent value stored in conf_values.
+ *
+ * @return array
+ */
 function MONITOR_CONFIG_AUDIT_collect()
 {
     global $_CONF, $_TABLES;
@@ -144,14 +147,10 @@ function MONITOR_CONFIG_AUDIT_collect()
     }
 
     $siteKeys = MONITOR_CONFIG_AUDIT_siteconfigKeys($siteconfigPath);
-    $siteKeyMap = array();
-    foreach ($siteKeys as $key) {
-        $siteKeyMap[$key] = true;
-    }
 
     $dbValues = array();
     $result = DB_query(
-        "SELECT name, value, default_value, type, subgroup, tab "
+        "SELECT name, value, type, subgroup, tab "
         . "FROM {$_TABLES['conf_values']} WHERE group_name = 'Core'",
         1
     );
@@ -178,51 +177,34 @@ function MONITOR_CONFIG_AUDIT_collect()
     }
 
     $fileOnlyNormal = array('path', 'path_system', 'site_enabled', 'default_charset');
-
-    $keys = $siteKeys;
-    foreach ($dbValues as $key => $value) {
-        if (!isset($siteKeyMap[$key])) {
-            $keys[] = $key;
-        }
-    }
-    $keys = array_values(array_unique($keys));
-    natcasesort($keys);
-    $keys = array_values($keys);
-
     $rows = array();
     $summary = array(
         'identical' => 0,
         'different' => 0,
         'core_file' => 0,
         'file_only' => 0,
-        'database_only' => 0,
         'db_unset' => 0,
         'invalid_paths' => 0,
         'decode_errors' => 0,
-        'redacted' => 0
+        'redacted' => 0,
+        'attention' => 0
     );
 
-    foreach ($keys as $key) {
-        $siteExists = isset($siteKeyMap[$key]);
+    foreach ($siteKeys as $key) {
+        $siteExists = true;
         $dbExists = isset($dbValues[$key]);
-        $siteValue = ($siteExists && array_key_exists($key, $_CONF)) ? $_CONF[$key] : null;
-        $dbValue = ($dbExists && !$dbValues[$key]['unset']) ? $dbValues[$key]['value'] : null;
+        $siteValue = array_key_exists($key, $_CONF) ? $_CONF[$key] : null;
+        $dbValue = ($dbExists && !$dbValues[$key]['unset'])
+            ? $dbValues[$key]['value']
+            : null;
         $sensitive = MONITOR_CONFIG_AUDIT_isSensitiveKey($key);
 
         if ($sensitive) {
             $summary['redacted']++;
         }
 
-        if ($siteExists) {
-            $priority = 'siteconfig.php';
-            $effective = $siteValue;
-        } elseif ($dbExists) {
-            $priority = 'database';
-            $effective = $dbValue;
-        } else {
-            $priority = 'unknown';
-            $effective = null;
-        }
+        $priority = 'siteconfig.php';
+        $effective = $siteValue;
 
         if ($dbExists && !$dbValues[$key]['valid']) {
             $status = 'DB DECODE ERROR';
@@ -230,21 +212,18 @@ function MONITOR_CONFIG_AUDIT_collect()
         } elseif ($dbExists && $dbValues[$key]['unset']) {
             $status = 'DB = unset';
             $summary['db_unset']++;
-        } elseif ($siteExists && $dbExists && $siteValue === $dbValue) {
+        } elseif ($dbExists && $siteValue === $dbValue) {
             $status = 'IDENTICAL';
             $summary['identical']++;
-        } elseif ($siteExists && $dbExists) {
+        } elseif ($dbExists) {
             $status = 'DIFFERENT';
             $summary['different']++;
-        } elseif ($siteExists && in_array($key, $fileOnlyNormal, true)) {
+        } elseif (in_array($key, $fileOnlyNormal, true)) {
             $status = 'CORE FILE NORMAL';
             $summary['core_file']++;
-        } elseif ($siteExists) {
+        } else {
             $status = 'FILE ONLY';
             $summary['file_only']++;
-        } else {
-            $status = 'DATABASE ONLY';
-            $summary['database_only']++;
         }
 
         $pathState = MONITOR_CONFIG_AUDIT_pathState($key, $effective);
@@ -252,8 +231,14 @@ function MONITOR_CONFIG_AUDIT_collect()
             $summary['invalid_paths']++;
         }
 
+        $needsAttention = ($status !== 'IDENTICAL' && $status !== 'CORE FILE NORMAL')
+            || ($pathState['checked'] && !$pathState['exists']);
+        if ($needsAttention) {
+            $summary['attention']++;
+        }
+
         $sql = '';
-        if (!$sensitive && $siteExists && $dbExists && !$dbValues[$key]['unset'] &&
+        if (!$sensitive && $dbExists && !$dbValues[$key]['unset'] &&
                 $dbValues[$key]['valid'] && $siteValue !== $dbValue) {
             $canSuggest = true;
             if (MONITOR_CONFIG_AUDIT_isPathKey($key)) {
@@ -283,7 +268,8 @@ function MONITOR_CONFIG_AUDIT_collect()
             'status' => $status,
             'path' => $pathState,
             'sql' => $sql,
-            'sensitive' => $sensitive
+            'sensitive' => $sensitive,
+            'attention' => $needsAttention
         );
     }
 
