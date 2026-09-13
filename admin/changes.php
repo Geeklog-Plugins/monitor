@@ -11,6 +11,7 @@
 require_once '../../../lib-common.php';
 require_once '../../auth.inc.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorChanges.php';
+require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorAdminNavigation.php';
 
 if (!SEC_hasRights('monitor.admin')) {
     $display = COM_showMessageText($MESSAGE[29], $MESSAGE[30]);
@@ -50,33 +51,6 @@ function MONITOR_CHANGES_ADMIN_date($timestamp)
     }
 
     return date('Y-m-d H:i:s', (int) $timestamp);
-}
-
-function MONITOR_CHANGES_ADMIN_navigation()
-{
-    global $_CONF, $LANG_MONITOR_1;
-
-    $base = $_CONF['site_admin_url'] . '/plugins/monitor/';
-    $items = array(
-        array($LANG_MONITOR_1['home'], $base . 'index.php?view=overview'),
-        array($LANG_MONITOR_1['changes'], $base . 'changes.php'),
-        array($LANG_MONITOR_1['security'], $base . 'index.php?view=security'),
-        array($LANG_MONITOR_1['updates'], $base . 'index.php?view=plugins')
-    );
-
-    $html = '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 18px 0">';
-    foreach ($items as $item) {
-        $active = ($item[0] === $LANG_MONITOR_1['changes']);
-        $style = 'display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none;';
-        if ($active) {
-            $style .= 'font-weight:bold;background:#eef2f5;';
-        }
-        $html .= '<a style="' . $style . '" href="' . MONITOR_CHANGES_ADMIN_h($item[1]) . '">'
-              . MONITOR_CHANGES_ADMIN_h($item[0]) . '</a>';
-    }
-    $html .= '</div>';
-
-    return $html;
 }
 
 function MONITOR_CHANGES_ADMIN_summaryCard($label, $value, $kind)
@@ -175,7 +149,7 @@ $logPatterns = isset($errorDelta['signatures']) && is_array($errorDelta['signatu
     ? count($errorDelta['signatures'])
     : 0;
 
-$content = MONITOR_CHANGES_ADMIN_navigation();
+$content = MONITOR_ADMIN_NAV_render('changes');
 $content .= '<div style="padding:13px;border:1px solid #d7dde2;border-radius:8px;background:#fafbfc;margin-bottom:14px">'
           . MONITOR_CHANGES_ADMIN_h($LANG_MONITOR_1['changes_intro']) . '</div>';
 $content .= $notice;
