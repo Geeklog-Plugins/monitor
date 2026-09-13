@@ -65,6 +65,7 @@ function MONITOR_ADMIN_navigation($active)
     $base = $_CONF['site_admin_url'] . '/plugins/monitor/index.php';
     $items = array(
         'overview' => $LANG_MONITOR_1['home'],
+        'changes' => $LANG_MONITOR_1['changes'],
         'security' => $LANG_MONITOR_1['security'],
         'plugins' => $LANG_MONITOR_1['updates']
     );
@@ -72,7 +73,11 @@ function MONITOR_ADMIN_navigation($active)
     $html = '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 18px 0">';
 
     foreach ($items as $key => $label) {
-        $url = $base . '?view=' . rawurlencode($key);
+        if ($key === 'changes') {
+            $url = $_CONF['site_admin_url'] . '/plugins/monitor/changes.php';
+        } else {
+            $url = $base . '?view=' . rawurlencode($key);
+        }
         $style = 'display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none;';
         if ($key === $active) {
             $style .= 'font-weight:bold;background:#eef2f5;';
@@ -198,6 +203,7 @@ function MONITOR_ADMIN_overview()
 
     $actions = array(
         array('Geeklog logs', $_CONF['site_admin_url'] . '/logviewer.php', 'Use the native Geeklog log viewer for complete log access.'),
+        array($LANG_MONITOR_1['changes'], $_CONF['site_admin_url'] . '/plugins/monitor/changes.php', $LANG_MONITOR_1['changes_intro']),
         array('Security', $_CONF['site_admin_url'] . '/plugins/monitor/index.php?view=security', 'Review Monitor security observations and Ban integration.'),
         array('Plugins', $_CONF['site_admin_url'] . '/plugins/monitor/index.php?view=plugins', 'Review installed plugin versions and compatibility state.')
     );
