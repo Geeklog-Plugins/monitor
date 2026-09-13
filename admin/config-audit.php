@@ -5,7 +5,7 @@
 // +---------------------------------------------------------------------------+
 // | admin/config-audit.php                                                    |
 // |                                                                           |
-// | Read-only audit of siteconfig.php versus Geeklog Core conf_values.        |
+// | Focused read-only audit of siteconfig.php versus Core conf_values.        |
 // +---------------------------------------------------------------------------+
 
 require_once '../../../lib-common.php';
@@ -37,112 +37,137 @@ function MONITOR_CONFIG_ADMIN_value($row, $field)
     );
 }
 
+function MONITOR_CONFIG_ADMIN_card($row)
+{
+    $status = isset($row['status']) ? $row['status'] : '';
+    $border = '#d7dde2';
+    $background = '#fff';
+
+    if ($status === 'DIFFERENT' || $status === 'DB DECODE ERROR') {
+        $border = '#ef9a9a';
+        $background = '#fff7f7';
+    } elseif ($status === 'FILE ONLY' || $status === 'DB = unset') {
+        $border = '#ffe082';
+        $background = '#fffaf0';
+    }
+
+    if (!empty($row['path']['checked']) && empty($row['path']['exists'])) {
+        $border = '#ef9a9a';
+        $background = '#fff7f7';
+    }
+
+    $html = '<section style="border:1px solid ' . $border . ';background:' . $background
+          . ';border-radius:8px;padding:14px;margin:0 0 12px 0">';
+
+    $html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center">'
+          . '<strong><code>' . MONITOR_CONFIG_ADMIN_h($row['key']) . '</code></strong>'
+          . '<span style="font-weight:bold">' . MONITOR_CONFIG_ADMIN_h($status) . '</span>'
+          . '</div>';
+
+    $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px">';
+
+    $html .= '<div><div style="font-size:.9em;color:#666">siteconfig.php</div><pre style="white-space:pre-wrap;word-break:break-word;margin:4px 0 0">'
+          . MONITOR_CONFIG_ADMIN_value($row, 'site_value') . '</pre></div>';
+
+    $html .= '<div><div style="font-size:.9em;color:#666">Database</div><pre style="white-space:pre-wrap;word-break:break-word;margin:4px 0 0">'
+          . ($row['db_exists'] ? MONITOR_CONFIG_ADMIN_value($row, 'db_value') : 'ABSENT')
+          . '</pre></div>';
+
+    $html .= '</div>';
+
+    $html .= '<div style="margin-top:10px;font-size:.95em"><strong>Priority:</strong> '
+          . MONITOR_CONFIG_ADMIN_h($row['priority']) . '</div>';
+
+    if (!empty($row['path']['checked'])) {
+        $html .= '<div style="margin-top:6px"><strong>Path:</strong> '
+              . (!empty($row['path']['exists']) ? 'exists' : '<strong>missing</strong>')
+              . '</div>';
+    }
+
+    if (!empty($row['sql'])) {
+        $html .= '<details style="margin-top:10px"><summary>Candidate SQL correction</summary>'
+              . '<pre style="white-space:pre-wrap;word-break:break-word;overflow:auto;margin-top:8px">'
+              . MONITOR_CONFIG_ADMIN_h($row['sql'])
+              . '</pre></details>';
+    }
+
+    $html .= '</section>';
+
+    return $html;
+}
+
 $audit = MONITOR_CONFIG_AUDIT_collect();
 $summary = $audit['summary'];
+$attentionRows = array();
+$normalRows = array();
 
-$content = '<p><a href="index.php">&larr; Monitor overview</a></p>';
-$content .= '<p><strong>Read-only mode.</strong> This audit does not modify Geeklog, siteconfig.php or the database. '
-          . 'Sensitive configuration values are redacted and never included in candidate SQL.</p>';
-$content .= '<table class="admin-list" style="width:100%;max-width:900px">'
-          . '<tr><th>Active host</th><td>'
+foreach ($audit['rows'] as $row) {
+    if (!empty($row['attention'])) {
+        $attentionRows[] = $row;
+    } else {
+        $normalRows[] = $row;
+    }
+}
+
+$content = '<p><a href="index.php?view=overview">&larr; Monitor overview</a></p>';
+$content .= '<div style="padding:14px;border:1px solid #d7dde2;border-radius:8px;background:#fafbfc;margin-bottom:18px">'
+          . '<strong>Read-only configuration audit.</strong><br>'
+          . 'This view checks values explicitly defined in <code>siteconfig.php</code> against the same Core keys stored in <code>conf_values</code>. '
+          . 'It does not list unrelated database-only configuration and never changes Geeklog automatically.'
+          . '</div>';
+
+$content .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px">';
+$content .= '<div style="padding:12px;border:1px solid #ef9a9a;border-radius:7px;background:#fff7f7"><strong style="font-size:1.35em">'
+          . (int) $summary['different'] . '</strong><br>Different</div>';
+$content .= '<div style="padding:12px;border:1px solid #ffe082;border-radius:7px;background:#fffaf0"><strong style="font-size:1.35em">'
+          . (int) $summary['file_only'] . '</strong><br>File only</div>';
+$content .= '<div style="padding:12px;border:1px solid #ffe082;border-radius:7px;background:#fffaf0"><strong style="font-size:1.35em">'
+          . (int) $summary['db_unset'] . '</strong><br>DB unset</div>';
+$content .= '<div style="padding:12px;border:1px solid #ef9a9a;border-radius:7px;background:#fff7f7"><strong style="font-size:1.35em">'
+          . (int) $summary['invalid_paths'] . '</strong><br>Invalid paths</div>';
+$content .= '</div>';
+
+$content .= '<div style="margin-bottom:18px;font-size:.95em;color:#555">'
+          . '<strong>Active host:</strong> '
           . MONITOR_CONFIG_ADMIN_h(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '')
-          . '</td></tr>'
-          . '<tr><th>siteconfig.php</th><td><code>'
+          . '<br><strong>siteconfig.php:</strong> <code style="word-break:break-all">'
           . MONITOR_CONFIG_ADMIN_h($audit['siteconfig_path'])
-          . '</code></td></tr>'
-          . '<tr><th>Configuration table</th><td><code>'
-          . MONITOR_CONFIG_ADMIN_h($_TABLES['conf_values'])
-          . '</code></td></tr>'
-          . '</table>';
+          . '</code></div>';
 
 if (!$audit['siteconfig_readable']) {
-    $content .= '<p><strong>Warning:</strong> Monitor could not read the active siteconfig.php. '
-             . 'Database-only configuration is still shown, but file comparison is incomplete.</p>';
+    $content .= '<div style="padding:12px;border:1px solid #ef9a9a;background:#fff7f7;border-radius:7px;margin-bottom:18px">'
+             . '<strong>Warning:</strong> Monitor could not read the active siteconfig.php, so the comparison is incomplete.'
+             . '</div>';
 }
 
-$content .= '<h3>Summary</h3>';
-$content .= '<table class="admin-list"><tr>'
-          . '<th>Identical</th><th>Different</th><th>Core file</th>'
-          . '<th>File only</th><th>Database only</th><th>DB unset</th>'
-          . '<th>Invalid paths</th><th>Decode errors</th><th>Redacted</th></tr><tr>'
-          . '<td>' . (int) $summary['identical'] . '</td>'
-          . '<td>' . (int) $summary['different'] . '</td>'
-          . '<td>' . (int) $summary['core_file'] . '</td>'
-          . '<td>' . (int) $summary['file_only'] . '</td>'
-          . '<td>' . (int) $summary['database_only'] . '</td>'
-          . '<td>' . (int) $summary['db_unset'] . '</td>'
-          . '<td>' . (int) $summary['invalid_paths'] . '</td>'
-          . '<td>' . (int) $summary['decode_errors'] . '</td>'
-          . '<td>' . (int) $summary['redacted'] . '</td>'
-          . '</tr></table>';
-
-$content .= '<h3>Comparison</h3>';
-$content .= '<div style="overflow:auto"><table class="admin-list" style="width:100%">'
-          . '<thead><tr>'
-          . '<th>Parameter</th><th>siteconfig.php</th><th>Database</th>'
-          . '<th>Priority</th><th>Effective value</th><th>Path</th><th>Status</th><th>SQL</th>'
-          . '</tr></thead><tbody>';
-
-$sqlSuggestions = array();
-
-foreach ($audit['rows'] as $row) {
-    $pathLabel = '&mdash;';
-    if ($row['path']['checked']) {
-        $pathLabel = $row['path']['exists'] ? 'OK' : '<strong>Missing</strong>';
-    }
-
-    if ($row['sql'] !== '') {
-        $sqlSuggestions[$row['key']] = $row['sql'];
-    }
-
-    $content .= '<tr>'
-              . '<td><code>' . MONITOR_CONFIG_ADMIN_h($row['key']) . '</code></td>'
-              . '<td><pre style="white-space:pre-wrap;margin:0">'
-              . ($row['site_exists'] ? MONITOR_CONFIG_ADMIN_value($row, 'site_value') : '&mdash;')
-              . '</pre></td>'
-              . '<td><pre style="white-space:pre-wrap;margin:0">'
-              . ($row['db_exists'] ? MONITOR_CONFIG_ADMIN_value($row, 'db_value') : 'ABSENT')
-              . '</pre></td>'
-              . '<td>' . MONITOR_CONFIG_ADMIN_h($row['priority']) . '</td>'
-              . '<td><pre style="white-space:pre-wrap;margin:0">'
-              . MONITOR_CONFIG_ADMIN_value($row, 'effective_value')
-              . '</pre></td>'
-              . '<td>' . $pathLabel . '</td>'
-              . '<td><strong>' . MONITOR_CONFIG_ADMIN_h($row['status']) . '</strong></td>'
-              . '<td>' . ($row['sql'] !== '' ? 'suggested' : '&mdash;') . '</td>'
-              . '</tr>';
-}
-
-$content .= '</tbody></table></div>';
-
-$content .= '<h3>Candidate SQL corrections</h3>';
-if (empty($sqlSuggestions)) {
-    $content .= '<p>No candidate SQL correction.</p>';
+$content .= '<h3>Items to review</h3>';
+if (empty($attentionRows)) {
+    $content .= '<div style="padding:14px;border:1px solid #a5d6a7;background:#f4fbf5;border-radius:8px;margin-bottom:18px">'
+             . '<strong>No configuration difference requiring attention was detected.</strong>'
+             . '</div>';
 } else {
-    $content .= '<p><strong>These statements are never executed automatically.</strong> '
-             . 'They are shown only when siteconfig.php and Core conf_values contain different values. '
-             . 'For physical paths, the siteconfig.php path must exist before a statement is suggested.</p>';
-
-    foreach ($sqlSuggestions as $key => $sql) {
-        $content .= '<h4>' . MONITOR_CONFIG_ADMIN_h($key) . '</h4>'
-                  . '<pre style="white-space:pre-wrap;overflow:auto">'
-                  . MONITOR_CONFIG_ADMIN_h($sql)
-                  . '</pre>';
+    foreach ($attentionRows as $row) {
+        $content .= MONITOR_CONFIG_ADMIN_card($row);
     }
 }
 
-$content .= '<h3>Effective Core configuration</h3>';
-$content .= '<pre style="white-space:pre-wrap;overflow:auto">';
-foreach ($audit['rows'] as $row) {
-    $effective = !empty($row['sensitive'])
-        ? "'[REDACTED]'"
-        : var_export($row['effective_value'], true);
+if (!empty($normalRows)) {
+    $content .= '<details style="margin-top:22px">'
+             . '<summary style="cursor:pointer;font-weight:bold">Secondary details: '
+             . (int) count($normalRows)
+             . ' identical or expected file-only Core value(s)</summary>'
+             . '<div style="margin-top:12px">';
 
-    $content .= MONITOR_CONFIG_ADMIN_h(
-        "\$_CONF['" . $row['key'] . "'] = " . $effective . ";\n"
-    );
+    foreach ($normalRows as $row) {
+        $content .= MONITOR_CONFIG_ADMIN_card($row);
+    }
+
+    $content .= '</div></details>';
 }
-$content .= '</pre>';
+
+$content .= '<p style="margin-top:22px;color:#666;font-size:.92em">'
+          . 'Sensitive values are redacted. Candidate SQL is shown only for non-sensitive differences and is never executed automatically.'
+          . '</p>';
 
 $T = new Template($_CONF['path'] . 'plugins/monitor/templates');
 $T->set_file(array('admin' => 'administration.thtml'));
