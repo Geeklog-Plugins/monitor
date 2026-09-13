@@ -62,7 +62,7 @@ jobs:
 
           echo 'No guarded regression pattern found.'
 
-      - name: Check Geeklog 2.2.x configuration language metadata
+      - name: Check Geeklog 2.2.x configuration metadata
         shell: bash
         run: |
           set -euo pipefail
@@ -70,5 +70,10 @@ jobs:
           grep -q "GLOBALS\['LANG_configsubgroups'\]\['monitor'\]" language/english.php
           grep -q "GLOBALS\['LANG_confignames'\]\['monitor'\]" language/english.php
           grep -q "GLOBALS\['LANG_tab'\]\['monitor'\]" language/english.php
+          grep -q "'tab_main' => 'Main'" language/english.php
           grep -q "GLOBALS\['LANG_fs'\]\['monitor'\]" language/english.php
+          grep -q "add('tab_main', null, 'tab'" install_defaults.php
+          grep -q "add('emails', \$_monitor_DEFAULT\['emails'\], 'text', 0, 0, null" install_defaults.php
+          grep -q "add('repository', \$_monitor_DEFAULT\['repository'\], 'text', 0, 0, null" install_defaults.php
+          grep -q "selectionArray = -1" lib/MonitorConfigCompat.php
           test -f language/english_utf-8.php
