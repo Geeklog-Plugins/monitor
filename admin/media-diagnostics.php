@@ -42,9 +42,14 @@ if (!empty($media['available']) && !empty($media['items'])) {
     }
 }
 
+/*
+ * Match the File Manager entry exposed by Geeklog 2.1.1 and 2.2.2 admin UI.
+ * Type=Root opens the manager at the complete file tree instead of restricting
+ * the view to a file-picker mode such as Type=File.
+ */
 $fileManager = isset($_CONF['site_url'])
-    ? rtrim($_CONF['site_url'], '/') . '/filemanager/index.php'
-    : '/filemanager/index.php';
+    ? rtrim($_CONF['site_url'], '/') . '/filemanager/index.php?Type=Root'
+    : '/filemanager/index.php?Type=Root';
 
 $labels = array(
     'oversized_single' => isset($LANG_MONITOR_1['media_oversized_single'])
