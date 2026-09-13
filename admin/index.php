@@ -9,10 +9,6 @@
 // | Focused health, diagnostics, security and plugin state dashboard.         |
 // +---------------------------------------------------------------------------+
 
-/**
- * @package Monitor
- */
-
 require_once '../../../lib-common.php';
 require_once '../../auth.inc.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorBanAdapter.php';
@@ -44,17 +40,16 @@ function MONITOR_ADMIN_statusLabel($status)
         'warning' => $LANG_MONITOR_1['health_warning'],
         'error' => $LANG_MONITOR_1['health_error']
     );
-
-    if (!isset($map[$status])) {
-        $status = 'info';
-    }
-
     $styles = array(
         'ok' => 'background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;',
         'info' => 'background:#e3f2fd;color:#0d47a1;border:1px solid #90caf9;',
         'warning' => 'background:#fff8e1;color:#7a4f00;border:1px solid #ffe082;',
         'error' => 'background:#ffebee;color:#b71c1c;border:1px solid #ef9a9a;'
     );
+
+    if (!isset($map[$status])) {
+        $status = 'info';
+    }
 
     return '<span style="display:inline-block;padding:3px 8px;border-radius:12px;font-weight:bold;'
          . $styles[$status] . '">'
@@ -81,6 +76,7 @@ function MONITOR_ADMIN_navigation($active)
         if ($key === $active) {
             $style .= 'font-weight:bold;background:#eef2f5;';
         }
+
         $html .= '<a style="' . $style . '" href="' . MONITOR_ADMIN_h($url) . '">'
               . MONITOR_ADMIN_h($label) . '</a>';
     }
@@ -88,12 +84,6 @@ function MONITOR_ADMIN_navigation($active)
     $html .= '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none" href="'
           . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/logviewer.php')
           . '">Geeklog logs</a>';
-
-    if (SEC_inGroup('Root')) {
-        $html .= '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none" href="'
-              . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/plugins/monitor/config-audit.php')
-              . '">Configuration audit</a>';
-    }
 
     $html .= '<form style="display:inline" action="'
           . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/configuration.php')
@@ -112,6 +102,7 @@ function MONITOR_ADMIN_summaryCard($label, $value, $kind)
 {
     $border = '#cfd8dc';
     $background = '#ffffff';
+
     if ($kind === 'error') {
         $border = '#ef9a9a';
         $background = '#fff5f5';
@@ -181,6 +172,7 @@ function MONITOR_ADMIN_overview()
 
     $html = '<div style="padding:16px;border:1px solid #d7dde2;border-radius:8px;background:#fafbfc;margin-bottom:18px">';
     $html .= '<div style="font-size:1.15em;font-weight:bold;margin-bottom:5px">Site health at a glance</div>';
+
     if ($summary['error'] > 0) {
         $html .= '<div>Monitor detected <strong>' . (int) $summary['error'] . ' error(s)</strong> requiring attention.</div>';
     } elseif ($summary['warning'] > 0) {
@@ -188,6 +180,7 @@ function MONITOR_ADMIN_overview()
     } else {
         $html .= '<div>No current error or warning was detected by the available Monitor checks.</div>';
     }
+
     $html .= '<div style="margin-top:7px;color:#555">'
           . MONITOR_ADMIN_h($LANG_MONITOR_1['read_only_advice'])
           . '</div></div>';
@@ -212,15 +205,16 @@ function MONITOR_ADMIN_overview()
         $actions[] = array(
             'Configuration audit',
             $_CONF['site_admin_url'] . '/plugins/monitor/config-audit.php',
-            'Compare siteconfig.php and Core conf_values in read-only mode.'
+            'Check for differences between siteconfig.php and matching Core values in the database.'
         );
     }
 
     foreach ($actions as $action) {
         $html .= '<a href="' . MONITOR_ADMIN_h($action[1]) . '" style="display:block;padding:13px;border:1px solid #d7dde2;border-radius:7px;text-decoration:none">'
               . '<strong>' . MONITOR_ADMIN_h($action[0]) . '</strong>'
-              . '<div style="margin-top:5px;color:#555;font-size:.95em">' . MONITOR_ADMIN_h($action[2]) . '</div>'
-              . '</a>';
+              . '<div style="margin-top:5px;color:#555;font-size:.95em">'
+              . MONITOR_ADMIN_h($action[2])
+              . '</div></a>';
     }
 
     $html .= '</div>';
@@ -251,12 +245,12 @@ function MONITOR_ADMIN_security()
     $version = MONITOR_BAN_version();
 
     $html .= '<h3>' . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_integration']) . '</h3>';
-    $html .= '<table class="admin-list">'
+    $html .= '<div style="overflow:auto"><table class="admin-list">'
           . '<tr><th>Installed/enabled</th><td>' . (!empty($capabilities['installed']) ? 'Yes' : 'No') . '</td></tr>'
           . '<tr><th>Version</th><td>' . MONITOR_ADMIN_h($version === '' ? 'unknown' : $version) . '</td></tr>'
           . '<tr><th>IP ban request capability</th><td>' . (!empty($capabilities['request_ip_ban']) ? 'Available' : 'Unavailable') . '</td></tr>'
           . '<tr><th>Direct Ban SQL coupling</th><td>No</td></tr>'
-          . '</table>';
+          . '</table></div>';
 
     $html .= '<h3>' . MONITOR_ADMIN_h($LANG_MONITOR_1['security_observations']) . '</h3>';
 
@@ -270,7 +264,7 @@ function MONITOR_ADMIN_security()
         1
     );
 
-    $html .= '<table class="admin-list" style="width:100%">'
+    $html .= '<div style="overflow:auto"><table class="admin-list" style="width:100%">'
           . '<thead><tr><th>Type</th><th>Count</th><th>Last seen</th></tr></thead><tbody>';
 
     $rows = 0;
@@ -291,7 +285,7 @@ function MONITOR_ADMIN_security()
         $html .= '<tr><td colspan="3">No recent security observations.</td></tr>';
     }
 
-    $html .= '</tbody></table>';
+    $html .= '</tbody></table></div>';
 
     return $html;
 }
