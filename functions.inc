@@ -26,6 +26,9 @@ if (file_exists($langfile)) {
     require_once $plugin_path . 'language/english.php';
 }
 
+/* Native Geeklog PLG_invokeService() callbacks. */
+require_once $plugin_path . 'services.inc.php';
+
 require_once $_CONF['path_system'] . 'classes/config.class.php';
 $c = config::get_instance();
 $_MONITOR_CONF = $c->get_config('monitor');
@@ -77,6 +80,15 @@ function plugin_geticon_monitor()
     global $_CONF;
 
     return $_CONF['site_admin_url'] . '/plugins/monitor/images/monitor.png';
+}
+
+/**
+ * Enable Geeklog's native service dispatcher for Monitor.
+ * Every Monitor service performs its own ACL check and is read-only.
+ */
+function plugin_wsEnabled_monitor()
+{
+    return true;
 }
 
 function plugin_chkVersion_monitor()
