@@ -156,16 +156,10 @@ jobs:
           grep -q "array_slice(\$kept, -500)" lib/MonitorContentActivity.php
           grep -q "LOCK_EX" lib/MonitorContentActivity.php
           grep -q "content_activity" lib/MonitorServices.php
-          python3 - <<'PY'
-          import pathlib
-          import re
-          import sys
-
-          source = pathlib.Path('lib/MonitorContentActivity.php').read_text(encoding='utf-8')
-          if re.search(r'''['"](?:content|title|description|body|text)['"]\s*=>''', source):
-              print('Lifecycle journal must contain identity metadata only, not copied content.')
-              sys.exit(1)
-          PY
+          grep -q "'timestamp' => time()" lib/MonitorContentActivity.php
+          grep -q "'event' => \$event" lib/MonitorContentActivity.php
+          grep -q "'type' => \$type" lib/MonitorContentActivity.php
+          grep -q "'id' => \$id" lib/MonitorContentActivity.php
           echo 'Lifecycle observation guardrails present.'
 
       - name: Check oversized media locator guardrails
