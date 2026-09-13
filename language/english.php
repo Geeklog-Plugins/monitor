@@ -42,6 +42,7 @@ $LANG_MONITOR_1 = array(
     // Configuration audit
     'config_audit_title' => 'Configuration audit',
     'config_audit_page_title' => 'Monitor configuration audit',
+    'config_audit_quick_description' => 'Check for differences between siteconfig.php and matching Core values in the database.',
     'config_audit_back' => 'Monitor overview',
     'config_audit_access_denied' => 'Access denied',
     'config_audit_root_only' => 'Access reserved for Root administrators.',
