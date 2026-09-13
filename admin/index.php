@@ -20,9 +20,7 @@ require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorHealth.php';
 
 // Ensure the user has rights to access every Monitor administration view.
 if (!SEC_hasRights('monitor.admin')) {
-    $display = COM_siteHeader('menu', $MESSAGE[30])
-             . COM_showMessageText($MESSAGE[29], $MESSAGE[30])
-             . COM_siteFooter();
+    $display = COM_showMessageText($MESSAGE[29], $MESSAGE[30]);
 
     $username = isset($_USER['username']) ? $_USER['username'] : 'unknown';
     COM_accessLog(
@@ -30,7 +28,7 @@ if (!SEC_hasRights('monitor.admin')) {
         . ' tried to illegally access the Monitor administration screen.'
     );
 
-    COM_output($display);
+    COM_output(COM_createHTMLDocument($display, array('pagetitle' => $MESSAGE[30])));
     exit;
 }
 
@@ -474,10 +472,8 @@ $T->set_var(array(
 ));
 $T->parse('output', 'admin');
 
-$display = COM_siteHeader('none');
-$display .= $T->finish($T->get_var('output'));
-$display .= COM_siteFooter();
-
+$body = $T->finish($T->get_var('output'));
+$display = COM_createHTMLDocument($body, array('pagetitle' => $title));
 COM_output($display);
 
 ?>
