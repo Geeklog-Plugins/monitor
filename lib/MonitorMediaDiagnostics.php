@@ -14,6 +14,42 @@ if (isset($_SERVER['PHP_SELF']) &&
 }
 
 /**
+ * Build a public URL for a file when it is below Geeklog's public path.
+ *
+ * @param string $absolutePath
+ * @return string
+ */
+function MONITOR_MEDIA_publicUrl($absolutePath)
+{
+    global $_CONF;
+
+    $pathHtml = isset($_CONF['path_html']) ? rtrim((string) $_CONF['path_html'], '/\\') : '';
+    $siteUrl = isset($_CONF['site_url']) ? rtrim((string) $_CONF['site_url'], '/') : '';
+    if ($pathHtml === '' || $siteUrl === '') {
+        return '';
+    }
+
+    $normalizedFile = str_replace('\\', '/', (string) $absolutePath);
+    $normalizedRoot = rtrim(str_replace('\\', '/', $pathHtml), '/') . '/';
+    if (strpos($normalizedFile, $normalizedRoot) !== 0) {
+        return '';
+    }
+
+    $relative = substr($normalizedFile, strlen($normalizedRoot));
+    if ($relative === '' || strpos($relative, '../') !== false) {
+        return '';
+    }
+
+    $segments = explode('/', $relative);
+    foreach ($segments as &$segment) {
+        $segment = rawurlencode($segment);
+    }
+    unset($segment);
+
+    return $siteUrl . '/' . implode('/', $segments);
+}
+
+/**
  * Return a bounded list of oversized images below Geeklog's path_images.
  *
  * Only paths relative to path_images are returned. Absolute filesystem paths
@@ -104,6 +140,7 @@ function MONITOR_MEDIA_oversizedImages($maxFiles, $maxItems)
             $result['items'][] = array(
                 'file' => basename($path),
                 'relative_path' => $relative,
+                'public_url' => MONITOR_MEDIA_publicUrl($path),
                 'width' => $width,
                 'height' => $height,
                 'size_bytes' => (int) $size,
