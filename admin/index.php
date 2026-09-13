@@ -241,24 +241,55 @@ function MONITOR_ADMIN_overview()
 
 function MONITOR_ADMIN_security()
 {
-    global $_TABLES, $LANG_MONITOR_1;
+    global $_TABLES, $_CONF, $LANG_MONITOR_1;
 
-    $html = '<p>' . MONITOR_ADMIN_h($LANG_MONITOR_1['legacy_ban_notice']) . '</p>';
     $capabilities = MONITOR_BAN_capabilities();
     $version = MONITOR_BAN_version();
+    $banInstalled = !empty($capabilities['installed']);
+    $banInfoUrl = $_CONF['site_admin_url'] . '/plugins/monitor/index.php?view=plugins#plugin-ban';
 
+    $html = '<div style="padding:12px;border:1px solid #a5d6a7;background:#f4fbf5;border-radius:8px;margin-bottom:16px">'
+          . '<strong>' . MONITOR_ADMIN_h($LANG_MONITOR_1['security_status']) . ':</strong> '
+          . MONITOR_ADMIN_h($LANG_MONITOR_1['security_no_issue'])
+          . '</div>';
+
+    $html .= '<p>' . MONITOR_ADMIN_h($LANG_MONITOR_1['legacy_ban_notice']) . '</p>';
     $html .= '<h3>' . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_integration']) . '</h3>';
-    $html .= '<div style="overflow:auto"><table class="admin-list">'
-          . '<tr><th>Installed/enabled</th><td>' . (!empty($capabilities['installed']) ? 'Yes' : 'No') . '</td></tr>'
-          . '<tr><th>Version</th><td>' . MONITOR_ADMIN_h($version === '' ? 'unknown' : $version) . '</td></tr>'
-          . '<tr><th>IP ban request capability</th><td>' . (!empty($capabilities['request_ip_ban']) ? 'Available' : 'Unavailable') . '</td></tr>'
-          . '<tr><th>Direct Ban SQL coupling</th><td>No</td></tr>'
-          . '</table></div>';
+
+    if (!$banInstalled) {
+        $html .= '<section style="padding:13px;border:1px solid #d7dde2;border-radius:8px;background:#fafbfc;margin-bottom:18px">'
+              . '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">'
+              . '<strong>' . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_not_installed']) . '</strong>'
+              . MONITOR_ADMIN_statusLabel('info') . '</div>'
+              . '<p style="margin:10px 0 0 0">' . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_optional_intro']) . '</p>'
+              . '<p style="margin:7px 0 0 0;color:#555">' . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_optional_capability']) . '</p>'
+              . '<p style="margin:10px 0 0 0"><a href="' . MONITOR_ADMIN_h($banInfoUrl) . '">'
+              . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_view_plugin']) . '</a></p>'
+              . '</section>';
+    } else {
+        $html .= '<section style="padding:13px;border:1px solid #d7dde2;border-radius:8px;background:#fafbfc;margin-bottom:18px">'
+              . '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">'
+              . '<strong>' . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_installed']) . '</strong>'
+              . MONITOR_ADMIN_statusLabel('ok') . '</div>'
+              . '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:11px">'
+              . '<div><small>' . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_version']) . '</small><br><strong>'
+              . MONITOR_ADMIN_h($version === '' ? $LANG_MONITOR_1['changes_unknown'] : $version) . '</strong></div>'
+              . '<div><small>' . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_ip_capability']) . '</small><br><strong>'
+              . MONITOR_ADMIN_h(!empty($capabilities['request_ip_ban'])
+                    ? $LANG_MONITOR_1['ban_capability_available']
+                    : $LANG_MONITOR_1['ban_capability_unavailable']) . '</strong></div>'
+              . '<div><small>' . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_direct_sql']) . '</small><br><strong>'
+              . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_direct_sql_no']) . '</strong></div>'
+              . '</div>'
+              . '<p style="margin:10px 0 0 0"><a href="' . MONITOR_ADMIN_h($banInfoUrl) . '">'
+              . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_view_plugin']) . '</a></p>'
+              . '</section>';
+    }
 
     $html .= '<h3>' . MONITOR_ADMIN_h($LANG_MONITOR_1['security_observations']) . '</h3>';
 
     if (!DB_checkTableExists('monitor_ban')) {
-        return $html . '<p>No legacy Monitor security table is present.</p>';
+        return $html . '<p>' . MONITOR_ADMIN_h($LANG_MONITOR_1['security_no_legacy_table']) . '</p>';
     }
 
     $result = DB_query(
@@ -283,7 +314,7 @@ function MONITOR_ADMIN_security()
     }
 
     if ($rows === 0) {
-        $html .= '<tr><td colspan="3">No recent security observations.</td></tr>';
+        $html .= '<tr><td colspan="3">' . MONITOR_ADMIN_h($LANG_MONITOR_1['security_no_observations']) . '</td></tr>';
     }
 
     $html .= '</tbody></table></div>';
@@ -325,7 +356,8 @@ function MONITOR_ADMIN_pluginCard($plugin)
 {
     global $LANG_MONITOR_1;
 
-    $html = '<section style="border:1px solid #d7dde2;border-radius:8px;padding:13px;background:#fff">';
+    $anchor = MONITOR_PLUGIN_CATALOG_normalizeName($plugin['name']);
+    $html = '<section id="plugin-' . MONITOR_ADMIN_h($anchor) . '" style="border:1px solid #d7dde2;border-radius:8px;padding:13px;background:#fff">';
     $html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">'
           . '<strong style="font-size:1.08em">' . MONITOR_ADMIN_h($plugin['name']) . '</strong>'
           . MONITOR_ADMIN_pluginBadge($plugin['state']) . '</div>';
@@ -361,7 +393,8 @@ function MONITOR_ADMIN_discoveryCard($repo)
 {
     global $LANG_MONITOR_1;
 
-    $html = '<section style="border:1px solid #d7dde2;border-radius:8px;padding:12px;background:#fff">'
+    $anchor = MONITOR_PLUGIN_CATALOG_normalizeName($repo['name']);
+    $html = '<section id="plugin-' . MONITOR_ADMIN_h($anchor) . '" style="border:1px solid #d7dde2;border-radius:8px;padding:12px;background:#fff">'
           . '<strong>' . MONITOR_ADMIN_h($repo['name']) . '</strong>';
 
     if (!empty($repo['description'])) {
