@@ -25,9 +25,10 @@ require_once dirname(__FILE__) . '/MonitorMediaDiagnostics.php';
  * @param string $status ok|info|warning|error
  * @param string $value
  * @param string $recommendation
+ * @param array  $details optional structured UI/service details
  * @return array
  */
-function MONITOR_HEALTH_result($id, $label, $status, $value, $recommendation)
+function MONITOR_HEALTH_result($id, $label, $status, $value, $recommendation, $details = array())
 {
     $allowed = array('ok', 'info', 'warning', 'error');
     if (!in_array($status, $allowed, true)) {
@@ -39,7 +40,8 @@ function MONITOR_HEALTH_result($id, $label, $status, $value, $recommendation)
         'label' => (string) $label,
         'status' => $status,
         'value' => (string) $value,
-        'recommendation' => (string) $recommendation
+        'recommendation' => (string) $recommendation,
+        'details' => is_array($details) ? $details : array()
     );
 }
 
@@ -345,21 +347,6 @@ function MONITOR_HEALTH_oversizedImagesCheck()
     $checked = isset($media['checked']) ? (int) $media['checked'] : 0;
     $oversized = isset($media['total']) ? (int) $media['total'] : 0;
     $partial = !empty($media['partial']);
-    $largestBytes = 0;
-    $largestWidth = 0;
-    $largestHeight = 0;
-
-    foreach ($media['items'] as $item) {
-        if ($item['size_bytes'] > $largestBytes) {
-            $largestBytes = $item['size_bytes'];
-        }
-        if ($item['width'] > $largestWidth) {
-            $largestWidth = $item['width'];
-        }
-        if ($item['height'] > $largestHeight) {
-            $largestHeight = $item['height'];
-        }
-    }
 
     if ($checked === 0) {
         return MONITOR_HEALTH_result(
@@ -371,34 +358,12 @@ function MONITOR_HEALTH_oversizedImagesCheck()
         );
     }
 
-    $value = $oversized . ' oversized / ' . $checked . ' checked';
+    $value = $oversized . ' / ' . $checked;
     if ($partial) {
-        $value .= ' (partial scan, limit ' . $maxFiles . ')';
+        $value .= ' (partial)';
     }
 
     if ($oversized > 0) {
-        $detail = 'Largest observed: '
-                . $largestWidth . 'x' . $largestHeight . ' px, '
-                . MONITOR_HEALTH_formatBytes($largestBytes) . '. ';
-        $locations = array();
-        foreach (array_slice($media['items'], 0, 5) as $item) {
-            $reason = array();
-            if (!empty($item['dimension_issue'])) {
-                $reason[] = $item['width'] . 'x' . $item['height'] . ' px';
-            }
-            if (!empty($item['size_issue'])) {
-                $reason[] = MONITOR_HEALTH_formatBytes($item['size_bytes']);
-            }
-            $locations[] = $item['relative_path'] . ' (' . implode(', ', $reason) . ')';
-        }
-
-        $locationText = !empty($locations)
-            ? ' Located media: ' . implode('; ', $locations) . '.'
-            : '';
-        if (!empty($media['items_truncated']) || $oversized > count($locations)) {
-            $locationText .= ' Additional oversized media exist; the diagnostic list is bounded.';
-        }
-
         $fileManager = isset($_CONF['site_url'])
             ? rtrim($_CONF['site_url'], '/') . '/filemanager/index.php?Type=Root'
             : '/filemanager/index.php?Type=Root';
@@ -408,10 +373,18 @@ function MONITOR_HEALTH_oversizedImagesCheck()
             'Oversized images',
             'warning',
             $value,
-            $detail
-            . 'Review images above 1600 px or 2 MiB. Monitor reports them but does not modify files automatically.'
-            . $locationText
-            . ' File Manager: ' . $fileManager
+            $oversized . ' image(s) exceed the recommended dimensions or file size.',
+            array(
+                'type' => 'oversized_images',
+                'items' => $media['items'],
+                'items_truncated' => !empty($media['items_truncated']),
+                'total' => $oversized,
+                'checked' => $checked,
+                'partial_scan' => $partial,
+                'threshold_dimension' => $maxDimension,
+                'threshold_bytes' => $maxBytes,
+                'file_manager_url' => $fileManager
+            )
         );
     }
 
