@@ -77,3 +77,21 @@ jobs:
           grep -q "add('repository', \$_monitor_DEFAULT\['repository'\], 'text', 0, 0, null" install_defaults.php
           grep -q "selectionArray = -1" lib/MonitorConfigCompat.php
           test -f language/english_utf-8.php
+
+      - name: Check Changes monitoring guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f lib/MonitorChanges.php
+          test -f admin/changes.php
+          grep -q "SEC_hasRights('monitor.admin')" admin/changes.php
+          grep -q "SEC_checkToken()" admin/changes.php
+          grep -q "SEC_createToken()" admin/changes.php
+          grep -q "monitor-changes-" lib/MonitorChanges.php
+          grep -q "array_slice(\$snapshots, -10)" lib/MonitorChanges.php
+          grep -q "524288" lib/MonitorChanges.php
+          if grep -q "path_public_html" lib/MonitorChanges.php; then
+            echo 'Changes snapshots must stay outside public_html.'
+            exit 1
+          fi
+          echo 'Changes monitoring guardrails present.'
