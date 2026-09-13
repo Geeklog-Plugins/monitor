@@ -95,3 +95,21 @@ jobs:
             exit 1
           fi
           echo 'Changes monitoring guardrails present.'
+
+      - name: Check daily log rotation guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f lib/MonitorLogRotation.php
+          test -f admin/log-archives.php
+          grep -q "MONITOR_LOG_rotateDaily" functions.inc
+          grep -q "MONITOR_LOG_archiveOne" lib/MonitorLogRotation.php
+          grep -q "@copy(\$path, \$archive)" lib/MonitorLogRotation.php
+          grep -q "@ftruncate(\$handle, 0)" lib/MonitorLogRotation.php
+          grep -q "MONITOR_LOG_cleanupArchives" lib/MonitorLogRotation.php
+          grep -q "SEC_hasRights('monitor.admin')" admin/log-archives.php
+          if grep -q "path_public_html" lib/MonitorLogRotation.php; then
+            echo 'Log archives must stay outside public_html.'
+            exit 1
+          fi
+          echo 'Daily log rotation guardrails present.'
