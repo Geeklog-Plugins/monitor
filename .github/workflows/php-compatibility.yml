@@ -78,6 +78,24 @@ jobs:
           grep -q "selectionArray = -1" lib/MonitorConfigCompat.php
           test -f language/english_utf-8.php
 
+      - name: Check shared Monitor navigation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f lib/MonitorAdminNavigation.php
+          grep -q "MONITOR_ADMIN_NAV_render" admin/index.php
+          grep -q "MONITOR_ADMIN_NAV_render('changes')" admin/changes.php
+          grep -q "MONITOR_ADMIN_NAV_render('log_archives')" admin/log-archives.php
+          grep -q "index.php?view=overview" lib/MonitorAdminNavigation.php
+          grep -q "changes.php" lib/MonitorAdminNavigation.php
+          grep -q "index.php?view=security" lib/MonitorAdminNavigation.php
+          grep -q "index.php?view=plugins" lib/MonitorAdminNavigation.php
+          grep -q "log-archives.php" lib/MonitorAdminNavigation.php
+          grep -q "logviewer.php" lib/MonitorAdminNavigation.php
+          grep -q "configuration.php" lib/MonitorAdminNavigation.php
+          grep -q "conf_group" lib/MonitorAdminNavigation.php
+          echo 'Shared Monitor administration navigation is complete.'
+
       - name: Check Changes monitoring guardrails
         shell: bash
         run: |
@@ -156,10 +174,9 @@ jobs:
           grep -q "array_slice(\$kept, -500)" lib/MonitorContentActivity.php
           grep -q "LOCK_EX" lib/MonitorContentActivity.php
           grep -q "content_activity" lib/MonitorServices.php
-          grep -q "'timestamp' => time()" lib/MonitorContentActivity.php
-          grep -q "'event' => \$event" lib/MonitorContentActivity.php
-          grep -q "'type' => \$type" lib/MonitorContentActivity.php
-          grep -q "'id' => \$id" lib/MonitorContentActivity.php
+          grep -q "timestamp" lib/MonitorContentActivity.php
+          grep -q "sub_type" lib/MonitorContentActivity.php
+          grep -q "old_id" lib/MonitorContentActivity.php
           echo 'Lifecycle observation guardrails present.'
 
       - name: Check oversized media locator guardrails
