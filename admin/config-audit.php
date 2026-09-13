@@ -161,12 +161,10 @@ function MONITOR_CONFIG_ADMIN_attentionCard($row)
 
 function MONITOR_CONFIG_ADMIN_normalRow($row)
 {
-    global $LANG_MONITOR_1;
-
     $status = MONITOR_CONFIG_ADMIN_statusText($row['status']);
     $value = MONITOR_CONFIG_ADMIN_value($row, 'effective_value');
 
-    return '<div style="display:grid;grid-template-columns:minmax(140px,1fr) minmax(120px,1fr) minmax(140px,2fr);gap:8px;padding:7px 0;border-bottom:1px solid #eee;align-items:start">'
+    return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px 10px;padding:7px 0;border-bottom:1px solid #eee;align-items:start">'
          . '<code>' . MONITOR_CONFIG_ADMIN_h($row['key']) . '</code>'
          . '<span>' . MONITOR_CONFIG_ADMIN_h($status) . '</span>'
          . '<code style="word-break:break-word">' . $value . '</code>'
@@ -195,7 +193,7 @@ $content .= '<div style="padding:12px;border:1px solid #d7dde2;border-radius:8px
           . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_intro'])
           . '</div>';
 
-$content .= '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px">'
+$content .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px">'
           . '<div style="padding:10px;border:1px solid #ef9a9a;border-radius:7px;background:#fff7f7"><strong style="font-size:1.25em">'
           . (int) $summary['issues'] . '</strong><br>'
           . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_issues']) . '</div>'
