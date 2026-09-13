@@ -1,12 +1,58 @@
-<h2 style="margin:0;">{title}</h2>
-<table style="width:100%;" cellspacing="0" cellpadding="0">
-<tr>
-  <td style="vertical-align:top;width:75%;">
-     <div style="padding:5px 5px 0 0">
-     {status_msg}
-     {admin_body}
-     </div>
-  </td>
-</tr>
-</table>
+<style>
+.monitor-admin {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.monitor-admin *,
+.monitor-admin *::before,
+.monitor-admin *::after {
+    box-sizing: border-box;
+}
+.monitor-admin img,
+.monitor-admin video,
+.monitor-admin iframe {
+    max-width: 100%;
+    height: auto;
+}
+.monitor-admin pre {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.monitor-admin code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.monitor-admin table {
+    max-width: 100%;
+}
+.monitor-admin input,
+.monitor-admin select,
+.monitor-admin textarea,
+.monitor-admin button {
+    max-width: 100%;
+}
+@media (max-width: 640px) {
+    .monitor-admin [style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+    .monitor-admin [style*="min-width:"] {
+        min-width: 0 !important;
+    }
+    .monitor-admin h2,
+    .monitor-admin h3 {
+        overflow-wrap: anywhere;
+    }
+}
+</style>
 
+<div class="monitor-admin">
+    <h2 style="margin:0;">{title}</h2>
+    <div style="padding-top:5px;min-width:0;max-width:100%;">
+        {status_msg}
+        {admin_body}
+    </div>
+</div>
