@@ -234,6 +234,10 @@ function MONITOR_HEALTH_logSizeCheck($id, $label, $path, $warningBytes)
 /**
  * Check free space for the active site's data path filesystem.
  *
+ * Percentage alone is misleading on large volumes: 5% free on a multi-TB
+ * filesystem may still represent hundreds of gigabytes. Monitor therefore
+ * combines relative and absolute thresholds before raising attention.
+ *
  * @return array
  */
 function MONITOR_HEALTH_diskCheck()
@@ -265,11 +269,24 @@ function MONITOR_HEALTH_diskCheck()
     }
 
     $percent = ($free / $total) * 100;
+    $oneGiB = 1024 * 1024 * 1024;
+    $warningAbsolute = 10 * $oneGiB;
+    $percentageRelevantBelow = 20 * $oneGiB;
+
     $status = 'ok';
-    if ($percent < 5) {
+    if ($free < $oneGiB) {
         $status = 'error';
-    } elseif ($percent < 10) {
+    } elseif ($free < $warningAbsolute || ($percent < 10 && $free < $percentageRelevantBelow)) {
         $status = 'warning';
+    }
+
+    $recommendation = 'Free disk capacity is sufficient.';
+    if ($status === 'error') {
+        $recommendation = 'Free disk space is critically low; inspect logs, caches and backups immediately.';
+    } elseif ($status === 'warning') {
+        $recommendation = 'Free disk space is becoming low; inspect logs, caches and backups.';
+    } elseif ($percent < 10) {
+        $recommendation = 'The free-space percentage is low, but the absolute free capacity remains sufficient.';
     }
 
     return MONITOR_HEALTH_result(
@@ -277,9 +294,7 @@ function MONITOR_HEALTH_diskCheck()
         'Disk free space',
         $status,
         sprintf('%.1f%% (%s)', $percent, MONITOR_HEALTH_formatBytes($free)),
-        $status === 'ok'
-            ? 'Free space is above the current warning threshold.'
-            : 'Free disk space is low; inspect logs, caches and backups.'
+        $recommendation
     );
 }
 
