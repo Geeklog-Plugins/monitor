@@ -43,7 +43,7 @@ function MONITOR_HEALTH_result($id, $label, $status, $value, $recommendation)
 }
 
 /**
- * Collect initial Monitor 1.4.0 health checks.
+ * Collect Monitor 1.4.0 health checks.
  *
  * @return array
  */
@@ -102,6 +102,7 @@ function MONITOR_HEALTH_collect()
     );
 
     $checks[] = MONITOR_HEALTH_diskCheck();
+    $checks[] = MONITOR_HEALTH_oversizedImagesCheck();
 
     if (isset($_TABLES['plugins'])) {
         $installedVersion = DB_getItem(
@@ -146,6 +147,14 @@ function MONITOR_HEALTH_collect()
     return $checks;
 }
 
+/**
+ * Check that a configured path exists and is writable.
+ *
+ * @param string $id
+ * @param string $label
+ * @param string $path
+ * @return array
+ */
 function MONITOR_HEALTH_pathCheck($id, $label, $path)
 {
     if ($path === '' || !is_dir($path)) {
@@ -177,6 +186,15 @@ function MONITOR_HEALTH_pathCheck($id, $label, $path)
     );
 }
 
+/**
+ * Check one log size without reading its contents.
+ *
+ * @param string $id
+ * @param string $label
+ * @param string $path
+ * @param int    $warningBytes
+ * @return array
+ */
 function MONITOR_HEALTH_logSizeCheck($id, $label, $path, $warningBytes)
 {
     if ($path === '' || !is_file($path)) {
@@ -213,6 +231,11 @@ function MONITOR_HEALTH_logSizeCheck($id, $label, $path, $warningBytes)
     );
 }
 
+/**
+ * Check free space for the active site's data path filesystem.
+ *
+ * @return array
+ */
 function MONITOR_HEALTH_diskCheck()
 {
     global $_CONF;
@@ -260,6 +283,155 @@ function MONITOR_HEALTH_diskCheck()
     );
 }
 
+/**
+ * Read-only diagnostic for oversized images.
+ *
+ * The scan is deliberately bounded so opening the Monitor dashboard cannot
+ * turn into an unbounded recursive filesystem operation on large sites.
+ * No file is ever modified by this check.
+ *
+ * Current warning thresholds:
+ * - width or height greater than 1600 pixels
+ * - file size greater than 2 MiB
+ *
+ * @return array
+ */
+function MONITOR_HEALTH_oversizedImagesCheck()
+{
+    global $_CONF;
+
+    $root = isset($_CONF['path_images']) ? $_CONF['path_images'] : '';
+    $maxFiles = 2000;
+    $maxDimension = 1600;
+    $maxBytes = 2 * 1024 * 1024;
+
+    if ($root === '' || !is_dir($root) || !is_readable($root)) {
+        return MONITOR_HEALTH_result(
+            'images.oversized',
+            'Oversized images',
+            'info',
+            'not scanned',
+            'The configured image directory is unavailable or unreadable.'
+        );
+    }
+
+    $checked = 0;
+    $oversized = 0;
+    $largestBytes = 0;
+    $largestWidth = 0;
+    $largestHeight = 0;
+    $partial = false;
+    $extensions = array('jpg', 'jpeg', 'png', 'gif', 'webp');
+
+    try {
+        $directory = new RecursiveDirectoryIterator(
+            $root,
+            FilesystemIterator::SKIP_DOTS
+        );
+        $iterator = new RecursiveIteratorIterator(
+            $directory,
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($iterator as $fileInfo) {
+            if ($checked >= $maxFiles) {
+                $partial = true;
+                break;
+            }
+
+            if (!$fileInfo->isFile() || $fileInfo->isLink()) {
+                continue;
+            }
+
+            $extension = strtolower($fileInfo->getExtension());
+            if (!in_array($extension, $extensions, true)) {
+                continue;
+            }
+
+            $checked++;
+            $path = $fileInfo->getPathname();
+            $size = $fileInfo->getSize();
+            $dimensions = @getimagesize($path);
+
+            if ($size > $largestBytes) {
+                $largestBytes = $size;
+            }
+
+            if ($dimensions === false) {
+                continue;
+            }
+
+            $width = isset($dimensions[0]) ? (int) $dimensions[0] : 0;
+            $height = isset($dimensions[1]) ? (int) $dimensions[1] : 0;
+
+            if ($width > $largestWidth) {
+                $largestWidth = $width;
+            }
+            if ($height > $largestHeight) {
+                $largestHeight = $height;
+            }
+
+            if ($width > $maxDimension || $height > $maxDimension || $size > $maxBytes) {
+                $oversized++;
+            }
+        }
+    } catch (Exception $e) {
+        return MONITOR_HEALTH_result(
+            'images.oversized',
+            'Oversized images',
+            'warning',
+            'scan interrupted',
+            'Monitor could not complete the read-only image diagnostic. Check image directory permissions.'
+        );
+    }
+
+    if ($checked === 0) {
+        return MONITOR_HEALTH_result(
+            'images.oversized',
+            'Oversized images',
+            'info',
+            'no supported images found',
+            'No JPEG, PNG, GIF or WebP image was found in the configured image directory.'
+        );
+    }
+
+    $value = $oversized . ' oversized / ' . $checked . ' checked';
+    if ($partial) {
+        $value .= ' (partial scan, limit ' . $maxFiles . ')';
+    }
+
+    if ($oversized > 0) {
+        $detail = 'Largest observed: '
+                . $largestWidth . 'x' . $largestHeight . ' px, '
+                . MONITOR_HEALTH_formatBytes($largestBytes) . '. ';
+
+        return MONITOR_HEALTH_result(
+            'images.oversized',
+            'Oversized images',
+            'warning',
+            $value,
+            $detail
+            . 'Review images above 1600 px or 2 MiB. Monitor reports them but does not modify files automatically.'
+        );
+    }
+
+    return MONITOR_HEALTH_result(
+        'images.oversized',
+        'Oversized images',
+        $partial ? 'info' : 'ok',
+        $value,
+        $partial
+            ? 'No oversized image was found in the bounded sample. The scan stopped at its safety limit.'
+            : 'No oversized image was detected above the current 1600 px / 2 MiB thresholds.'
+    );
+}
+
+/**
+ * Summarize check states.
+ *
+ * @param array $checks
+ * @return array
+ */
 function MONITOR_HEALTH_summary($checks)
 {
     $summary = array(
@@ -280,6 +452,12 @@ function MONITOR_HEALTH_summary($checks)
     return $summary;
 }
 
+/**
+ * Human-readable byte count.
+ *
+ * @param int|float $bytes
+ * @return string
+ */
 function MONITOR_HEALTH_formatBytes($bytes)
 {
     $bytes = (float) $bytes;
