@@ -15,8 +15,7 @@
  * @package Monitor
  */
 
-if (isset($_SERVER['PHP_SELF']) &&
-        strpos(strtolower($_SERVER['PHP_SELF']), 'install_defaults.php') !== false) {
+if (isset($_SERVER['PHP_SELF']) && strpos(strtolower($_SERVER['PHP_SELF']), 'install_defaults.php') !== false) {
     die('This file can not be used on its own!');
 }
 
@@ -36,11 +35,6 @@ $_monitor_DEFAULT = array(
     'repository' => 'Geeklog-Plugins'
 );
 
-/**
- * Initialize Monitor configuration for a fresh installation.
- *
- * @return bool
- */
 function plugin_initconfig_monitor()
 {
     global $_monitor_DEFAULT;
@@ -50,33 +44,12 @@ function plugin_initconfig_monitor()
         return true;
     }
 
-    // Keep the final tab/subgroup selector explicit (0) for Geeklog 2.2.x.
+    // Canonical Geeklog hierarchy: subgroup -> tab -> fieldset -> settings.
     $c->add('sg_main', null, 'subgroup', 0, 0, null, 0, true, 'monitor', 0);
+    $c->add('tab_main', null, 'tab', 0, 0, null, 0, true, 'monitor', 0);
     $c->add('fs_main', null, 'fieldset', 0, 0, null, 0, true, 'monitor', 0);
-    $c->add(
-        'emails',
-        $_monitor_DEFAULT['emails'],
-        'text',
-        0,
-        0,
-        0,
-        10,
-        true,
-        'monitor',
-        0
-    );
-    $c->add(
-        'repository',
-        $_monitor_DEFAULT['repository'],
-        'text',
-        0,
-        0,
-        0,
-        20,
-        true,
-        'monitor',
-        0
-    );
+    $c->add('emails', $_monitor_DEFAULT['emails'], 'text', 0, 0, null, 10, true, 'monitor', 0);
+    $c->add('repository', $_monitor_DEFAULT['repository'], 'text', 0, 0, null, 20, true, 'monitor', 0);
 
     return true;
 }
