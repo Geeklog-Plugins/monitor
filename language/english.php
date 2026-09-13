@@ -20,7 +20,7 @@ $LANG_MONITOR_1 = array(
     'security'              => 'Security',
     'file'                  => 'File:',
     'log_file'              => 'Log file:',
-    'view_logs'             => 'View logs',
+    'view_logs'             => 'View current logs',
     'clear_logs'            => 'Clear logs',
     'configuration'         => 'Configuration',
     'main'                  => 'Site health overview',
@@ -53,6 +53,19 @@ $LANG_MONITOR_1 = array(
     'security_no_legacy_table' => 'No legacy Monitor security table is present.',
     'security_no_observations' => 'No recent security observations.',
     'read_only_advice'      => 'Monitor observes and recommends by default. Changes require an explicit administrator action.',
+
+    // Daily log archives
+    'log_archive_title' => 'Log archives',
+    'log_archive_intro' => 'Monitor rotates Geeklog .log files daily and keeps the last %d days of archives.',
+    'log_archive_safety' => 'An active log is truncated only after its archive copy has been written successfully. Archives are stored below path_data, outside the public web directory.',
+    'log_archive_empty' => 'No daily log archive is available yet. The first scheduled run creates the rotation baseline; archives appear after the next calendar day.',
+    'log_archive_date' => 'Date',
+    'log_archive_log' => 'Log',
+    'log_archive_size' => 'Size',
+    'log_archive_actions' => 'Actions',
+    'log_archive_view' => 'View',
+    'log_archive_download' => 'Download',
+    'log_archive_preview_limited' => 'This preview shows only the most recent 512 KiB of the archive. Download the file to retrieve the complete daily log.',
 
     // Changes monitor
     'changes' => 'Changes',
