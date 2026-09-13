@@ -6,7 +6,7 @@
 // +---------------------------------------------------------------------------+
 // | admin/index.php                                                           |
 // |                                                                           |
-// | Focused health, diagnostics, logs, security and plugin state dashboard.   |
+// | Focused health, diagnostics, security and plugin state dashboard.         |
 // +---------------------------------------------------------------------------+
 
 /**
@@ -18,134 +18,22 @@ require_once '../../auth.inc.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorBanAdapter.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorHealth.php';
 
-// Ensure the user has rights to access every Monitor administration view.
 if (!SEC_hasRights('monitor.admin')) {
     $display = COM_showMessageText($MESSAGE[29], $MESSAGE[30]);
-
     $username = isset($_USER['username']) ? $_USER['username'] : 'unknown';
     COM_accessLog(
         'User ' . $username
         . ' tried to illegally access the Monitor administration screen.'
     );
-
     COM_output(COM_createHTMLDocument($display, array('pagetitle' => $MESSAGE[30])));
     exit;
 }
 
-/**
- * Escape a value for admin HTML output.
- *
- * @param string $value
- * @return string
- */
 function MONITOR_ADMIN_h($value)
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
-/**
- * Return the list of regular files in Geeklog's configured log directory.
- *
- * @return array
- */
-function MONITOR_ADMIN_logFiles()
-{
-    global $_CONF;
-
-    $files = array();
-    if (!isset($_CONF['path_log']) || !is_dir($_CONF['path_log'])) {
-        return $files;
-    }
-
-    $entries = scandir($_CONF['path_log']);
-    if ($entries === false) {
-        return $files;
-    }
-
-    foreach ($entries as $entry) {
-        if ($entry === '.' || $entry === '..') {
-            continue;
-        }
-
-        $path = $_CONF['path_log'] . $entry;
-        if (is_file($path)) {
-            $files[] = $entry;
-        }
-    }
-
-    natcasesort($files);
-
-    return array_values($files);
-}
-
-/**
- * Verify a requested log filename belongs to the configured log directory.
- *
- * @param string $filename
- * @param array  $allowed
- * @return string
- */
-function MONITOR_ADMIN_validLog($filename, $allowed)
-{
-    $filename = basename((string) $filename);
-
-    return in_array($filename, $allowed, true) ? $filename : '';
-}
-
-/**
- * Render dashboard navigation.
- *
- * @param string $active
- * @return string
- */
-function MONITOR_ADMIN_navigation($active)
-{
-    global $_CONF, $LANG_MONITOR_1;
-
-    $base = $_CONF['site_admin_url'] . '/plugins/monitor/index.php';
-    $items = array(
-        'overview' => $LANG_MONITOR_1['home'],
-        'logs' => $LANG_MONITOR_1['logs'],
-        'security' => $LANG_MONITOR_1['security'],
-        'plugins' => $LANG_MONITOR_1['updates']
-    );
-
-    $html = '<p class="monitor-nav">';
-    $first = true;
-
-    foreach ($items as $key => $label) {
-        if (!$first) {
-            $html .= ' | ';
-        }
-        $first = false;
-
-        $url = $base . '?view=' . rawurlencode($key);
-        if ($key === $active) {
-            $html .= '<strong>' . MONITOR_ADMIN_h($label) . '</strong>';
-        } else {
-            $html .= COM_createLink(MONITOR_ADMIN_h($label), $url);
-        }
-    }
-
-    $html .= ' | ';
-    $html .= '<form style="display:inline" action="'
-          . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/configuration.php')
-          . '" method="post">'
-          . '<input type="hidden" name="conf_group" value="monitor">'
-          . '<button type="submit">'
-          . MONITOR_ADMIN_h($LANG_MONITOR_1['configuration'])
-          . '</button></form>';
-    $html .= '</p>';
-
-    return $html;
-}
-
-/**
- * Render one health status label.
- *
- * @param string $status
- * @return string
- */
 function MONITOR_ADMIN_statusLabel($status)
 {
     global $LANG_MONITOR_1;
@@ -161,152 +49,212 @@ function MONITOR_ADMIN_statusLabel($status)
         $status = 'info';
     }
 
-    return '<strong class="monitor-status monitor-status-'
-         . MONITOR_ADMIN_h($status) . '">'
+    $styles = array(
+        'ok' => 'background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;',
+        'info' => 'background:#e3f2fd;color:#0d47a1;border:1px solid #90caf9;',
+        'warning' => 'background:#fff8e1;color:#7a4f00;border:1px solid #ffe082;',
+        'error' => 'background:#ffebee;color:#b71c1c;border:1px solid #ef9a9a;'
+    );
+
+    return '<span style="display:inline-block;padding:3px 8px;border-radius:12px;font-weight:bold;'
+         . $styles[$status] . '">'
          . MONITOR_ADMIN_h($map[$status])
-         . '</strong>';
+         . '</span>';
 }
 
-/**
- * Render the health overview.
- *
- * @return string
- */
-function MONITOR_ADMIN_overview()
+function MONITOR_ADMIN_navigation($active)
+{
+    global $_CONF, $LANG_MONITOR_1;
+
+    $base = $_CONF['site_admin_url'] . '/plugins/monitor/index.php';
+    $items = array(
+        'overview' => $LANG_MONITOR_1['home'],
+        'security' => $LANG_MONITOR_1['security'],
+        'plugins' => $LANG_MONITOR_1['updates']
+    );
+
+    $html = '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 18px 0">';
+
+    foreach ($items as $key => $label) {
+        $url = $base . '?view=' . rawurlencode($key);
+        $style = 'display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none;';
+        if ($key === $active) {
+            $style .= 'font-weight:bold;background:#eef2f5;';
+        }
+        $html .= '<a style="' . $style . '" href="' . MONITOR_ADMIN_h($url) . '">'
+              . MONITOR_ADMIN_h($label) . '</a>';
+    }
+
+    $html .= '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none" href="'
+          . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/logviewer.php')
+          . '">Geeklog logs</a>';
+
+    if (SEC_inGroup('Root')) {
+        $html .= '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none" href="'
+              . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/plugins/monitor/config-audit.php')
+              . '">Configuration audit</a>';
+    }
+
+    $html .= '<form style="display:inline" action="'
+          . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/configuration.php')
+          . '" method="post">'
+          . '<input type="hidden" name="conf_group" value="monitor">'
+          . '<button type="submit" style="padding:7px 11px">'
+          . MONITOR_ADMIN_h($LANG_MONITOR_1['configuration'])
+          . '</button></form>';
+
+    $html .= '</div>';
+
+    return $html;
+}
+
+function MONITOR_ADMIN_summaryCard($label, $value, $kind)
+{
+    $border = '#cfd8dc';
+    $background = '#ffffff';
+    if ($kind === 'error') {
+        $border = '#ef9a9a';
+        $background = '#fff5f5';
+    } elseif ($kind === 'warning') {
+        $border = '#ffe082';
+        $background = '#fffaf0';
+    } elseif ($kind === 'ok') {
+        $border = '#a5d6a7';
+        $background = '#f4fbf5';
+    } elseif ($kind === 'info') {
+        $border = '#90caf9';
+        $background = '#f5faff';
+    }
+
+    return '<div style="min-width:120px;flex:1;padding:14px;border:1px solid ' . $border
+         . ';background:' . $background . ';border-radius:7px">'
+         . '<div style="font-size:1.55em;font-weight:bold;line-height:1.1">' . (int) $value . '</div>'
+         . '<div style="margin-top:5px">' . MONITOR_ADMIN_h($label) . '</div>'
+         . '</div>';
+}
+
+function MONITOR_ADMIN_renderChecks($checks, $statuses, $title)
 {
     global $LANG_MONITOR_1;
 
-    $checks = MONITOR_HEALTH_collect();
-    $summary = MONITOR_HEALTH_summary($checks);
+    $rows = array();
+    foreach ($checks as $check) {
+        if (in_array($check['status'], $statuses, true)) {
+            $rows[] = $check;
+        }
+    }
 
-    $html = '<p>' . MONITOR_ADMIN_h($LANG_MONITOR_1['read_only_advice']) . '</p>';
-    $html .= '<p><strong>'
-          . (int) $summary['error'] . ' error(s), '
-          . (int) $summary['warning'] . ' warning(s), '
-          . (int) $summary['info'] . ' info, '
-          . (int) $summary['ok'] . ' OK'
-          . '</strong></p>';
+    if (empty($rows)) {
+        return '';
+    }
 
-    $html .= '<table class="admin-list" style="width:100%">'
+    $html = '<h3 style="margin-top:24px">' . MONITOR_ADMIN_h($title) . '</h3>';
+    $html .= '<div style="overflow:auto"><table class="admin-list" style="width:100%;border-collapse:collapse">'
           . '<thead><tr>'
-          . '<th>' . MONITOR_ADMIN_h($LANG_MONITOR_1['status']) . '</th>'
+          . '<th style="width:90px">' . MONITOR_ADMIN_h($LANG_MONITOR_1['status']) . '</th>'
           . '<th>' . MONITOR_ADMIN_h($LANG_MONITOR_1['check']) . '</th>'
           . '<th>' . MONITOR_ADMIN_h($LANG_MONITOR_1['value']) . '</th>'
           . '<th>' . MONITOR_ADMIN_h($LANG_MONITOR_1['recommendation']) . '</th>'
           . '</tr></thead><tbody>';
 
-    foreach ($checks as $check) {
+    foreach ($rows as $check) {
         $html .= '<tr>'
               . '<td>' . MONITOR_ADMIN_statusLabel($check['status']) . '</td>'
-              . '<td>' . MONITOR_ADMIN_h($check['label']) . '</td>'
+              . '<td><strong>' . MONITOR_ADMIN_h($check['label']) . '</strong></td>'
               . '<td><code>' . MONITOR_ADMIN_h($check['value']) . '</code></td>'
               . '<td>' . MONITOR_ADMIN_h($check['recommendation']) . '</td>'
               . '</tr>';
     }
 
-    $html .= '</tbody></table>';
+    $html .= '</tbody></table></div>';
 
     return $html;
 }
 
-/**
- * Render the safe log viewer.
- *
- * @return string
- */
-function MONITOR_ADMIN_logs()
+function MONITOR_ADMIN_overview()
 {
     global $_CONF, $LANG_MONITOR_1;
 
-    $files = MONITOR_ADMIN_logFiles();
-    $selected = isset($_GET['log'])
-        ? MONITOR_ADMIN_validLog($_GET['log'], $files)
-        : '';
+    $checks = MONITOR_HEALTH_collect();
+    $summary = MONITOR_HEALTH_summary($checks);
+    $needsAttention = (int) $summary['error'] + (int) $summary['warning'];
 
-    if ($selected === '' && !empty($files)) {
-        $selected = $files[0];
+    $html = '<div style="padding:16px;border:1px solid #d7dde2;border-radius:8px;background:#fafbfc;margin-bottom:18px">';
+    $html .= '<div style="font-size:1.15em;font-weight:bold;margin-bottom:5px">Site health at a glance</div>';
+    if ($summary['error'] > 0) {
+        $html .= '<div>Monitor detected <strong>' . (int) $summary['error'] . ' error(s)</strong> requiring attention.</div>';
+    } elseif ($summary['warning'] > 0) {
+        $html .= '<div>No critical error, but <strong>' . (int) $summary['warning'] . ' warning(s)</strong> should be reviewed.</div>';
+    } else {
+        $html .= '<div>No current error or warning was detected by the available Monitor checks.</div>';
+    }
+    $html .= '<div style="margin-top:7px;color:#555">'
+          . MONITOR_ADMIN_h($LANG_MONITOR_1['read_only_advice'])
+          . '</div></div>';
+
+    $html .= '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px">'
+          . MONITOR_ADMIN_summaryCard('Errors', $summary['error'], 'error')
+          . MONITOR_ADMIN_summaryCard('Warnings', $summary['warning'], 'warning')
+          . MONITOR_ADMIN_summaryCard('Information', $summary['info'], 'info')
+          . MONITOR_ADMIN_summaryCard('OK', $summary['ok'], 'ok')
+          . '</div>';
+
+    $html .= '<h3>Quick actions</h3>';
+    $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:22px">';
+
+    $actions = array(
+        array('Geeklog logs', $_CONF['site_admin_url'] . '/logviewer.php', 'Use the native Geeklog log viewer for complete log access.'),
+        array('Security', $_CONF['site_admin_url'] . '/plugins/monitor/index.php?view=security', 'Review Monitor security observations and Ban integration.'),
+        array('Plugins', $_CONF['site_admin_url'] . '/plugins/monitor/index.php?view=plugins', 'Review installed plugin versions and compatibility state.')
+    );
+
+    if (SEC_inGroup('Root')) {
+        $actions[] = array(
+            'Configuration audit',
+            $_CONF['site_admin_url'] . '/plugins/monitor/config-audit.php',
+            'Compare siteconfig.php and Core conf_values in read-only mode.'
+        );
     }
 
-    $html = '<p>Monitor reads only the tail of a selected log. Log contents are escaped before display.</p>';
-
-    if (empty($files)) {
-        return $html . '<p>No log files found.</p>';
+    foreach ($actions as $action) {
+        $html .= '<a href="' . MONITOR_ADMIN_h($action[1]) . '" style="display:block;padding:13px;border:1px solid #d7dde2;border-radius:7px;text-decoration:none">'
+              . '<strong>' . MONITOR_ADMIN_h($action[0]) . '</strong>'
+              . '<div style="margin-top:5px;color:#555;font-size:.95em">' . MONITOR_ADMIN_h($action[2]) . '</div>'
+              . '</a>';
     }
 
-    $html .= '<form method="get" action="'
-          . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/plugins/monitor/index.php')
-          . '">'
-          . '<input type="hidden" name="view" value="logs">'
-          . '<label>' . MONITOR_ADMIN_h($LANG_MONITOR_1['file']) . ' '
-          . '<select name="log">';
+    $html .= '</div>';
 
-    foreach ($files as $file) {
-        $html .= '<option value="' . MONITOR_ADMIN_h($file) . '"'
-              . ($file === $selected ? ' selected' : '')
-              . '>' . MONITOR_ADMIN_h($file) . '</option>';
+    if ($needsAttention > 0) {
+        $html .= MONITOR_ADMIN_renderChecks(
+            $checks,
+            array('error', 'warning'),
+            'Needs attention'
+        );
     }
 
-    $html .= '</select></label> '
-          . '<button type="submit">'
-          . MONITOR_ADMIN_h($LANG_MONITOR_1['view_logs'])
-          . '</button></form>';
-
-    if ($selected !== '') {
-        $path = $_CONF['path_log'] . $selected;
-        $size = @filesize($path);
-        $contents = MONITOR_readTail($path, 131072);
-
-        $html .= '<h3>' . MONITOR_ADMIN_h($selected) . '</h3>';
-        if ($size !== false) {
-            $html .= '<p>Size: ' . MONITOR_ADMIN_h(MONITOR_HEALTH_formatBytes($size)) . '</p>';
-        }
-
-        $html .= '<pre style="max-height:650px;overflow:auto;white-space:pre-wrap">'
-              . MONITOR_ADMIN_h($contents)
-              . '</pre>';
-
-        $token = SEC_createToken();
-        $html .= '<form method="post" action="'
-              . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/plugins/monitor/index.php')
-              . '">'
-              . '<input type="hidden" name="view" value="logs">'
-              . '<input type="hidden" name="action" value="clear_log">'
-              . '<input type="hidden" name="log" value="' . MONITOR_ADMIN_h($selected) . '">'
-              . '<input type="hidden" name="' . MONITOR_ADMIN_h(CSRF_TOKEN)
-              . '" value="' . MONITOR_ADMIN_h($token) . '">'
-              . '<button type="submit">'
-              . MONITOR_ADMIN_h($LANG_MONITOR_1['clear_logs'])
-              . '</button></form>';
-    }
+    $html .= MONITOR_ADMIN_renderChecks(
+        $checks,
+        array('ok', 'info'),
+        $needsAttention > 0 ? 'Other diagnostics' : 'Diagnostics'
+    );
 
     return $html;
 }
 
-/**
- * Render security observations and Ban integration state.
- *
- * @return string
- */
 function MONITOR_ADMIN_security()
 {
     global $_TABLES, $LANG_MONITOR_1;
 
     $html = '<p>' . MONITOR_ADMIN_h($LANG_MONITOR_1['legacy_ban_notice']) . '</p>';
-
     $capabilities = MONITOR_BAN_capabilities();
     $version = MONITOR_BAN_version();
 
     $html .= '<h3>' . MONITOR_ADMIN_h($LANG_MONITOR_1['ban_integration']) . '</h3>';
     $html .= '<table class="admin-list">'
-          . '<tr><th>Installed/enabled</th><td>'
-          . (!empty($capabilities['installed']) ? 'Yes' : 'No')
-          . '</td></tr>'
-          . '<tr><th>Version</th><td>'
-          . MONITOR_ADMIN_h($version === '' ? 'unknown' : $version)
-          . '</td></tr>'
-          . '<tr><th>IP ban request capability</th><td>'
-          . (!empty($capabilities['request_ip_ban']) ? 'Available' : 'Unavailable')
-          . '</td></tr>'
+          . '<tr><th>Installed/enabled</th><td>' . (!empty($capabilities['installed']) ? 'Yes' : 'No') . '</td></tr>'
+          . '<tr><th>Version</th><td>' . MONITOR_ADMIN_h($version === '' ? 'unknown' : $version) . '</td></tr>'
+          . '<tr><th>IP ban request capability</th><td>' . (!empty($capabilities['request_ip_ban']) ? 'Available' : 'Unavailable') . '</td></tr>'
           . '<tr><th>Direct Ban SQL coupling</th><td>No</td></tr>'
           . '</table>';
 
@@ -326,15 +274,17 @@ function MONITOR_ADMIN_security()
           . '<thead><tr><th>Type</th><th>Count</th><th>Last seen</th></tr></thead><tbody>';
 
     $rows = 0;
-    while ($row = DB_fetchArray($result)) {
-        $rows++;
-        $html .= '<tr><td>'
-              . MONITOR_ADMIN_h(isset($row['bantype']) ? $row['bantype'] : '')
-              . '</td><td>'
-              . (int) (isset($row['total']) ? $row['total'] : 0)
-              . '</td><td>'
-              . MONITOR_ADMIN_h(isset($row['last_seen']) ? $row['last_seen'] : '')
-              . '</td></tr>';
+    if ($result) {
+        while ($row = DB_fetchArray($result)) {
+            $rows++;
+            $html .= '<tr><td>'
+                  . MONITOR_ADMIN_h(isset($row['bantype']) ? $row['bantype'] : '')
+                  . '</td><td>'
+                  . (int) (isset($row['total']) ? $row['total'] : 0)
+                  . '</td><td>'
+                  . MONITOR_ADMIN_h(isset($row['last_seen']) ? $row['last_seen'] : '')
+                  . '</td></tr>';
+        }
     }
 
     if ($rows === 0) {
@@ -346,106 +296,55 @@ function MONITOR_ADMIN_security()
     return $html;
 }
 
-/**
- * Render local plugin state without installing or downloading executable code.
- *
- * @return string
- */
 function MONITOR_ADMIN_plugins()
 {
     global $_TABLES;
 
-    $html = '<p>Monitor 1.4.0 treats plugin updates as advice first. This view performs no installation and downloads no executable code.</p>';
+    $html = '<p>Monitor treats plugin updates as advice first. This view performs no installation and downloads no executable code.</p>';
 
     $result = DB_query(
         "SELECT pi_name, pi_version, pi_enabled, pi_gl_version, pi_homepage "
         . "FROM {$_TABLES['plugins']} ORDER BY pi_name"
     );
 
-    $html .= '<table class="admin-list" style="width:100%">'
-          . '<thead><tr>'
-          . '<th>Plugin</th><th>Installed</th><th>Code</th><th>Enabled</th><th>Geeklog requirement</th>'
-          . '</tr></thead><tbody>';
+    $html .= '<div style="overflow:auto"><table class="admin-list" style="width:100%">'
+          . '<thead><tr><th>Plugin</th><th>Installed</th><th>Code</th><th>Enabled</th><th>Geeklog requirement</th></tr></thead><tbody>';
 
-    while ($row = DB_fetchArray($result)) {
-        $name = isset($row['pi_name']) ? $row['pi_name'] : '';
-        $installed = isset($row['pi_version']) ? $row['pi_version'] : '';
-        $code = '';
+    if ($result) {
+        while ($row = DB_fetchArray($result)) {
+            $name = isset($row['pi_name']) ? $row['pi_name'] : '';
+            $installed = isset($row['pi_version']) ? $row['pi_version'] : '';
+            $code = '';
 
-        if ($name !== '' && function_exists('PLG_chkVersion')) {
-            $codeValue = PLG_chkVersion($name);
-            if (is_string($codeValue)) {
-                $code = $codeValue;
+            if ($name !== '' && function_exists('PLG_chkVersion')) {
+                $codeValue = PLG_chkVersion($name);
+                if (is_string($codeValue)) {
+                    $code = $codeValue;
+                }
             }
-        }
 
-        $html .= '<tr><td>' . MONITOR_ADMIN_h($name) . '</td>'
-              . '<td>' . MONITOR_ADMIN_h($installed) . '</td>'
-              . '<td>' . MONITOR_ADMIN_h($code === '' ? 'unknown' : $code) . '</td>'
-              . '<td>' . (!empty($row['pi_enabled']) ? 'Yes' : 'No') . '</td>'
-              . '<td>' . MONITOR_ADMIN_h(isset($row['pi_gl_version']) ? $row['pi_gl_version'] : '') . '</td></tr>';
+            $html .= '<tr><td><strong>' . MONITOR_ADMIN_h($name) . '</strong></td>'
+                  . '<td>' . MONITOR_ADMIN_h($installed) . '</td>'
+                  . '<td>' . MONITOR_ADMIN_h($code === '' ? 'unknown' : $code) . '</td>'
+                  . '<td>' . (!empty($row['pi_enabled']) ? 'Yes' : 'No') . '</td>'
+                  . '<td>' . MONITOR_ADMIN_h(isset($row['pi_gl_version']) ? $row['pi_gl_version'] : '') . '</td></tr>';
+        }
     }
 
-    $html .= '</tbody></table>';
+    $html .= '</tbody></table></div>';
 
     return $html;
 }
 
-// ---------------------------------------------------------------------------
-// State-changing actions
-// ---------------------------------------------------------------------------
-
-$requestedView = isset($_REQUEST['view']) ? COM_applyFilter($_REQUEST['view']) : 'overview';
-$allowedViews = array('overview', 'logs', 'security', 'plugins');
+$requestedView = isset($_GET['view']) ? COM_applyFilter($_GET['view']) : 'overview';
+$allowedViews = array('overview', 'security', 'plugins');
 if (!in_array($requestedView, $allowedViews, true)) {
     $requestedView = 'overview';
 }
 
-$action = isset($_POST['action']) ? COM_applyFilter($_POST['action']) : '';
-$statusMessage = '';
-
-if ($action === 'clear_log') {
-    if (!SEC_checkToken()) {
-        COM_accessLog('Monitor rejected a log clear request because the security token was invalid.');
-        $statusMessage = '<p><strong>Security token validation failed. The log was not changed.</strong></p>';
-    } else {
-        $files = MONITOR_ADMIN_logFiles();
-        $requestedLog = isset($_POST['log'])
-            ? MONITOR_ADMIN_validLog($_POST['log'], $files)
-            : '';
-
-        if ($requestedLog === '') {
-            $statusMessage = '<p><strong>Invalid log file. Nothing was changed.</strong></p>';
-        } else {
-            $path = $_CONF['path_log'] . $requestedLog;
-            $handle = @fopen($path, 'wb');
-            if ($handle === false) {
-                $statusMessage = '<p><strong>The log file could not be cleared.</strong></p>';
-            } else {
-                fwrite($handle, MONITOR_timestamp() . " - Log File Cleared by Monitor administrator\n");
-                fclose($handle);
-                COM_errorLog('MONITOR - Administrator cleared log file: ' . $requestedLog);
-                $statusMessage = '<p><strong>Log file cleared.</strong></p>';
-            }
-        }
-    }
-
-    $requestedView = 'logs';
-}
-
-// ---------------------------------------------------------------------------
-// Render
-// ---------------------------------------------------------------------------
-
 $content = MONITOR_ADMIN_navigation($requestedView);
-$content .= $statusMessage;
 
 switch ($requestedView) {
-    case 'logs':
-        $title = $LANG_MONITOR_1['logs'];
-        $content .= MONITOR_ADMIN_logs();
-        break;
-
     case 'security':
         $title = $LANG_MONITOR_1['security'];
         $content .= MONITOR_ADMIN_security();
