@@ -102,7 +102,41 @@ $LANG_MONITOR_1 = array(
     'config_audit_action_db_unset' => 'Verify that the database value is intentionally unset.',
     'config_audit_action_different' => 'Verify that this override is intentional. Align the database value only if the stored value is obsolete.',
     'config_audit_action_decode_error' => 'Inspect the matching Core row in conf_values before making any change.',
-    'config_audit_action_invalid_path' => 'Check the configured path and filesystem availability.'
+    'config_audit_action_invalid_path' => 'Check the configured path and filesystem availability.',
+
+    // Plugin catalog
+    'plugin_catalog_intro' => 'Installed plugins are compared with public repositories from the configured GitHub owner. Monitor never installs or updates plugins automatically.',
+    'plugin_catalog_owner' => 'GitHub source:',
+    'plugin_catalog_refresh' => 'Refresh GitHub data',
+    'plugin_catalog_installed' => 'Installed plugins',
+    'plugin_catalog_discover' => 'Discover plugins',
+    'plugin_catalog_discover_intro' => 'Public, non-archived repositories not currently installed on this site. Review the repository before installing anything.',
+    'plugin_catalog_plugin' => 'Plugin',
+    'plugin_catalog_installed_version' => 'Installed',
+    'plugin_catalog_code_version' => 'Code',
+    'plugin_catalog_latest_release' => 'Latest release',
+    'plugin_catalog_state' => 'State',
+    'plugin_catalog_enabled' => 'Enabled',
+    'plugin_catalog_geeklog' => 'Geeklog requirement',
+    'plugin_catalog_repository' => 'Repository',
+    'plugin_catalog_yes' => 'Yes',
+    'plugin_catalog_no' => 'No',
+    'plugin_catalog_unknown' => 'Unknown',
+    'plugin_catalog_no_release' => 'No release metadata',
+    'plugin_catalog_no_repository' => 'No matching repository',
+    'plugin_catalog_current' => 'Up to date',
+    'plugin_catalog_update' => 'Update available',
+    'plugin_catalog_ahead' => 'Local version newer',
+    'plugin_catalog_remote_unavailable' => 'GitHub metadata is unavailable. Local plugin information is still shown.',
+    'plugin_catalog_remote_disabled' => 'Remote metadata checks are disabled because no valid GitHub owner is configured.',
+    'plugin_catalog_none_discoverable' => 'No additional plugin repository was found for this GitHub owner.',
+    'plugin_catalog_open_repository' => 'Open repository',
+    'plugin_catalog_open_release' => 'Open release',
+    'plugin_catalog_updated' => 'Updated',
+    'plugin_catalog_summary_installed' => 'Installed',
+    'plugin_catalog_summary_updates' => 'Updates available',
+    'plugin_catalog_summary_discover' => 'Available to discover',
+    'plugin_catalog_summary_unmatched' => 'Without GitHub match'
 );
 
 $PLG_monitor_MESSAGE3002 = $LANG32[9];
