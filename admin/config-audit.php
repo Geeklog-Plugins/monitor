@@ -12,9 +12,10 @@ require_once '../../../lib-common.php';
 require_once '../../auth.inc.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorConfigAudit.php';
 
-if (!SEC_hasRights('monitor.admin')) {
-    $display = COM_showMessageText($MESSAGE[29], $MESSAGE[30]);
-    COM_output(COM_createHTMLDocument($display, array('pagetitle' => $MESSAGE[30])));
+if (!SEC_inGroup('Root')) {
+    $display = COM_showMessageText('Access reserved for Root administrators.', 'Access denied');
+    COM_accessLog('Non-Root user tried to access the Monitor configuration audit.');
+    COM_output(COM_createHTMLDocument($display, array('pagetitle' => 'Access denied')));
     exit;
 }
 
@@ -25,16 +26,23 @@ function MONITOR_CONFIG_ADMIN_h($value)
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
-function MONITOR_CONFIG_ADMIN_value($value)
+function MONITOR_CONFIG_ADMIN_value($row, $field)
 {
-    return MONITOR_CONFIG_ADMIN_h(MONITOR_CONFIG_AUDIT_displayValue($value));
+    if (!empty($row['sensitive'])) {
+        return '[REDACTED]';
+    }
+
+    return MONITOR_CONFIG_ADMIN_h(
+        MONITOR_CONFIG_AUDIT_displayValue(isset($row[$field]) ? $row[$field] : null)
+    );
 }
 
 $audit = MONITOR_CONFIG_AUDIT_collect();
 $summary = $audit['summary'];
 
 $content = '<p><a href="index.php">&larr; Monitor overview</a></p>';
-$content .= '<p><strong>Read-only mode.</strong> This audit does not modify Geeklog, siteconfig.php or the database.</p>';
+$content .= '<p><strong>Read-only mode.</strong> This audit does not modify Geeklog, siteconfig.php or the database. '
+          . 'Sensitive configuration values are redacted and never included in candidate SQL.</p>';
 $content .= '<table class="admin-list" style="width:100%;max-width:900px">'
           . '<tr><th>Active host</th><td>'
           . MONITOR_CONFIG_ADMIN_h(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '')
@@ -56,7 +64,7 @@ $content .= '<h3>Summary</h3>';
 $content .= '<table class="admin-list"><tr>'
           . '<th>Identical</th><th>Different</th><th>Core file</th>'
           . '<th>File only</th><th>Database only</th><th>DB unset</th>'
-          . '<th>Invalid paths</th><th>Decode errors</th></tr><tr>'
+          . '<th>Invalid paths</th><th>Decode errors</th><th>Redacted</th></tr><tr>'
           . '<td>' . (int) $summary['identical'] . '</td>'
           . '<td>' . (int) $summary['different'] . '</td>'
           . '<td>' . (int) $summary['core_file'] . '</td>'
@@ -65,6 +73,7 @@ $content .= '<table class="admin-list"><tr>'
           . '<td>' . (int) $summary['db_unset'] . '</td>'
           . '<td>' . (int) $summary['invalid_paths'] . '</td>'
           . '<td>' . (int) $summary['decode_errors'] . '</td>'
+          . '<td>' . (int) $summary['redacted'] . '</td>'
           . '</tr></table>';
 
 $content .= '<h3>Comparison</h3>';
@@ -89,14 +98,14 @@ foreach ($audit['rows'] as $row) {
     $content .= '<tr>'
               . '<td><code>' . MONITOR_CONFIG_ADMIN_h($row['key']) . '</code></td>'
               . '<td><pre style="white-space:pre-wrap;margin:0">'
-              . ($row['site_exists'] ? MONITOR_CONFIG_ADMIN_value($row['site_value']) : '&mdash;')
+              . ($row['site_exists'] ? MONITOR_CONFIG_ADMIN_value($row, 'site_value') : '&mdash;')
               . '</pre></td>'
               . '<td><pre style="white-space:pre-wrap;margin:0">'
-              . ($row['db_exists'] ? MONITOR_CONFIG_ADMIN_value($row['db_value']) : 'ABSENT')
+              . ($row['db_exists'] ? MONITOR_CONFIG_ADMIN_value($row, 'db_value') : 'ABSENT')
               . '</pre></td>'
               . '<td>' . MONITOR_CONFIG_ADMIN_h($row['priority']) . '</td>'
               . '<td><pre style="white-space:pre-wrap;margin:0">'
-              . MONITOR_CONFIG_ADMIN_value($row['effective_value'])
+              . MONITOR_CONFIG_ADMIN_value($row, 'effective_value')
               . '</pre></td>'
               . '<td>' . $pathLabel . '</td>'
               . '<td><strong>' . MONITOR_CONFIG_ADMIN_h($row['status']) . '</strong></td>'
@@ -125,9 +134,12 @@ if (empty($sqlSuggestions)) {
 $content .= '<h3>Effective Core configuration</h3>';
 $content .= '<pre style="white-space:pre-wrap;overflow:auto">';
 foreach ($audit['rows'] as $row) {
+    $effective = !empty($row['sensitive'])
+        ? "'[REDACTED]'"
+        : var_export($row['effective_value'], true);
+
     $content .= MONITOR_CONFIG_ADMIN_h(
-        "\$_CONF['" . $row['key'] . "'] = "
-        . var_export($row['effective_value'], true) . ";\n"
+        "\$_CONF['" . $row['key'] . "'] = " . $effective . ";\n"
     );
 }
 $content .= '</pre>';
