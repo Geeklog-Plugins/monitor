@@ -144,6 +144,82 @@ function MONITOR_PLUGIN_ICONS_localUrl($pluginName, $manifest)
     return '';
 }
 
+function MONITOR_PLUGIN_ICONS_corePlugins()
+{
+    return array(
+        'calendar' => array(
+            'file' => 'calendar/images/calendar.png',
+            'url' => 'calendar/images/calendar.png',
+            'source' => 'public_html/calendar/images/calendar.png',
+        ),
+        'links' => array(
+            'file' => 'links/images/links.png',
+            'url' => 'links/images/links.png',
+            'source' => 'public_html/links/images/links.png',
+        ),
+        'polls' => array(
+            'file' => 'polls/images/polls.png',
+            'url' => 'polls/images/polls.png',
+            'source' => 'public_html/polls/images/polls.png',
+        ),
+        'recaptcha' => array(
+            'file' => 'admin/plugins/recaptcha/images/recaptcha.png',
+            'url' => 'admin/plugins/recaptcha/images/recaptcha.png',
+            'source' => 'public_html/admin/plugins/recaptcha/images/recaptcha.png',
+        ),
+        'spamx' => array(
+            'file' => 'admin/plugins/spamx/images/spamx.png',
+            'url' => 'admin/plugins/spamx/images/spamx.png',
+            'source' => 'public_html/admin/plugins/spamx/images/spamx.png',
+        ),
+        'staticpages' => array(
+            'file' => 'staticpages/images/staticpages.png',
+            'url' => 'staticpages/images/staticpages.png',
+            'source' => 'public_html/staticpages/images/staticpages.png',
+        ),
+        'xmlsitemap' => array(
+            'file' => 'xmlsitemap/images/xmlsitemap.png',
+            'url' => 'xmlsitemap/images/xmlsitemap.png',
+            'source' => 'public_html/xmlsitemap/images/xmlsitemap.png',
+        ),
+    );
+}
+
+function MONITOR_PLUGIN_ICONS_coreLocalUrl($pluginName)
+{
+    global $_CONF;
+
+    $pluginName = strtolower((string) $pluginName);
+    $plugins = MONITOR_PLUGIN_ICONS_corePlugins();
+
+    if (!isset($plugins[$pluginName]) || empty($_CONF['path_html'])) {
+        return '';
+    }
+
+    $definition = $plugins[$pluginName];
+    $file = rtrim($_CONF['path_html'], '/\\') . '/' . $definition['file'];
+
+    if (!is_file($file)) {
+        return '';
+    }
+
+    return rtrim($_CONF['site_url'], '/')
+        . '/' . MONITOR_PLUGIN_ICONS_encodePath($definition['url']);
+}
+
+function MONITOR_PLUGIN_ICONS_coreRemoteUrl($pluginName)
+{
+    $pluginName = strtolower((string) $pluginName);
+    $plugins = MONITOR_PLUGIN_ICONS_corePlugins();
+
+    if (!isset($plugins[$pluginName])) {
+        return '';
+    }
+
+    return 'https://raw.githubusercontent.com/Geeklog-Core/geeklog/master/'
+        . MONITOR_PLUGIN_ICONS_encodePath($plugins[$pluginName]['source']);
+}
+
 function MONITOR_PLUGIN_ICONS_remoteManifest($owner, $repo, $branch, $refresh)
 {
     if ($owner === '' || $repo === '' || $branch === '') {
@@ -223,6 +299,11 @@ function MONITOR_PLUGIN_ICONS_resolveInstalled($pluginName, $enabled, $owner, $r
         return $local;
     }
 
+    $coreLocal = MONITOR_PLUGIN_ICONS_coreLocalUrl($pluginName);
+    if ($coreLocal !== '') {
+        return $coreLocal;
+    }
+
     if (is_array($repo)) {
         $repoName = isset($repo['name']) ? (string) $repo['name'] : '';
         $branch = isset($repo['default_branch']) ? (string) $repo['default_branch'] : '';
@@ -241,6 +322,11 @@ function MONITOR_PLUGIN_ICONS_resolveInstalled($pluginName, $enabled, $owner, $r
         if ($remote !== '') {
             return $remote;
         }
+    }
+
+    $coreRemote = MONITOR_PLUGIN_ICONS_coreRemoteUrl($pluginName);
+    if ($coreRemote !== '') {
+        return $coreRemote;
     }
 
     return MONITOR_PLUGIN_ICONS_fallbackUrl();
