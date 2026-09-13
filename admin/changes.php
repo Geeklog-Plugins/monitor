@@ -150,6 +150,12 @@ if (empty($history)) {
         $notice = '<div style="padding:10px;border:1px solid #ef9a9a;background:#fff7f7;border-radius:7px;margin-bottom:14px">'
                 . MONITOR_CHANGES_ADMIN_h($LANG_MONITOR_1['changes_capture_failed']) . '</div>';
     }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $lastSnapshot = $history[count($history) - 1];
+    $lastTimestamp = isset($lastSnapshot['timestamp']) ? (int) $lastSnapshot['timestamp'] : 0;
+    if ($lastTimestamp > 0 && $lastTimestamp <= (time() - 21600)) {
+        MONITOR_CHANGES_capture('automatic');
+    }
 }
 
 $report = MONITOR_CHANGES_report();
