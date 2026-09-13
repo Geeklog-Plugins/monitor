@@ -15,6 +15,7 @@ if (isset($_SERVER['PHP_SELF']) &&
 }
 
 require_once dirname(__FILE__) . '/MonitorCompat.php';
+require_once dirname(__FILE__) . '/MonitorMediaDiagnostics.php';
 
 /**
  * Build one normalized health result.
@@ -330,67 +331,8 @@ function MONITOR_HEALTH_oversizedImagesCheck()
         );
     }
 
-    $checked = 0;
-    $oversized = 0;
-    $largestBytes = 0;
-    $largestWidth = 0;
-    $largestHeight = 0;
-    $partial = false;
-    $extensions = array('jpg', 'jpeg', 'png', 'gif', 'webp');
-
-    try {
-        $directory = new RecursiveDirectoryIterator(
-            $root,
-            FilesystemIterator::SKIP_DOTS
-        );
-        $iterator = new RecursiveIteratorIterator(
-            $directory,
-            RecursiveIteratorIterator::LEAVES_ONLY
-        );
-
-        foreach ($iterator as $fileInfo) {
-            if ($checked >= $maxFiles) {
-                $partial = true;
-                break;
-            }
-
-            if (!$fileInfo->isFile() || $fileInfo->isLink()) {
-                continue;
-            }
-
-            $extension = strtolower($fileInfo->getExtension());
-            if (!in_array($extension, $extensions, true)) {
-                continue;
-            }
-
-            $checked++;
-            $path = $fileInfo->getPathname();
-            $size = $fileInfo->getSize();
-            $dimensions = @getimagesize($path);
-
-            if ($size > $largestBytes) {
-                $largestBytes = $size;
-            }
-
-            if ($dimensions === false) {
-                continue;
-            }
-
-            $width = isset($dimensions[0]) ? (int) $dimensions[0] : 0;
-            $height = isset($dimensions[1]) ? (int) $dimensions[1] : 0;
-
-            if ($width > $largestWidth) {
-                $largestWidth = $width;
-            }
-            if ($height > $largestHeight) {
-                $largestHeight = $height;
-            }
-
-            if ($width > $maxDimension || $height > $maxDimension || $size > $maxBytes) {
-                $oversized++;
-            }
-        }
-    } catch (Exception $e) {
+    $media = MONITOR_MEDIA_oversizedImages($maxFiles, 20);
+    if (empty($media['available'])) {
         return MONITOR_HEALTH_result(
             'images.oversized',
             'Oversized images',
@@ -398,6 +340,25 @@ function MONITOR_HEALTH_oversizedImagesCheck()
             'scan interrupted',
             'Monitor could not complete the read-only image diagnostic. Check image directory permissions.'
         );
+    }
+
+    $checked = isset($media['checked']) ? (int) $media['checked'] : 0;
+    $oversized = isset($media['total']) ? (int) $media['total'] : 0;
+    $partial = !empty($media['partial']);
+    $largestBytes = 0;
+    $largestWidth = 0;
+    $largestHeight = 0;
+
+    foreach ($media['items'] as $item) {
+        if ($item['size_bytes'] > $largestBytes) {
+            $largestBytes = $item['size_bytes'];
+        }
+        if ($item['width'] > $largestWidth) {
+            $largestWidth = $item['width'];
+        }
+        if ($item['height'] > $largestHeight) {
+            $largestHeight = $item['height'];
+        }
     }
 
     if ($checked === 0) {
@@ -419,6 +380,28 @@ function MONITOR_HEALTH_oversizedImagesCheck()
         $detail = 'Largest observed: '
                 . $largestWidth . 'x' . $largestHeight . ' px, '
                 . MONITOR_HEALTH_formatBytes($largestBytes) . '. ';
+        $locations = array();
+        foreach (array_slice($media['items'], 0, 5) as $item) {
+            $reason = array();
+            if (!empty($item['dimension_issue'])) {
+                $reason[] = $item['width'] . 'x' . $item['height'] . ' px';
+            }
+            if (!empty($item['size_issue'])) {
+                $reason[] = MONITOR_HEALTH_formatBytes($item['size_bytes']);
+            }
+            $locations[] = $item['relative_path'] . ' (' . implode(', ', $reason) . ')';
+        }
+
+        $locationText = !empty($locations)
+            ? ' Located media: ' . implode('; ', $locations) . '.'
+            : '';
+        if (!empty($media['items_truncated']) || $oversized > count($locations)) {
+            $locationText .= ' Additional oversized media exist; the diagnostic list is bounded.';
+        }
+
+        $fileManager = isset($_CONF['site_url'])
+            ? rtrim($_CONF['site_url'], '/') . '/filemanager/index.php?Type=Root'
+            : '/filemanager/index.php?Type=Root';
 
         return MONITOR_HEALTH_result(
             'images.oversized',
@@ -427,6 +410,8 @@ function MONITOR_HEALTH_oversizedImagesCheck()
             $value,
             $detail
             . 'Review images above 1600 px or 2 MiB. Monitor reports them but does not modify files automatically.'
+            . $locationText
+            . ' File Manager: ' . $fileManager
         );
     }
 
