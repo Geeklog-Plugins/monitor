@@ -123,6 +123,10 @@ function MONITOR_LOG_safeName($name)
 /**
  * Archive one active log and truncate it only after the copy succeeds.
  *
+ * Geeklog writes logs with LOCK_EX, so Monitor acquires the same exclusive
+ * lock before copying. New Geeklog writes wait until the archive copy and
+ * truncate operation are complete.
+ *
  * @param string $path
  * @param string $archiveDate
  * @return array|false
@@ -133,22 +137,36 @@ function MONITOR_LOG_archiveOne($path, $archiveDate)
         return false;
     }
 
-    $size = @filesize($path);
+    if (!MONITOR_LOG_ensureArchiveDir()) {
+        return false;
+    }
+
+    $handle = @fopen($path, 'c+');
+    if ($handle === false || !@flock($handle, LOCK_EX)) {
+        if (is_resource($handle)) {
+            @fclose($handle);
+        }
+        return false;
+    }
+
+    clearstatcache(true, $path);
+    $stat = @fstat($handle);
+    $size = is_array($stat) && isset($stat['size']) ? (int) $stat['size'] : false;
     if ($size === false) {
+        @flock($handle, LOCK_UN);
+        @fclose($handle);
         return false;
     }
 
     if ($size <= 0) {
+        @flock($handle, LOCK_UN);
+        @fclose($handle);
         return array(
             'file' => '',
             'log' => basename($path),
             'size' => 0,
             'path' => ''
         );
-    }
-
-    if (!MONITOR_LOG_ensureArchiveDir()) {
-        return false;
     }
 
     $filename = MONITOR_LOG_safeName(basename($path));
@@ -162,23 +180,26 @@ function MONITOR_LOG_archiveOne($path, $archiveDate)
     }
 
     if (!@copy($path, $archive)) {
+        @flock($handle, LOCK_UN);
+        @fclose($handle);
+        return false;
+    }
+
+    clearstatcache(true, $archive);
+    $archiveSize = @filesize($archive);
+    if ($archiveSize === false || (int) $archiveSize !== $size) {
+        @unlink($archive);
+        @flock($handle, LOCK_UN);
+        @fclose($handle);
         return false;
     }
 
     @chmod($archive, 0640);
-
-    $handle = @fopen($path, 'c+');
-    if ($handle === false) {
-        @unlink($archive);
-        return false;
-    }
-
-    $locked = @flock($handle, LOCK_EX);
-    $truncated = $locked ? @ftruncate($handle, 0) : false;
-    if ($locked) {
+    $truncated = @ftruncate($handle, 0);
+    if ($truncated) {
         @fflush($handle);
-        @flock($handle, LOCK_UN);
     }
+    @flock($handle, LOCK_UN);
     @fclose($handle);
 
     if (!$truncated) {
@@ -189,7 +210,7 @@ function MONITOR_LOG_archiveOne($path, $archiveDate)
     return array(
         'file' => basename($archive),
         'log' => $filename,
-        'size' => (int) $size,
+        'size' => $size,
         'path' => $archive
     );
 }
