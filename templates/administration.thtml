@@ -108,6 +108,11 @@
         return (index === 0 ? Math.round(value) : value.toFixed(1)) + ' ' + units[index];
     }
 
+    function label(template, total, fallback) {
+        var text = template || fallback || '';
+        return String(text).replace('%d', total);
+    }
+
     function addText(parent, text, className) {
         var node = document.createElement('div');
         if (className) {
@@ -121,11 +126,14 @@
     function renderMediaRecommendation(cell, data) {
         var total = Number(data.total) || 0;
         var items = Array.isArray(data.items) ? data.items : [];
+        var labels = data.labels || {};
 
         cell.textContent = '';
         addText(
             cell,
-            total + (total === 1 ? ' image exceeds' : ' images exceed') + ' the recommended limits.'
+            total === 1
+                ? (labels.oversized_single || '1 image exceeds the recommended limits.')
+                : label(labels.oversized_multiple, total, total + ' images exceed the recommended limits.')
         );
 
         var actions = document.createElement('div');
@@ -135,14 +143,14 @@
         var toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'monitor-media-action';
-        toggle.textContent = 'Show files (' + total + ')';
+        toggle.textContent = label(labels.show_files, total, 'Show files (' + total + ')');
         actions.appendChild(toggle);
 
         if (data.file_manager_url) {
             var manager = document.createElement('a');
             manager.className = 'monitor-media-action';
             manager.href = data.file_manager_url;
-            manager.textContent = 'Open File Manager';
+            manager.textContent = labels.open_file_manager || 'Open File Manager';
             actions.appendChild(manager);
         }
 
@@ -162,11 +170,11 @@
                 view.href = item.public_url;
                 view.target = '_blank';
                 view.rel = 'noopener noreferrer';
-                view.textContent = item.file || item.relative_path || 'View image';
+                view.textContent = item.file || item.relative_path || labels.view_image || 'View image';
                 block.appendChild(view);
             } else {
                 var strong = document.createElement('strong');
-                strong.textContent = item.file || item.relative_path || 'Image';
+                strong.textContent = item.file || item.relative_path || labels.view_image || 'Image';
                 block.appendChild(strong);
             }
 
@@ -184,15 +192,25 @@
         }
 
         if (data.items_truncated) {
-            addText(panel, 'Additional oversized images exist; the list is limited.', 'monitor-media-meta');
+            addText(
+                panel,
+                labels.more_files || 'Additional oversized images exist; the list is limited.',
+                'monitor-media-meta'
+            );
         }
         if (data.partial_scan) {
-            addText(panel, 'The filesystem scan reached its safety limit.', 'monitor-media-meta');
+            addText(
+                panel,
+                labels.partial_scan || 'The filesystem scan reached its safety limit.',
+                'monitor-media-meta'
+            );
         }
 
         toggle.addEventListener('click', function () {
             panel.hidden = !panel.hidden;
-            toggle.textContent = (panel.hidden ? 'Show files (' : 'Hide files (') + total + ')';
+            toggle.textContent = panel.hidden
+                ? label(labels.show_files, total, 'Show files (' + total + ')')
+                : label(labels.hide_files, total, 'Hide files (' + total + ')');
         });
     }
 
