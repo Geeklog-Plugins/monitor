@@ -11,6 +11,7 @@
 require_once '../../../lib-common.php';
 require_once '../../auth.inc.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorLogRotation.php';
+require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorAdminNavigation.php';
 
 if (!SEC_hasRights('monitor.admin')) {
     $display = COM_showMessageText($MESSAGE[29], $MESSAGE[30]);
@@ -57,17 +58,7 @@ $archives = MONITOR_LOG_listArchives();
 $retentionDays = MONITOR_LOG_retentionDays();
 $base = $_CONF['site_admin_url'] . '/plugins/monitor/log-archives.php';
 
-$content = '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 18px 0">'
-         . '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none" href="'
-         . MONITOR_LOG_ADMIN_h($_CONF['site_admin_url'] . '/plugins/monitor/index.php?view=overview') . '">'
-         . MONITOR_LOG_ADMIN_h($LANG_MONITOR_1['home']) . '</a>'
-         . '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none;font-weight:bold;background:#eef2f5" href="'
-         . MONITOR_LOG_ADMIN_h($base) . '">'
-         . MONITOR_LOG_ADMIN_h($LANG_MONITOR_1['log_archive_title']) . '</a>'
-         . '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none" href="'
-         . MONITOR_LOG_ADMIN_h($_CONF['site_admin_url'] . '/logviewer.php') . '">'
-         . MONITOR_LOG_ADMIN_h($LANG_MONITOR_1['view_logs']) . '</a>'
-         . '</div>';
+$content = MONITOR_ADMIN_NAV_render('log_archives');
 
 $content .= '<div style="padding:13px;border:1px solid #d7dde2;border-radius:8px;background:#fafbfc;margin-bottom:16px">'
           . MONITOR_LOG_ADMIN_h(sprintf($LANG_MONITOR_1['log_archive_intro'], $retentionDays))
