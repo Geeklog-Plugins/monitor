@@ -124,8 +124,8 @@ function plugin_upgrade_monitor()
                  . " bantype varchar(40) NOT NULL default '',"
                  . " data varchar(255) NOT NULL default '',"
                  . " created datetime NOT NULL,"
-                 . " access int(3) NOT NULL default '0',"
-                 . " KEY monitor_bantype_data (bantype, data),"
+                 . " access int(10) unsigned NOT NULL default 0,"
+                 . " KEY monitor_bantype_data (bantype, data(128)),"
                  . " KEY monitor_created (created)"
                  . ") ENGINE=InnoDB";
 
@@ -257,8 +257,8 @@ function MONITOR_upgradeSecurityTable140()
              . " bantype varchar(40) NOT NULL default '',"
              . " data varchar(255) NOT NULL default '',"
              . " created datetime NOT NULL,"
-             . " access int(3) NOT NULL default '0',"
-             . " KEY monitor_bantype_data (bantype, data),"
+             . " access int(10) unsigned NOT NULL default 0,"
+             . " KEY monitor_bantype_data (bantype, data(128)),"
              . " KEY monitor_created (created)"
              . ") ENGINE=InnoDB";
 
@@ -266,9 +266,33 @@ function MONITOR_upgradeSecurityTable140()
     }
 
     $table = $_TABLES['monitor_ban'];
+    $safeTableName = MONITOR_dbEscape($table);
 
-    /* Convert old MyISAM installations. Re-running this statement is safe. */
-    if (!DB_query("ALTER TABLE {$table} ENGINE=InnoDB", 1)) {
+    /* Avoid rebuilding an already migrated InnoDB table on every retry. */
+    $statusResult = DB_query(
+        "SHOW TABLE STATUS WHERE Name = '{$safeTableName}'",
+        1
+    );
+    if (!$statusResult) {
+        return false;
+    }
+
+    $statusRow = DB_fetchArray($statusResult);
+    $engine = is_array($statusRow) && isset($statusRow['Engine'])
+        ? $statusRow['Engine']
+        : '';
+
+    if (strcasecmp($engine, 'InnoDB') !== 0) {
+        if (!DB_query("ALTER TABLE {$table} ENGINE=InnoDB", 1)) {
+            return false;
+        }
+    }
+
+    /* Normalize the counter column used by fresh 1.4.0 installations. */
+    if (!DB_query(
+        "ALTER TABLE {$table} MODIFY access int(10) unsigned NOT NULL default 0",
+        1
+    )) {
         return false;
     }
 
@@ -288,7 +312,8 @@ function MONITOR_upgradeSecurityTable140()
 
     if (!isset($existingIndexes['monitor_bantype_data'])) {
         if (!DB_query(
-            "ALTER TABLE {$table} ADD INDEX monitor_bantype_data (bantype, data)",
+            "ALTER TABLE {$table} "
+            . "ADD INDEX monitor_bantype_data (bantype, data(128))",
             1
         )) {
             return false;
