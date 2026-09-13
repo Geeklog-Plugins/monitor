@@ -2,116 +2,82 @@
 
 /* Reminder: always indent with 4 spaces (no tabs). */
 // +---------------------------------------------------------------------------+
-// | Monitor Plugin 1.3                                                        |
+// | Monitor Plugin                                                            |
 // +---------------------------------------------------------------------------+
 // | english.php                                                               |
 // |                                                                           |
 // | English language file                                                     |
 // +---------------------------------------------------------------------------+
-// | Copyright (C) 2014-2016 by the following authors:                         |
-// |                                                                           |
-// | Authors: Ben - ben AT geeklog DOT fr                                      |
-// +---------------------------------------------------------------------------+
-// | Created with the Geeklog Plugin Toolkit.                                  |
-// +---------------------------------------------------------------------------+
-// |                                                                           |
-// | This program is free software; you can redistribute it and/or             |
-// | modify it under the terms of the GNU General Public License               |
-// | as published by the Free Software Foundation; either version 2            |
-// | of the License, or (at your option) any later version.                    |
-// |                                                                           |
-// | This program is distributed in the hope that it will be useful,           |
-// | but WITHOUT ANY WARRANTY; without even the implied warranty of            |
-// | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             |
-// | GNU General Public License for more details.                              |
-// |                                                                           |
-// | You should have received a copy of the GNU General Public License         |
-// | along with this program; if not, write to the Free Software Foundation,   |
-// | Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.           |
-// |                                                                           |
-// +---------------------------------------------------------------------------+
 
 /**
-* @package Monitor
-*/
+ * @package Monitor
+ */
 
-/**
-* Import Geeklog plugin messages for reuse
-*
-* @global array $LANG32
-*/
 global $LANG32;
 
-// +---------------------------------------------------------------------------+
-// | Array Format:                                                             |
-// | $LANGXX[YY]:  $LANG - variable name                                       |
-// |               XX    - specific array name                                 |
-// |               YY    - phrase id or number                                 |
-// +---------------------------------------------------------------------------+
-
 $LANG_MONITOR_1 = array(
-    'plugin_name'         => 'Monitor',
-    'home'                => 'Home', // change 1.3.0
-    'view_clear_logs'     => 'View/Clear the Log Files',
-    'file'                => 'File:',
-    'log_file'            => 'Log file :',
-    'view_logs'           => 'View logs',
-    'clear_logs'          => 'Clear logs',
-    'images_folder'       => 'Images from public_html/images folder',
-    'resize'              => 'Resize images',
-    'resize_images'       => 'Resize all images',
-    'resize_images_help'  => 'Monitor plugin can resize pictures bigger than 1600px from your public_html/images folder. The width-height ratio will be kept. ',
-    'no_images_to_resize' => 'There is no image bigger than 1600px',
-    'change_user_photo'   => 'Change user photo',
-    'comments'            => 'Comments',
-    'comments_list'       => 'Comments list',
-    'anonymous'           => 'Anonymous',
-    'configuration'       => 'Configuration',
-    'images'              => 'Images',
-    'images_list'         => 'Images list',
-    'main'                => 'Monitor main page',
-    'logs'                => 'Log files',
-    'updates'             => 'Updates',
-    'available_updates'   => 'Available updates from:',
-    'plugin_list'         => 'Plugin updates',
-    'no_update'           => 'This plugin can not be updated',
-    'up_to_date'          => 'This plugin is already up to date',
-    'update_to'           => 'Update to',
-    'need_upgrade'        => 'You need to upgrade to Geeklog v',
-    'before_update'       => 'before you can update to',
-    'not_available'       => 'Plugin not avaible in this repository',
-    'ask_author'          => 'This plugin do not support this feature. Ask his author to change this.',
-    'github_limit'        => 'The rate limit on github allows you to make up to 60 requests per hour. Remaining is:',
+    'plugin_name'             => 'Monitor',
+    'home'                    => 'Overview',
+    'health'                  => 'Health',
+    'security'                => 'Security',
+    'view_clear_logs'         => 'Log files',
+    'file'                    => 'File:',
+    'log_file'                => 'Log file:',
+    'view_logs'               => 'View logs',
+    'clear_logs'              => 'Clear logs',
+    'images_folder'           => 'Images from public_html/images folder',
+    'resize'                  => 'Resize images',
+    'resize_images'           => 'Resize all images',
+    'resize_images_help'      => 'Monitor can identify local images larger than 1600px. Image modification should only be performed through an explicit administrator action.',
+    'no_images_to_resize'     => 'There is no image bigger than 1600px',
+    'change_user_photo'       => 'Change user photo',
+    'comments'                => 'Comments',
+    'comments_list'           => 'Comments list',
+    'anonymous'               => 'Anonymous',
+    'configuration'           => 'Configuration',
+    'images'                  => 'Images',
+    'images_list'             => 'Images list',
+    'main'                    => 'Site health overview',
+    'logs'                    => 'Log files',
+    'updates'                 => 'Updates',
+    'available_updates'       => 'Available updates from:',
+    'plugin_list'             => 'Plugin updates',
+    'no_update'               => 'This plugin cannot be updated by Monitor',
+    'up_to_date'              => 'This plugin is already up to date',
+    'update_to'               => 'Update to',
+    'need_upgrade'            => 'You need to upgrade to Geeklog v',
+    'before_update'           => 'before you can update to',
+    'not_available'           => 'Plugin not available in this repository',
+    'ask_author'              => 'This plugin does not expose compatible update information.',
+    'github_limit'            => 'GitHub API requests remaining:',
+    'status'                  => 'Status',
+    'check'                   => 'Check',
+    'value'                   => 'Value',
+    'recommendation'          => 'Recommendation',
+    'health_ok'               => 'OK',
+    'health_info'             => 'Info',
+    'health_warning'          => 'Warning',
+    'health_error'            => 'Error',
+    'security_observations'   => 'Security observations',
+    'ban_integration'         => 'Ban integration',
+    'legacy_ban_notice'       => 'Monitor 1.4.0 keeps legacy ban data readable but no longer expands its own general-purpose automatic ban engine.',
+    'read_only_advice'        => 'Monitor observes and recommends by default. Changes require an explicit administrator action.'
 );
 
 // Messages for the plugin upgrade
-$PLG_monitor_MESSAGE3002 = $LANG32[9]; // "requires a newer version of Geeklog"
+$PLG_monitor_MESSAGE3002 = $LANG32[9];
 
-/*
-**
-*   Configuration system subgroup strings
-*   @global array $LANG_configsubgroups['monitor']
-*/
 $LANG_configsubgroups['monitor'] = array(
     'sg_main' => 'Main Settings'
 );
 
-/**
-*   Configuration system fieldset names
-*   @global array $LANG_fs['monitor']
-*/
 $LANG_fs['monitor'] = array(
-    'fs_main'            => 'General Settings'
- );
- 
-/**
-*   Configuration system prompt strings
-*   @global array $LANG_confignames['monitor']
-*/
+    'fs_main' => 'General Settings'
+);
+
 $LANG_confignames['monitor'] = array(
-    //Main settings
-    'emails'  => 'List of emails to send the logs to (separated with a coma if more than one email is needed)',
-    'repository'  => 'Name of the repository owner you want to use for plugins updates on Github (default is Geeklog-Plugins). Leave blank to disable this feature.'
-)
+    'emails' => 'List of email addresses for optional Monitor notifications (comma-separated)',
+    'repository' => 'GitHub repository owner used for update metadata (default: Geeklog-Plugins). Leave blank to disable remote update checks.'
+);
 
 ?>
