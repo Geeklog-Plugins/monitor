@@ -54,6 +54,16 @@ $LANG_MONITOR_1 = array(
     'security_no_observations' => 'No recent security observations.',
     'read_only_advice'      => 'Monitor observes and recommends by default. Changes require an explicit administrator action.',
 
+    // Media diagnostics
+    'media_oversized_single' => '1 image exceeds the recommended limits.',
+    'media_oversized_multiple' => '%d images exceed the recommended limits.',
+    'media_show_files' => 'Show files (%d)',
+    'media_hide_files' => 'Hide files (%d)',
+    'media_open_file_manager' => 'Open File Manager',
+    'media_view_image' => 'View image',
+    'media_more_files' => 'Additional oversized images exist; the list is limited.',
+    'media_partial_scan' => 'The filesystem scan reached its safety limit.',
+
     // Daily log archives
     'log_archive_title' => 'Log archives',
     'log_archive_intro' => 'Monitor rotates Geeklog .log files daily and keeps the last %d days of archives.',
