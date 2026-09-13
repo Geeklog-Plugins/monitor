@@ -46,6 +46,25 @@ $fileManager = isset($_CONF['site_url'])
     ? rtrim($_CONF['site_url'], '/') . '/filemanager/index.php'
     : '/filemanager/index.php';
 
+$labels = array(
+    'oversized_single' => isset($LANG_MONITOR_1['media_oversized_single'])
+        ? $LANG_MONITOR_1['media_oversized_single'] : '1 image exceeds the recommended limits.',
+    'oversized_multiple' => isset($LANG_MONITOR_1['media_oversized_multiple'])
+        ? $LANG_MONITOR_1['media_oversized_multiple'] : '%d images exceed the recommended limits.',
+    'show_files' => isset($LANG_MONITOR_1['media_show_files'])
+        ? $LANG_MONITOR_1['media_show_files'] : 'Show files (%d)',
+    'hide_files' => isset($LANG_MONITOR_1['media_hide_files'])
+        ? $LANG_MONITOR_1['media_hide_files'] : 'Hide files (%d)',
+    'open_file_manager' => isset($LANG_MONITOR_1['media_open_file_manager'])
+        ? $LANG_MONITOR_1['media_open_file_manager'] : 'Open File Manager',
+    'view_image' => isset($LANG_MONITOR_1['media_view_image'])
+        ? $LANG_MONITOR_1['media_view_image'] : 'View image',
+    'more_files' => isset($LANG_MONITOR_1['media_more_files'])
+        ? $LANG_MONITOR_1['media_more_files'] : 'Additional oversized images exist; the list is limited.',
+    'partial_scan' => isset($LANG_MONITOR_1['media_partial_scan'])
+        ? $LANG_MONITOR_1['media_partial_scan'] : 'The filesystem scan reached its safety limit.'
+);
+
 echo json_encode(array(
     'ok' => !empty($media['available']),
     'checked' => isset($media['checked']) ? (int) $media['checked'] : 0,
@@ -55,5 +74,6 @@ echo json_encode(array(
     'items' => $items,
     'file_manager_url' => $fileManager,
     'threshold_dimension' => 1600,
-    'threshold_bytes' => 2 * 1024 * 1024
+    'threshold_bytes' => 2 * 1024 * 1024,
+    'labels' => $labels
 ));
