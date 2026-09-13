@@ -1,59 +1,27 @@
 <?php
 
-/* Reminder: always indent with 4 spaces (no tabs). */
-// +---------------------------------------------------------------------------+
-// | Monitor Plugin 1.3                                                        |
-// +---------------------------------------------------------------------------+
-// | autoinstall.php                                                           |
-// |                                                                           |
-// | This file provides helper functions for the automatic plugin install.     |
-// +---------------------------------------------------------------------------+
-// | Copyright (C) 2014-2016 by the following authors:                         |
-// |                                                                           |
-// | Authors: Ben - ben AT geeklog DOT fr                                      |
-// +---------------------------------------------------------------------------+
-// | Created with the Geeklog Plugin Toolkit.                                  |
-// +---------------------------------------------------------------------------+
-// |                                                                           |
-// | This program is free software; you can redistribute it and/or             |
-// | modify it under the terms of the GNU General Public License               |
-// | as published by the Free Software Foundation; either version 2            |
-// | of the License, or (at your option) any later version.                    |
-// |                                                                           |
-// | This program is distributed in the hope that it will be useful,           |
-// | but WITHOUT ANY WARRANTY; without even the implied warranty of            |
-// | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             |
-// | GNU General Public License for more details.                              |
-// |                                                                           |
-// | You should have received a copy of the GNU General Public License         |
-// | along with this program; if not, write to the Free Software Foundation,   |
-// | Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.           |
-// |                                                                           |
-// +---------------------------------------------------------------------------+
-
 /**
-* @package Monitor
-*/
+ * Monitor plugin autoinstall helpers.
+ *
+ * Compatibility target for Monitor 1.4.0:
+ * - Geeklog 2.1.1 through 2.2.2
+ * - PHP 5.6 through 8.1
+ *
+ * @package Monitor
+ */
 
-/**
-* Plugin autoinstall function
-*
-* @param    string  $pi_name    Plugin name
-* @return   array               Plugin information
-*
-*/
 function plugin_autoinstall_monitor($pi_name)
 {
-    $pi_name         = 'monitor';
+    $pi_name = 'monitor';
     $pi_display_name = 'Monitor';
-    $pi_admin        = $pi_display_name . ' Admin';
+    $pi_admin = $pi_display_name . ' Admin';
 
     $info = array(
         'pi_name'         => $pi_name,
         'pi_display_name' => $pi_display_name,
-        'pi_version'      => '1.3.1',
-        'pi_gl_version'   => '1.8.0',
-        'pi_homepage'     => 'http://geeklog.fr'
+        'pi_version'      => '1.4.0',
+        'pi_gl_version'   => '2.1.1',
+        'pi_homepage'     => 'https://github.com/hostellerie/monitor'
     );
 
     $groups = array(
@@ -62,27 +30,24 @@ function plugin_autoinstall_monitor($pi_name)
     );
 
     $features = array(
-        $pi_name . '.admin'    => 'Full access to ' . $pi_display_name
-                                  . ' plugin'
+        $pi_name . '.admin' => 'Full access to ' . $pi_display_name . ' plugin'
     );
 
     $mappings = array(
-        $pi_name . '.admin'     => array($pi_admin)
+        $pi_name . '.admin' => array($pi_admin)
     );
 
     $tables = array(
-	    'monitor_ban'
+        'monitor_ban'
     );
 
-    $inst_parms = array(
-        'info'      => $info,
-        'groups'    => $groups,
-        'features'  => $features,
-        'mappings'  => $mappings,
-        'tables'    => $tables
+    return array(
+        'info'     => $info,
+        'groups'   => $groups,
+        'features' => $features,
+        'mappings' => $mappings,
+        'tables'   => $tables
     );
-
-    return $inst_parms;
 }
 
 function plugin_load_configuration_monitor($pi_name)
@@ -98,17 +63,25 @@ function plugin_load_configuration_monitor($pi_name)
 }
 
 /**
-* Check if the plugin is compatible with this Geeklog version
-*
-* @param    string  $pi_name    Plugin name
-* @return   boolean             true: plugin compatible; false: not compatible
-*
-*/
+ * Check runtime compatibility before installation or upgrade.
+ *
+ * Monitor 1.4.0 deliberately uses the common PHP subset supported by PHP 5.6
+ * through PHP 8.1. Future PHP versions may work but are not claimed here until
+ * tested. We reject versions older than the supported baseline and Geeklog
+ * versions older than 2.1.1.
+ *
+ * @param string $pi_name
+ * @return bool
+ */
 function plugin_compatible_with_this_version_monitor($pi_name)
 {
-    // add checks here
+    if (version_compare(PHP_VERSION, '5.6.0', '<')) {
+        return false;
+    }
+
+    if (defined('VERSION') && COM_versionCompare(VERSION, '2.1.1', '<')) {
+        return false;
+    }
 
     return true;
 }
-
-?>
