@@ -1,6 +1,6 @@
 # Monitor 1.4.0 Upgrade Validation
 
-This document defines the validation procedure for the Monitor 1.4.0 stabilization phase.
+This document defines the validation procedure for the Monitor 1.4.0 stabilization phase and records the current validation status.
 
 The objective is to verify the modernization baseline before adding further features.
 
@@ -10,7 +10,24 @@ The objective is to verify the modernization baseline before adding further feat
 - PHP 5.6 through 8.1
 - MySQL/MariaDB installations supported by the current Monitor schema
 
-The GitHub workflow performs syntax checks on PHP 5.6 and PHP 8.1 and guards against a small set of known unsafe historical patterns. Runtime upgrade testing still needs a real Geeklog installation and database.
+The GitHub workflow performs syntax checks on PHP 5.6 and PHP 8.1 and guards against known unsafe or incompatible historical patterns.
+
+### Current validated status — September 2026
+
+The following have been validated successfully:
+
+- Monitor installation/runtime on Geeklog 2.1.1;
+- Monitor administration pages on Geeklog 2.2.2;
+- Monitor Configuration page on Geeklog 2.2.2 with Root Debugging enabled;
+- Geeklog 2.2.x rendering through `COM_createHTMLDocument()`;
+- native configuration hierarchy compatible with the official Polls plugin;
+- repair of malformed persisted Monitor configuration rows created during early 1.4.0 development;
+- PHP 5.6 lint workflow;
+- PHP 8.1 lint workflow;
+- security/API regression guard;
+- installable distribution archive generation.
+
+The configuration API rules discovered during this validation have been incorporated into the Geeklog development memorandum.
 
 ---
 
@@ -20,7 +37,7 @@ Before testing an existing Monitor installation, back up:
 
 - the Geeklog database;
 - the current Monitor plugin directory;
-- the Geeklog log files if they are needed for comparison.
+- Geeklog log files if they are needed for comparison.
 
 Do not use a production site as the first upgrade test.
 
@@ -56,6 +73,29 @@ monitor_created (created)
 
 The legacy table exists only for migration compatibility and short-lived Monitor security observations. It is not the future replacement for the dedicated Ban plugin.
 
+### Native Geeklog configuration structure
+
+A fresh 1.4.0 installation must create the configuration hierarchy using the same pattern as official Geeklog plugins such as Polls:
+
+```text
+sg_main
+  -> tab_main
+      -> fs_main
+          -> emails
+          -> repository
+```
+
+For fields such as `emails` and `repository`, which use the `text` type and no selection list, the `selection_array` argument passed to `config::add()` must be `NULL`.
+
+Do not pass `0` for an absent selection array. In Geeklog 2.2.2, a numeric value is treated as an index into `$LANG_configselects`, which can produce `Undefined array key 0` in `_get_extended()`.
+
+The final argument of `config::add()` is the **tab id**, not the subgroup.
+
+### Status
+
+- [x] Fresh Monitor 1.4.0 configuration structure corrected to the Polls/core pattern.
+- [x] Configuration page validated on Geeklog 2.2.2.
+
 ---
 
 ## 3. Upgrade test: Monitor 1.3.1 -> 1.4.0
@@ -82,9 +122,55 @@ Expected results:
 
 ---
 
-## 4. Interrupted/retry test
+## 4. Existing early 1.4.0 configuration repair
 
-The 1.4.0 migration is designed to be retryable.
+Some development builds of Monitor 1.4.0 could persist malformed configuration rows before the final Geeklog 2.2.2 configuration rules were identified.
+
+Typical symptoms under Root Debugging were:
+
+```text
+Undefined array key "monitor"
+```
+
+from `_UI_autocomplete_data()`, or:
+
+```text
+Undefined array key 0
+```
+
+from `_get_extended()` in `config.class.php`.
+
+The causes were:
+
+- incomplete configuration language metadata;
+- missing `tab_main` hierarchy;
+- numeric `$LANG_tab['monitor'][0]` instead of symbolic `tab_main`;
+- `selectionArray = 0` on text fields with no selection list.
+
+Monitor now includes a compatibility repair for Geeklog 2.2.x which, when necessary, normalizes the active site's persisted Monitor configuration before the configuration UI is built.
+
+Expected repairs include:
+
+```text
+create tab_main when missing
+emails.selectionArray      -> -1
+repository.selectionArray  -> -1
+emails.tab                 -> 0
+repository.tab             -> 0
+```
+
+The repair is idempotent and site-scoped.
+
+### Status
+
+- [x] Existing malformed 1.4.0 configuration repaired successfully on Geeklog 2.2.2.
+- [x] Monitor Configuration loads without the previous PHP warnings.
+
+---
+
+## 5. Interrupted/retry test
+
+The 1.4.0 database migration is designed to be retryable.
 
 Where practical on a disposable test installation:
 
@@ -97,9 +183,13 @@ Where practical on a disposable test installation:
 
 Expected result: the second run completes without requiring manual cleanup of already completed migration steps.
 
+### Status
+
+- [ ] Deliberate interrupted/retry test still to be performed.
+
 ---
 
-## 5. Dashboard smoke test
+## 6. Dashboard and configuration smoke test
 
 After upgrade, open the Monitor administration page.
 
@@ -112,13 +202,21 @@ Verify:
 - disk-space check fails gracefully if unavailable;
 - Monitor code and DB versions both show 1.4.0;
 - Ban integration is informational when Ban is absent;
-- Ban integration reports availability when Ban is enabled;
 - Plugins view is read-only;
-- no plugin installation/update is triggered from Monitor.
+- no plugin installation/update is triggered from Monitor;
+- Monitor Configuration opens without PHP warnings;
+- the Configuration page displays `emails` and `repository` under the main tab/fieldset.
+
+### Runtime validation recorded
+
+- [x] Geeklog 2.1.1 Monitor runtime validated.
+- [x] Geeklog 2.2.2 Monitor admin runtime validated.
+- [x] Geeklog 2.2.2 Configuration page validated after config compatibility fixes.
+- [x] Removed `COM_siteHeader()` / `COM_siteFooter()` usage no longer breaks Geeklog 2.2.2.
 
 ---
 
-## 6. Log viewer test
+## 7. Log viewer test
 
 Verify that:
 
@@ -129,9 +227,31 @@ Verify that:
 - clearing a log requires an administrator POST with a valid Geeklog CSRF token;
 - a failed token leaves the file unchanged.
 
+The current implementation is designed around these constraints. A full manual adversarial log-viewer test should remain part of final release validation.
+
 ---
 
-## 7. Legacy Monitor security behaviour
+## 8. Image diagnostic test
+
+Monitor 1.4.0 no longer embeds an image resizing engine.
+
+The image health check is diagnostic only.
+
+Verify that:
+
+- JPEG/JPG, PNG, GIF and WebP files can be inspected;
+- symlinks are skipped;
+- no image is modified;
+- scan work is bounded to the configured implementation limit (currently 2,000 supported image files per dashboard scan);
+- large dimensions and large files produce warnings rather than mutations;
+- invalid/unreadable files fail gracefully;
+- missing/unreadable image directories produce informational output rather than fatal errors.
+
+Monitor should recommend remediation but must not silently resize or convert source images.
+
+---
+
+## 9. Legacy Monitor security behaviour
 
 Monitor 1.4.0 deliberately reduces its historical ban role.
 
@@ -148,7 +268,7 @@ Verify that:
 
 ---
 
-## 8. Ban integration smoke test
+## 10. Ban integration smoke test
 
 When the Ban plugin is enabled:
 
@@ -159,9 +279,14 @@ When the Ban plugin is enabled:
 
 When Ban is absent, Monitor must continue to operate normally.
 
+### Status
+
+- [x] Ban-absent behaviour is part of the normal Monitor path.
+- [ ] Dedicated Ban-present runtime test still required.
+
 ---
 
-## 9. Scheduled-task test
+## 11. Scheduled-task test
 
 Run the Geeklog scheduled task containing Monitor.
 
@@ -173,9 +298,15 @@ Verify:
 - the task does not send/delete entire logs automatically;
 - the task completes without PHP warnings on supported PHP versions.
 
+Also review the operational cost of running `CHECK TABLE ... FAST` across the active site's table list. This should remain diagnostic, bounded and should not become an expensive routine merely because Monitor is installed.
+
+### Status
+
+- [ ] Full scheduled-task runtime validation still required.
+
 ---
 
-## 10. Shared-files / multisite test
+## 12. Shared-files / multisite test
 
 When available, use two Geeklog sites sharing the same Monitor plugin files but using separate databases/configurations.
 
@@ -201,24 +332,58 @@ Confirm site B remains operational and that upgrading site A does not modify sit
 
 Then upgrade site B and confirm both sites operate normally.
 
+The configuration self-repair must also remain active-site scoped: opening Monitor Configuration on one site must not modify another site's `conf_values` table.
+
+### Status
+
+- [ ] Two-site shared-files runtime test still required.
+
 ---
 
-## 11. Release gate for stabilization
+## 13. Distribution archive validation
 
-Before moving the development focus to new Monitor features, all of these should be true:
+The repository workflow generates:
 
-- [ ] PHP 5.6 syntax workflow passes;
-- [ ] PHP 8.1 syntax workflow passes;
-- [ ] security regression guard passes;
-- [ ] fresh installation succeeds;
-- [ ] 1.3.1 -> 1.4.0 upgrade succeeds;
-- [ ] retry after a simulated migration failure succeeds;
-- [ ] dashboard smoke test succeeds;
-- [ ] log viewer/CSRF test succeeds;
-- [ ] legacy security transition behaves as documented;
-- [ ] Ban absent test succeeds;
-- [ ] Ban present test succeeds;
-- [ ] scheduled task test succeeds;
-- [ ] shared-files test succeeds where a multisite test environment is available.
+```text
+dist/monitor_1.4.0_2.1.1.zip
+```
 
-Once this gate is satisfied, feature work can resume from `ROADMAP.md` without mixing new capabilities into unresolved migration/runtime issues.
+Verify that:
+
+- the archive has a top-level `monitor/` directory as expected by the Geeklog plugin installer;
+- no filename or directory component begins with `.`;
+- required plugin files are present;
+- the ZIP passes `unzip -t`;
+- the archive can be uploaded through Geeklog's plugin installer;
+- the archive committed under `dist/` corresponds to the current source branch.
+
+### Status
+
+- [x] Build workflow passes.
+- [x] Archive validation passes.
+- [x] Archive committed to `dist/`.
+- [x] Workflow artifact also published.
+
+---
+
+## 14. Release gate for stabilization
+
+Before moving the development focus fully to new Monitor features, the current status is:
+
+- [x] PHP 5.6 syntax workflow passes;
+- [x] PHP 8.1 syntax workflow passes;
+- [x] security/API regression guard passes;
+- [x] Monitor operates on Geeklog 2.1.1;
+- [x] Monitor admin operates on Geeklog 2.2.2;
+- [x] Geeklog 2.2.2 Configuration UI works without the two previously identified configuration warnings;
+- [x] native configuration structure follows the official Polls/core pattern;
+- [x] malformed early-1.4.0 configuration can self-repair safely on the active Geeklog 2.2.x site;
+- [x] distribution archive build succeeds;
+- [x] TimThumb and obsolete image-resize implementation are removed;
+- [x] legacy automatic permanent-ban expansion is removed;
+- [ ] deliberate database migration failure/retry test succeeds;
+- [ ] dedicated Ban-present runtime test succeeds;
+- [ ] full scheduled-task test succeeds;
+- [ ] two-site shared-files test succeeds.
+
+These remaining tests should be treated as release-hardening tasks, not as reasons to reopen already validated Geeklog 2.1.1/2.2.2 configuration compatibility work.
