@@ -1,0 +1,85 @@
+name: Build installable archive
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - monitor-1.4.0
+    paths-ignore:
+      - 'dist/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build monitor_1.4.0_2.1.1.zip
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Prepare installable plugin tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf package dist
+          mkdir -p package/monitor dist
+
+          rsync -a ./ package/monitor/ \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude 'package/' \
+            --exclude 'dist/'
+
+      - name: Validate package structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f package/monitor/autoinstall.php
+          test -f package/monitor/functions.inc
+          test -f package/monitor/install_defaults.php
+          test -f package/monitor/admin/index.php
+          test -f package/monitor/sql/mysql_install.php
+          test -f package/monitor/templates/administration.thtml
+          test -f package/monitor/lib/MonitorHealth.php
+
+      - name: Build ZIP in dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd package
+            zip -r -9 ../dist/monitor_1.4.0_2.1.1.zip monitor
+          )
+
+      - name: Validate ZIP contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE='dist/monitor_1.4.0_2.1.1.zip'
+          test -s "$ARCHIVE"
+          unzip -t "$ARCHIVE"
+          unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/autoinstall.php'
+          unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/functions.inc'
+          unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/admin/index.php'
+          unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/sql/mysql_install.php'
+          if unzip -Z1 "$ARCHIVE" | grep -q '^monitor/.github/'; then
+            echo 'Error: .github must not be included in the installable archive.' >&2
+            exit 1
+          fi
+
+      - name: Show distribution
+        shell: bash
+        run: |
+          ls -lh dist/
+          sha256sum dist/monitor_1.4.0_2.1.1.zip
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitor_1.4.0_2.1.1-dist
+          path: dist/monitor_1.4.0_2.1.1.zip
+          if-no-files-found: error
+          retention-days: 30
