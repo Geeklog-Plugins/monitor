@@ -14,6 +14,7 @@ require_once '../../auth.inc.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorBanAdapter.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorHealth.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorPluginCatalog.php';
+require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorAdminNavigation.php';
 
 if (!SEC_hasRights('monitor.admin')) {
     $display = COM_showMessageText($MESSAGE[29], $MESSAGE[30]);
@@ -56,56 +57,6 @@ function MONITOR_ADMIN_statusLabel($status)
          . $styles[$status] . '">'
          . MONITOR_ADMIN_h($map[$status])
          . '</span>';
-}
-
-function MONITOR_ADMIN_navigation($active)
-{
-    global $_CONF, $LANG_MONITOR_1;
-
-    $base = $_CONF['site_admin_url'] . '/plugins/monitor/index.php';
-    $items = array(
-        'overview' => $LANG_MONITOR_1['home'],
-        'changes' => $LANG_MONITOR_1['changes'],
-        'security' => $LANG_MONITOR_1['security'],
-        'plugins' => $LANG_MONITOR_1['updates']
-    );
-
-    $html = '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 18px 0">';
-
-    foreach ($items as $key => $label) {
-        if ($key === 'changes') {
-            $url = $_CONF['site_admin_url'] . '/plugins/monitor/changes.php';
-        } else {
-            $url = $base . '?view=' . rawurlencode($key);
-        }
-        $style = 'display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none;';
-        if ($key === $active) {
-            $style .= 'font-weight:bold;background:#eef2f5;';
-        }
-
-        $html .= '<a style="' . $style . '" href="' . MONITOR_ADMIN_h($url) . '">'
-              . MONITOR_ADMIN_h($label) . '</a>';
-    }
-
-    $html .= '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none" href="'
-          . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/plugins/monitor/log-archives.php')
-          . '">' . MONITOR_ADMIN_h($LANG_MONITOR_1['log_archive_title']) . '</a>';
-
-    $html .= '<a style="display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;border-radius:5px;text-decoration:none" href="'
-          . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/logviewer.php')
-          . '">Geeklog logs</a>';
-
-    $html .= '<form style="display:inline" action="'
-          . MONITOR_ADMIN_h($_CONF['site_admin_url'] . '/configuration.php')
-          . '" method="post">'
-          . '<input type="hidden" name="conf_group" value="monitor">'
-          . '<button type="submit" style="padding:7px 11px">'
-          . MONITOR_ADMIN_h($LANG_MONITOR_1['configuration'])
-          . '</button></form>';
-
-    $html .= '</div>';
-
-    return $html;
 }
 
 function MONITOR_ADMIN_summaryCard($label, $value, $kind)
@@ -623,7 +574,7 @@ if (!in_array($requestedView, $allowedViews, true)) {
     $requestedView = 'overview';
 }
 
-$content = MONITOR_ADMIN_navigation($requestedView);
+$content = MONITOR_ADMIN_NAV_render($requestedView);
 
 switch ($requestedView) {
     case 'security':
