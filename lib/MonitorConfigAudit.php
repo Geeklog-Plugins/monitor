@@ -99,15 +99,6 @@ function MONITOR_CONFIG_AUDIT_pathState($key, $value)
     return array('checked' => true, 'exists' => file_exists($value));
 }
 
-/**
- * Compare only keys explicitly assigned in the active siteconfig.php.
- *
- * Database-only Core configuration is deliberately outside the primary scope:
- * this audit exists to reveal when siteconfig.php masks or diverges from an
- * equivalent value stored in conf_values.
- *
- * @return array
- */
 function MONITOR_CONFIG_AUDIT_collect()
 {
     global $_CONF, $_TABLES;
@@ -126,7 +117,6 @@ function MONITOR_CONFIG_AUDIT_collect()
     }
 
     $siteKeys = MONITOR_CONFIG_AUDIT_siteconfigKeys($siteconfigPath);
-
     $dbValues = array();
     $result = DB_query(
         "SELECT name, value, type, subgroup, tab "
@@ -160,7 +150,7 @@ function MONITOR_CONFIG_AUDIT_collect()
     $summary = array(
         'issues' => 0,
         'review' => 0,
-        'expected' => 0,
+        'normal' => 0,
         'invalid_paths' => 0,
         'redacted' => 0
     );
@@ -194,7 +184,6 @@ function MONITOR_CONFIG_AUDIT_collect()
             $actionKey = 'config_audit_action_db_unset';
         } elseif ($dbExists && $siteValue === $dbValue) {
             $status = 'identical';
-            $level = 'ok';
         } elseif ($dbExists) {
             $status = 'different';
             $level = 'review';
@@ -202,7 +191,6 @@ function MONITOR_CONFIG_AUDIT_collect()
             $actionKey = 'config_audit_action_different';
         } elseif (in_array($key, $fileOnlyNormal, true)) {
             $status = 'core_file';
-            $level = 'ok';
             $whyKey = 'config_audit_why_core_file';
         } else {
             $status = 'file_only';
@@ -222,10 +210,10 @@ function MONITOR_CONFIG_AUDIT_collect()
 
         if ($level === 'warning') {
             $summary['issues']++;
-        } elseif ($level === 'review' || $level === 'info') {
+        } elseif ($level === 'review') {
             $summary['review']++;
         } else {
-            $summary['expected']++;
+            $summary['normal']++;
         }
 
         $sql = '';
