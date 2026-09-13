@@ -66,6 +66,11 @@ $LANG_MONITOR_1 = array(
     'log_archive_view' => 'View',
     'log_archive_download' => 'Download',
     'log_archive_preview_limited' => 'This preview shows only the most recent 512 KiB of the archive. Download the file to retrieve the complete daily log.',
+    'log_email_title' => 'Daily log summary',
+    'log_email_lines' => 'Lines scanned',
+    'log_email_issue_lines' => 'Error/warning lines',
+    'log_email_top_patterns' => 'Top error.log patterns',
+    'log_email_no_activity' => 'No non-empty Geeklog log was archived for this day.',
 
     // Changes monitor
     'changes' => 'Changes',
