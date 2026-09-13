@@ -75,11 +75,9 @@ function MONITOR_CONFIG_ADMIN_statusText($status)
         'invalid_path' => 'config_audit_status_invalid_path'
     );
 
-    if (!isset($map[$status]) || !isset($LANG_MONITOR_1[$map[$status]])) {
-        return $status;
-    }
-
-    return $LANG_MONITOR_1[$map[$status]];
+    return isset($map[$status], $LANG_MONITOR_1[$map[$status]])
+        ? $LANG_MONITOR_1[$map[$status]]
+        : $status;
 }
 
 function MONITOR_CONFIG_ADMIN_levelText($level)
@@ -93,42 +91,25 @@ function MONITOR_CONFIG_ADMIN_levelText($level)
         'warning' => 'config_audit_level_warning'
     );
 
-    if (!isset($map[$level]) || !isset($LANG_MONITOR_1[$map[$level]])) {
-        return $level;
-    }
-
-    return $LANG_MONITOR_1[$map[$level]];
+    return isset($map[$level], $LANG_MONITOR_1[$map[$level]])
+        ? $LANG_MONITOR_1[$map[$level]]
+        : $level;
 }
 
-function MONITOR_CONFIG_ADMIN_card($row)
+function MONITOR_CONFIG_ADMIN_attentionCard($row)
 {
     global $LANG_MONITOR_1;
 
-    $level = isset($row['level']) ? $row['level'] : 'info';
-    $border = '#d7dde2';
-    $background = '#fff';
-
-    if ($level === 'warning') {
-        $border = '#ef9a9a';
-        $background = '#fff7f7';
-    } elseif ($level === 'review') {
-        $border = '#ffe082';
-        $background = '#fffaf0';
-    } elseif ($level === 'ok') {
-        $border = '#a5d6a7';
-        $background = '#f4fbf5';
-    } elseif ($level === 'info') {
-        $border = '#90caf9';
-        $background = '#f5faff';
-    }
-
+    $level = isset($row['level']) ? $row['level'] : 'review';
+    $border = ($level === 'warning') ? '#ef9a9a' : '#ffe082';
+    $background = ($level === 'warning') ? '#fff7f7' : '#fffaf0';
     $statusText = MONITOR_CONFIG_ADMIN_statusText($row['status']);
     $levelText = MONITOR_CONFIG_ADMIN_levelText($level);
     $whyText = isset($LANG_MONITOR_1[$row['why_key']]) ? $LANG_MONITOR_1[$row['why_key']] : '';
     $actionText = isset($LANG_MONITOR_1[$row['action_key']]) ? $LANG_MONITOR_1[$row['action_key']] : '';
 
     $html = '<section style="border:1px solid ' . $border . ';background:' . $background
-          . ';border-radius:8px;padding:14px;margin:0 0 12px 0">';
+          . ';border-radius:8px;padding:13px;margin:0 0 12px 0">';
 
     $html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center">'
           . '<strong><code>' . MONITOR_CONFIG_ADMIN_h($row['key']) . '</code></strong>'
@@ -136,60 +117,39 @@ function MONITOR_CONFIG_ADMIN_card($row)
           . MONITOR_CONFIG_ADMIN_h($levelText . ' — ' . $statusText)
           . '</span></div>';
 
-    $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px">';
-
-    $html .= '<div><div style="font-size:.9em;color:#666">'
-          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_source_siteconfig'])
-          . '</div><pre style="white-space:pre-wrap;word-break:break-word;margin:4px 0 0">'
-          . MONITOR_CONFIG_ADMIN_value($row, 'site_value') . '</pre></div>';
-
-    $html .= '<div><div style="font-size:.9em;color:#666">'
-          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_source_database'])
-          . '</div><pre style="white-space:pre-wrap;word-break:break-word;margin:4px 0 0">'
+    $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px">'
+          . '<div><small>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_source_siteconfig']) . '</small><br><code>'
+          . MONITOR_CONFIG_ADMIN_value($row, 'site_value') . '</code></div>'
+          . '<div><small>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_source_database']) . '</small><br><code>'
           . (!empty($row['db_exists'])
               ? MONITOR_CONFIG_ADMIN_value($row, 'db_value')
               : MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_absent']))
-          . '</pre></div>';
-
-    $html .= '<div><div style="font-size:.9em;color:#666">'
-          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_effective_value'])
-          . '</div><pre style="white-space:pre-wrap;word-break:break-word;margin:4px 0 0">'
-          . MONITOR_CONFIG_ADMIN_value($row, 'effective_value') . '</pre></div>';
-
-    $html .= '</div>';
-
-    $html .= '<div style="margin-top:10px;font-size:.95em"><strong>'
-          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_priority'])
-          . '</strong> '
-          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_source_siteconfig'])
+          . '</code></div>'
           . '</div>';
 
     if ($whyText !== '') {
-        $html .= '<div style="margin-top:8px"><strong>'
-              . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_why'])
-              . '</strong> ' . MONITOR_CONFIG_ADMIN_h($whyText) . '</div>';
+        $html .= '<div style="margin-top:9px">' . MONITOR_CONFIG_ADMIN_h($whyText) . '</div>';
     }
 
     if ($actionText !== '') {
-        $html .= '<div style="margin-top:8px"><strong>'
+        $html .= '<div style="margin-top:7px"><strong>'
               . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_recommendation'])
-              . '</strong> ' . MONITOR_CONFIG_ADMIN_h($actionText) . '</div>';
+              . ':</strong> ' . MONITOR_CONFIG_ADMIN_h($actionText) . '</div>';
     }
 
     if (!empty($row['path']['checked'])) {
         $pathText = !empty($row['path']['exists'])
             ? $LANG_MONITOR_1['config_audit_path_exists']
             : $LANG_MONITOR_1['config_audit_path_missing'];
-
-        $html .= '<div style="margin-top:8px"><strong>'
+        $html .= '<div style="margin-top:7px"><strong>'
               . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_path'])
               . '</strong> ' . MONITOR_CONFIG_ADMIN_h($pathText) . '</div>';
     }
 
     if (!empty($row['sql'])) {
-        $html .= '<details style="margin-top:10px"><summary>'
+        $html .= '<details style="margin-top:9px"><summary>'
               . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_optional_sql'])
-              . '</summary><pre style="white-space:pre-wrap;word-break:break-word;overflow:auto;margin-top:8px">'
+              . '</summary><pre style="white-space:pre-wrap;word-break:break-word;overflow:auto;margin-top:7px">'
               . MONITOR_CONFIG_ADMIN_h($row['sql'])
               . '</pre></details>';
     }
@@ -199,13 +159,27 @@ function MONITOR_CONFIG_ADMIN_card($row)
     return $html;
 }
 
+function MONITOR_CONFIG_ADMIN_normalRow($row)
+{
+    global $LANG_MONITOR_1;
+
+    $status = MONITOR_CONFIG_ADMIN_statusText($row['status']);
+    $value = MONITOR_CONFIG_ADMIN_value($row, 'effective_value');
+
+    return '<div style="display:grid;grid-template-columns:minmax(140px,1fr) minmax(120px,1fr) minmax(140px,2fr);gap:8px;padding:7px 0;border-bottom:1px solid #eee;align-items:start">'
+         . '<code>' . MONITOR_CONFIG_ADMIN_h($row['key']) . '</code>'
+         . '<span>' . MONITOR_CONFIG_ADMIN_h($status) . '</span>'
+         . '<code style="word-break:break-word">' . $value . '</code>'
+         . '</div>';
+}
+
 $audit = MONITOR_CONFIG_AUDIT_collect();
 $summary = $audit['summary'];
 $attentionRows = array();
 $normalRows = array();
 
 foreach ($audit['rows'] as $row) {
-    if ($row['level'] === 'warning' || $row['level'] === 'review' || $row['level'] === 'info') {
+    if ($row['level'] === 'warning' || $row['level'] === 'review') {
         $attentionRows[] = $row;
     } else {
         $normalRows[] = $row;
@@ -216,49 +190,45 @@ $content = '<p><a href="index.php?view=overview">&larr; '
           . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_back'])
           . '</a></p>';
 
-$content .= '<div style="padding:14px;border:1px solid #d7dde2;border-radius:8px;background:#fafbfc;margin-bottom:18px">'
-          . '<strong>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_intro_title']) . '</strong><br>'
+$content .= '<div style="padding:12px;border:1px solid #d7dde2;border-radius:8px;background:#fafbfc;margin-bottom:14px">'
+          . '<strong>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_intro_title']) . '</strong> '
           . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_intro'])
           . '</div>';
 
-$content .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px">';
-$content .= '<div style="padding:12px;border:1px solid #ef9a9a;border-radius:7px;background:#fff7f7"><strong style="font-size:1.35em">'
+$content .= '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px">'
+          . '<div style="padding:10px;border:1px solid #ef9a9a;border-radius:7px;background:#fff7f7"><strong style="font-size:1.25em">'
           . (int) $summary['issues'] . '</strong><br>'
-          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_issues']) . '</div>';
-$content .= '<div style="padding:12px;border:1px solid #ffe082;border-radius:7px;background:#fffaf0"><strong style="font-size:1.35em">'
+          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_issues']) . '</div>'
+          . '<div style="padding:10px;border:1px solid #ffe082;border-radius:7px;background:#fffaf0"><strong style="font-size:1.25em">'
           . (int) $summary['review'] . '</strong><br>'
-          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_review']) . '</div>';
-$content .= '<div style="padding:12px;border:1px solid #a5d6a7;border-radius:7px;background:#f4fbf5"><strong style="font-size:1.35em">'
-          . (int) $summary['expected'] . '</strong><br>'
-          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_expected']) . '</div>';
-$content .= '<div style="padding:12px;border:1px solid #ef9a9a;border-radius:7px;background:#fff7f7"><strong style="font-size:1.35em">'
-          . (int) $summary['invalid_paths'] . '</strong><br>'
-          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_invalid_paths']) . '</div>';
-$content .= '</div>';
+          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_review']) . '</div>'
+          . '<div style="padding:10px;border:1px solid #cfd8dc;border-radius:7px;background:#fafbfc"><strong style="font-size:1.25em">'
+          . (int) $summary['normal'] . '</strong><br>'
+          . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_normal']) . '</div>'
+          . '</div>';
 
-$content .= '<div style="margin-bottom:18px;font-size:.95em;color:#555">'
+$content .= '<div style="margin-bottom:14px;font-size:.92em;color:#555">'
           . '<strong>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_active_host']) . '</strong> '
           . MONITOR_CONFIG_ADMIN_h(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '')
-          . '<br><strong>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_siteconfig']) . '</strong> '
-          . '<code style="word-break:break-all">'
-          . MONITOR_CONFIG_ADMIN_h($audit['siteconfig_path'])
-          . '</code></div>';
+          . ' &nbsp; <strong>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_siteconfig']) . '</strong> '
+          . '<code style="word-break:break-all">' . MONITOR_CONFIG_ADMIN_h($audit['siteconfig_path']) . '</code>'
+          . '</div>';
 
 if (!$audit['siteconfig_readable']) {
-    $content .= '<div style="padding:12px;border:1px solid #ef9a9a;background:#fff7f7;border-radius:7px;margin-bottom:18px">'
+    $content .= '<div style="padding:10px;border:1px solid #ef9a9a;background:#fff7f7;border-radius:7px;margin-bottom:14px">'
              . '<strong>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_unreadable_title']) . '</strong> '
              . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_unreadable'])
              . '</div>';
 }
 
-$content .= '<h3>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_items_review']) . '</h3>';
 if (empty($attentionRows)) {
-    $content .= '<div style="padding:14px;border:1px solid #a5d6a7;background:#f4fbf5;border-radius:8px;margin-bottom:18px">'
+    $content .= '<div style="padding:12px;border:1px solid #a5d6a7;background:#f4fbf5;border-radius:8px;margin-bottom:14px">'
              . '<strong>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_no_issues']) . '</strong>'
              . '</div>';
 } else {
+    $content .= '<h3>' . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_items_review']) . '</h3>';
     foreach ($attentionRows as $row) {
-        $content .= MONITOR_CONFIG_ADMIN_card($row);
+        $content .= MONITOR_CONFIG_ADMIN_attentionCard($row);
     }
 }
 
@@ -268,19 +238,19 @@ if (!empty($normalRows)) {
         (int) count($normalRows)
     );
 
-    $content .= '<details style="margin-top:22px">'
+    $content .= '<details style="margin-top:16px">'
              . '<summary style="cursor:pointer;font-weight:bold">'
              . MONITOR_CONFIG_ADMIN_h($secondaryLabel)
-             . '</summary><div style="margin-top:12px">';
+             . '</summary><div style="margin-top:9px">';
 
     foreach ($normalRows as $row) {
-        $content .= MONITOR_CONFIG_ADMIN_card($row);
+        $content .= MONITOR_CONFIG_ADMIN_normalRow($row);
     }
 
     $content .= '</div></details>';
 }
 
-$content .= '<p style="margin-top:22px;color:#666;font-size:.92em">'
+$content .= '<p style="margin-top:16px;color:#666;font-size:.88em">'
           . MONITOR_CONFIG_ADMIN_h($LANG_MONITOR_1['config_audit_footer'])
           . '</p>';
 
