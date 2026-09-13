@@ -45,26 +45,33 @@ $PLG_monitor_MESSAGE3002 = $LANG32[9];
 $PLG_monitor_MESSAGE3003 = 'Monitor could not complete its database migration. The installed version was not changed; review error.log and retry the upgrade.';
 
 // Localization of the Geeklog Configuration UI.
-// Geeklog 2.2.x configuration search/autocomplete expects these arrays to be
-// available in global scope when config.class.php builds its UI metadata.
-$LANG_configsections['monitor'] = array(
+// Use $GLOBALS explicitly so these entries remain visible to config.class.php
+// regardless of the include context used by Geeklog.
+$GLOBALS['LANG_configsections']['monitor'] = array(
     'label' => 'Monitor',
     'title' => 'Monitor Configuration'
 );
 
-$LANG_configsubgroups['monitor'] = array(
+$GLOBALS['LANG_configsubgroups']['monitor'] = array(
     'sg_main' => 'Main Settings'
 );
 
-$LANG_tab['monitor'] = array(
+$GLOBALS['LANG_tab']['monitor'] = array(
     0 => 'Main'
 );
 
-$LANG_fs['monitor'] = array(
+$GLOBALS['LANG_fs']['monitor'] = array(
     'fs_main' => 'General Settings'
 );
 
-$LANG_confignames['monitor'] = array(
+$GLOBALS['LANG_confignames']['monitor'] = array(
     'emails' => 'List of email addresses for optional Monitor notifications (comma-separated)',
     'repository' => 'GitHub repository owner reserved for plugin release metadata (default: Geeklog-Plugins). Leave blank to disable remote metadata checks.'
 );
+
+// Keep the conventional variable names available to older Geeklog code paths.
+$LANG_configsections =& $GLOBALS['LANG_configsections'];
+$LANG_configsubgroups =& $GLOBALS['LANG_configsubgroups'];
+$LANG_tab =& $GLOBALS['LANG_tab'];
+$LANG_fs =& $GLOBALS['LANG_fs'];
+$LANG_confignames =& $GLOBALS['LANG_confignames'];
