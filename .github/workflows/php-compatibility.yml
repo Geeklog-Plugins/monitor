@@ -165,18 +165,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f lib/MonitorContentActivity.php
-          grep -q "plugin_itemsaved_monitor" functions.inc
-          grep -q "plugin_itemdeleted_monitor" functions.inc
-          grep -q "MONITOR_ACTIVITY_record" functions.inc
-          grep -q "monitor-content-activity-" lib/MonitorContentActivity.php
-          grep -q "30 \* 86400" lib/MonitorContentActivity.php
-          grep -q "array_slice(\$kept, -500)" lib/MonitorContentActivity.php
-          grep -q "LOCK_EX" lib/MonitorContentActivity.php
-          grep -q "content_activity" lib/MonitorServices.php
-          grep -q "timestamp" lib/MonitorContentActivity.php
-          grep -q "sub_type" lib/MonitorContentActivity.php
-          grep -q "old_id" lib/MonitorContentActivity.php
+          python3 - <<'PY'
+          from pathlib import Path
+
+          required = {
+              'functions.inc': [
+                  'plugin_itemsaved_monitor',
+                  'plugin_itemdeleted_monitor',
+                  'MONITOR_ACTIVITY_record',
+              ],
+              'lib/MonitorContentActivity.php': [
+                  'monitor-content-activity-',
+                  '30 * 86400',
+                  'array_slice($kept, -500)',
+                  'LOCK_EX',
+                  "'timestamp' => time()",
+                  "'sub_type' => $subType",
+                  "'old_id' =>",
+              ],
+              'lib/MonitorServices.php': ['content_activity'],
+          }
+
+          for filename, needles in required.items():
+              source = Path(filename).read_text(encoding='utf-8')
+              for needle in needles:
+                  if needle not in source:
+                      raise SystemExit('%s is missing lifecycle guard: %s' % (filename, needle))
+          PY
           echo 'Lifecycle observation guardrails present.'
 
       - name: Check oversized media locator guardrails
