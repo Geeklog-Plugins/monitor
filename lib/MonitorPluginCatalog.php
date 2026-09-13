@@ -146,7 +146,6 @@ function MONITOR_PLUGIN_CATALOG_getJson($url, $cacheKey, $maxAge, $refresh)
         return $data;
     }
 
-    /* If a forced refresh fails, a stale cache is still better than no data. */
     $stale = MONITOR_PLUGIN_CATALOG_cacheRead($cacheKey, 2592000);
 
     return is_array($stale) ? $stale : null;
@@ -263,10 +262,28 @@ function MONITOR_PLUGIN_CATALOG_release($owner, $repository, $refresh)
 
     return array(
         'tag' => (string) $data['tag_name'],
-        'name' => isset($data['name']) ? (string) $data['name'] : '',
         'url' => isset($data['html_url']) ? (string) $data['html_url'] : '',
-        'published_at' => isset($data['published_at']) ? (string) $data['published_at'] : ''
+        'published_at' => isset($data['published_at']) ? (string) $data['published_at'] : '',
+        'source' => 'release'
     );
+}
+
+function MONITOR_PLUGIN_CATALOG_tags($owner, $repository, $refresh)
+{
+    if ($owner === '' || $repository === '') {
+        return array();
+    }
+
+    $url = 'https://api.github.com/repos/' . rawurlencode($owner)
+        . '/' . rawurlencode($repository) . '/tags?per_page=30';
+    $data = MONITOR_PLUGIN_CATALOG_getJson(
+        $url,
+        'tags|' . strtolower($owner . '/' . $repository),
+        21600,
+        $refresh
+    );
+
+    return is_array($data) ? $data : array();
 }
 
 function MONITOR_PLUGIN_CATALOG_versionFromTag($tag)
@@ -283,10 +300,52 @@ function MONITOR_PLUGIN_CATALOG_versionFromTag($tag)
     return '';
 }
 
-function MONITOR_PLUGIN_CATALOG_versionState($installed, $releaseTag)
+function MONITOR_PLUGIN_CATALOG_latestVersion($owner, $repository, $refresh)
+{
+    $best = null;
+    $release = MONITOR_PLUGIN_CATALOG_release($owner, $repository, $refresh);
+
+    if (is_array($release)) {
+        $version = MONITOR_PLUGIN_CATALOG_versionFromTag($release['tag']);
+        if ($version !== '') {
+            $best = array(
+                'tag' => $release['tag'],
+                'version' => $version,
+                'url' => $release['url'],
+                'source' => 'release'
+            );
+        }
+    }
+
+    foreach (MONITOR_PLUGIN_CATALOG_tags($owner, $repository, $refresh) as $tag) {
+        if (!is_array($tag) || empty($tag['name'])) {
+            continue;
+        }
+
+        $version = MONITOR_PLUGIN_CATALOG_versionFromTag($tag['name']);
+        if ($version === '') {
+            continue;
+        }
+
+        if ($best === null || version_compare($version, $best['version'], '>')) {
+            $best = array(
+                'tag' => (string) $tag['name'],
+                'version' => $version,
+                'url' => 'https://github.com/' . rawurlencode($owner)
+                    . '/' . rawurlencode($repository)
+                    . '/tree/' . rawurlencode((string) $tag['name']),
+                'source' => 'tag'
+            );
+        }
+    }
+
+    return $best;
+}
+
+function MONITOR_PLUGIN_CATALOG_versionState($installed, $remoteVersion)
 {
     $installed = trim((string) $installed);
-    $remote = MONITOR_PLUGIN_CATALOG_versionFromTag($releaseTag);
+    $remote = trim((string) $remoteVersion);
 
     if ($installed === '' || $remote === '') {
         return 'unknown';
@@ -310,6 +369,7 @@ function MONITOR_PLUGIN_CATALOG_isDiscoverable($repo)
     }
 
     $name = isset($repo['name']) ? strtolower((string) $repo['name']) : '';
+    $description = isset($repo['description']) ? strtolower((string) $repo['description']) : '';
     $excluded = array(
         '.github',
         'artwork',
@@ -318,5 +378,28 @@ function MONITOR_PLUGIN_CATALOG_isDiscoverable($repo)
         'vthemes'
     );
 
-    return $name !== '' && !in_array($name, $excluded, true);
+    if ($name === '' || in_array($name, $excluded, true)) {
+        return false;
+    }
+
+    if (strpos($description, 'coming soon') !== false) {
+        return false;
+    }
+
+    return true;
+}
+
+function MONITOR_PLUGIN_CATALOG_discoveryState($repo)
+{
+    $updated = isset($repo['updated_at']) ? strtotime($repo['updated_at']) : false;
+    if ($updated === false) {
+        return 'unknown';
+    }
+
+    $age = time() - $updated;
+    if ($age <= 94608000) {
+        return 'active';
+    }
+
+    return 'legacy';
 }
