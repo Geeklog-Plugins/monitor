@@ -10,7 +10,7 @@
 
 if (isset($_SERVER['PHP_SELF']) &&
         strpos(strtolower($_SERVER['PHP_SELF']), 'monitorconfigaudit.php') !== false) {
-    die('This file can not be used on its own.');
+    die();
 }
 
 function MONITOR_CONFIG_AUDIT_siteconfigKeys($path)
@@ -99,27 +99,6 @@ function MONITOR_CONFIG_AUDIT_pathState($key, $value)
     return array('checked' => true, 'exists' => file_exists($value));
 }
 
-function MONITOR_CONFIG_AUDIT_displayValue($value)
-{
-    if ($value === true) {
-        return 'true';
-    }
-    if ($value === false) {
-        return 'false';
-    }
-    if ($value === null) {
-        return 'NULL';
-    }
-    if (is_array($value)) {
-        return print_r($value, true);
-    }
-    if (is_object($value)) {
-        return '[OBJECT]';
-    }
-
-    return (string) $value;
-}
-
 /**
  * Compare only keys explicitly assigned in the active siteconfig.php.
  *
@@ -179,19 +158,14 @@ function MONITOR_CONFIG_AUDIT_collect()
     $fileOnlyNormal = array('path', 'path_system', 'site_enabled', 'default_charset');
     $rows = array();
     $summary = array(
-        'identical' => 0,
-        'different' => 0,
-        'core_file' => 0,
-        'file_only' => 0,
-        'db_unset' => 0,
+        'issues' => 0,
+        'review' => 0,
+        'expected' => 0,
         'invalid_paths' => 0,
-        'decode_errors' => 0,
-        'redacted' => 0,
-        'attention' => 0
+        'redacted' => 0
     );
 
     foreach ($siteKeys as $key) {
-        $siteExists = true;
         $dbExists = isset($dbValues[$key]);
         $siteValue = array_key_exists($key, $_CONF) ? $_CONF[$key] : null;
         $dbValue = ($dbExists && !$dbValues[$key]['unset'])
@@ -203,43 +177,59 @@ function MONITOR_CONFIG_AUDIT_collect()
             $summary['redacted']++;
         }
 
-        $priority = 'siteconfig.php';
-        $effective = $siteValue;
+        $status = 'identical';
+        $level = 'ok';
+        $whyKey = 'config_audit_why_identical';
+        $actionKey = 'config_audit_action_none';
 
         if ($dbExists && !$dbValues[$key]['valid']) {
-            $status = 'DB DECODE ERROR';
-            $summary['decode_errors']++;
+            $status = 'decode_error';
+            $level = 'warning';
+            $whyKey = 'config_audit_why_decode_error';
+            $actionKey = 'config_audit_action_decode_error';
         } elseif ($dbExists && $dbValues[$key]['unset']) {
-            $status = 'DB = unset';
-            $summary['db_unset']++;
+            $status = 'db_unset';
+            $level = 'review';
+            $whyKey = 'config_audit_why_db_unset';
+            $actionKey = 'config_audit_action_db_unset';
         } elseif ($dbExists && $siteValue === $dbValue) {
-            $status = 'IDENTICAL';
-            $summary['identical']++;
+            $status = 'identical';
+            $level = 'ok';
         } elseif ($dbExists) {
-            $status = 'DIFFERENT';
-            $summary['different']++;
+            $status = 'different';
+            $level = 'review';
+            $whyKey = 'config_audit_why_different';
+            $actionKey = 'config_audit_action_different';
         } elseif (in_array($key, $fileOnlyNormal, true)) {
-            $status = 'CORE FILE NORMAL';
-            $summary['core_file']++;
+            $status = 'core_file';
+            $level = 'ok';
+            $whyKey = 'config_audit_why_core_file';
         } else {
-            $status = 'FILE ONLY';
-            $summary['file_only']++;
+            $status = 'file_only';
+            $level = 'info';
+            $whyKey = 'config_audit_why_file_only';
+            $actionKey = 'config_audit_action_file_only';
         }
 
-        $pathState = MONITOR_CONFIG_AUDIT_pathState($key, $effective);
+        $pathState = MONITOR_CONFIG_AUDIT_pathState($key, $siteValue);
         if ($pathState['checked'] && !$pathState['exists']) {
+            $status = 'invalid_path';
+            $level = 'warning';
+            $whyKey = 'config_audit_why_invalid_path';
+            $actionKey = 'config_audit_action_invalid_path';
             $summary['invalid_paths']++;
         }
 
-        $needsAttention = ($status !== 'IDENTICAL' && $status !== 'CORE FILE NORMAL')
-            || ($pathState['checked'] && !$pathState['exists']);
-        if ($needsAttention) {
-            $summary['attention']++;
+        if ($level === 'warning') {
+            $summary['issues']++;
+        } elseif ($level === 'review' || $level === 'info') {
+            $summary['review']++;
+        } else {
+            $summary['expected']++;
         }
 
         $sql = '';
-        if (!$sensitive && $dbExists && !$dbValues[$key]['unset'] &&
-                $dbValues[$key]['valid'] && $siteValue !== $dbValue) {
+        if (!$sensitive && $status === 'different') {
             $canSuggest = true;
             if (MONITOR_CONFIG_AUDIT_isPathKey($key)) {
                 $sitePath = MONITOR_CONFIG_AUDIT_pathState($key, $siteValue);
@@ -259,17 +249,17 @@ function MONITOR_CONFIG_AUDIT_collect()
 
         $rows[] = array(
             'key' => $key,
-            'site_exists' => $siteExists,
             'site_value' => $siteValue,
             'db_exists' => $dbExists,
             'db_value' => $dbValue,
-            'priority' => $priority,
-            'effective_value' => $effective,
+            'effective_value' => $siteValue,
             'status' => $status,
+            'level' => $level,
+            'why_key' => $whyKey,
+            'action_key' => $actionKey,
             'path' => $pathState,
             'sql' => $sql,
-            'sensitive' => $sensitive,
-            'attention' => $needsAttention
+            'sensitive' => $sensitive
         );
     }
 
