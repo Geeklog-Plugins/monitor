@@ -169,10 +169,11 @@ jobs:
           from pathlib import Path
 
           required = {
-              'functions.inc': [
+              'services.inc.php': [
                   'plugin_itemsaved_monitor',
                   'plugin_itemdeleted_monitor',
                   'MONITOR_ACTIVITY_record',
+                  'MonitorContentActivity.php',
               ],
               'lib/MonitorContentActivity.php': [
                   'monitor-content-activity-',
