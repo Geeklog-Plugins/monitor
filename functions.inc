@@ -431,7 +431,21 @@ function MONITOR_logEmail($logs)
 
 function plugin_runScheduledTask_monitor()
 {
-    global $_TABLES;
+    global $_TABLES, $_CONF;
+
+    /*
+     * Geeklog does not rotate its own .log files. Monitor archives them once
+     * per calendar day and retains daily copies for the configured period.
+     * A failed archive copy never truncates the active log.
+     */
+    require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorLogRotation.php';
+    $rotation = MONITOR_LOG_rotateDaily();
+    if (!empty($rotation['failed'])) {
+        COM_errorLog(
+            'MONITOR - Daily log rotation could not archive '
+            . (int) $rotation['failed'] . ' log file(s). Active logs were preserved.'
+        );
+    }
 
     /* Keep transitional observations bounded. */
     if (DB_checkTableExists('monitor_ban')) {
