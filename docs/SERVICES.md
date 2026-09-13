@@ -12,6 +12,30 @@ Monitor 1.4.0 exposes structured diagnostics through Geeklog's native `PLG_invok
 - Consumers should use `PLG_invokeService()` rather than call Monitor implementation helpers directly.
 - Consumers must not read Monitor tables, JSON snapshots or archive files directly.
 
+## Content lifecycle observation
+
+Monitor listens to Geeklog's native `PLG_itemSaved()` and `PLG_itemDeleted()` notifications through:
+
+```php
+plugin_itemsaved_monitor($id, $type, $old_id = '', $sub_type = '')
+plugin_itemdeleted_monitor($id, $type, $sub_type = '')
+```
+
+The journal is observational only. Monitor does not copy item content and does not become the owner of another plugin's data. Each event stores only:
+
+- timestamp;
+- `saved` or `deleted`;
+- item type;
+- item id;
+- optional subtype;
+- previous id when Geeklog reports an id change on save.
+
+The journal is stored below `path_data` with per-site isolation and is bounded to the most recent 30 days and at most 500 events. Concurrent notifications are serialized with an exclusive file lock.
+
+This activity is exposed inside `monitor.get_changes` for the interval covered by the two snapshots being compared. Hub should still consume lifecycle notifications directly for its own relationship graph; Monitor's journal is an operational observation source for diagnostics, Connector and administrative presentation.
+
+Monitor deliberately does not implement `plugin_getiteminfo_monitor()`: Monitor does not own normal Geeklog content objects, so its diagnostics and archives are better represented as services than as fake content items.
+
 ## Invocation
 
 Example:
@@ -50,9 +74,24 @@ Typical consumers:
 
 Geeklog action: `get_changes`
 
-Returns the comparison between the two most recent Monitor snapshots, including environment/plugin/storage changes and bounded `error.log` delta signatures.
+Returns the comparison between the two most recent Monitor snapshots, including environment/plugin/storage changes, bounded `error.log` delta signatures, and content lifecycle activity observed between the two snapshot timestamps.
 
-It does not capture a new snapshot. The service remains strictly read-only.
+`content_activity` contains:
+
+```php
+array(
+    'saved' => 12,
+    'deleted' => 1,
+    'count' => 13,
+    'items' => array(...),
+    'retention_days' => 30,
+    'max_events' => 500
+)
+```
+
+The returned item list is bounded to 100 events for one comparison. The underlying journal remains bounded to 500 events / 30 days.
+
+The service does not capture a new snapshot. It remains strictly read-only.
 
 Typical consumers:
 
@@ -160,6 +199,6 @@ Consumers should branch on `schema_version` if a future Monitor release introduc
 
 Monitor remains authoritative for operational diagnostics. Consumers should not duplicate its logic:
 
-- Hub may include Monitor status/change signals in its own integrity context but should not parse Monitor logs or snapshots.
+- Hub may include Monitor status/change signals in its own integrity context but should not parse Monitor logs or snapshots. Hub should continue to listen to Geeklog lifecycle events directly when it needs them for relationship maintenance.
 - Connector may expose these services externally after applying its own authentication/authorization policy but should not read Monitor storage directly.
 - Eclipse may present concise administrator-facing status but should not contain Monitor diagnostic business logic.
