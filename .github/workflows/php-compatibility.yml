@@ -205,7 +205,7 @@ jobs:
           grep -q "relative_path" lib/MonitorMediaDiagnostics.php
           grep -q "public_url" lib/MonitorMediaDiagnostics.php
           grep -q "SEC_hasRights('monitor.admin')" admin/media-diagnostics.php
-          grep -q "filemanager/index.php" admin/media-diagnostics.php
+          grep -F -q "filemanager/index.php?Type=Root" admin/media-diagnostics.php
           grep -q "Show files" templates/administration.thtml
           grep -q "Open File Manager" templates/administration.thtml
           grep -q "maxItems" lib/MonitorMediaDiagnostics.php
