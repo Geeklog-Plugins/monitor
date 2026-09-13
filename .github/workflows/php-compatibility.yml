@@ -39,24 +39,34 @@ jobs:
           done < <(find . -type f \( -name '*.php' -o -name '*.inc' \) -print0)
 
   security-regressions:
-    name: Security regression guard
+    name: Security and API regression guard
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Reject known unsafe patterns
+      - name: Reject known unsafe or incompatible patterns
         shell: bash
         run: |
           set -euo pipefail
 
           if grep -R -n -E \
+            --exclude-dir='.git' --exclude-dir='dist' --exclude-dir='package' \
             --include='*.php' --include='*.inc' \
-            'CURLOPT_SSL_VERIFYPEER[[:space:]]*(=>|,)[[:space:]]*false|sleep[[:space:]]*\([[:space:]]*60[[:space:]]*\)|ben@geeklog\.fr' \
+            'CURLOPT_SSL_VERIFYPEER[[:space:]]*(=>|,)[[:space:]]*false|sleep[[:space:]]*\([[:space:]]*60[[:space:]]*\)|ben@geeklog\.fr|COM_siteHeader[[:space:]]*\(|COM_siteFooter[[:space:]]*\(' \
             .; then
-            echo 'Known unsafe/deprecated Monitor pattern detected.'
+            echo 'Known unsafe, deprecated, or Geeklog 2.2.x-incompatible Monitor pattern detected.'
             exit 1
           fi
 
           echo 'No guarded regression pattern found.'
+
+      - name: Check Geeklog 2.2.x configuration language metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "LANG_configsections\['monitor'\]" language/english.php
+          grep -q "LANG_configsubgroups\['monitor'\]" language/english.php
+          grep -q "LANG_confignames\['monitor'\]" language/english.php
+          grep -q "LANG_fs\['monitor'\]" language/english.php
