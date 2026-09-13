@@ -14,6 +14,8 @@ if (isset($_SERVER['PHP_SELF']) &&
     die('This file can not be used on its own.');
 }
 
+require_once dirname(__FILE__) . '/MonitorCompat.php';
+
 /**
  * Build one normalized health result.
  *
@@ -51,13 +53,17 @@ function MONITOR_HEALTH_collect()
 
     $checks = array();
 
+    $phpSupported = version_compare(PHP_VERSION, '5.6.0', '>=')
+        && version_compare(PHP_VERSION, '8.1.99', '<=');
+
     $checks[] = MONITOR_HEALTH_result(
         'runtime.php',
         'PHP',
-        version_compare(PHP_VERSION, '5.6.0', '>=') && version_compare(PHP_VERSION, '8.1.99', '<=')
-            ? 'ok' : 'warning',
+        $phpSupported ? 'ok' : 'warning',
         PHP_VERSION,
-        'Monitor 1.4.0 currently targets PHP 5.6 through 8.1.'
+        $phpSupported
+            ? 'PHP is inside the tested Monitor 1.4.0 range.'
+            : 'Monitor 1.4.0 is currently tested on PHP 5.6 through 8.1.'
     );
 
     $geeklogVersion = defined('VERSION') ? VERSION : 'unknown';
@@ -126,7 +132,7 @@ function MONITOR_HEALTH_collect()
         $banValue = !empty($capabilities['installed']) ? 'available' : 'not installed';
         $banRecommendation = !empty($capabilities['installed'])
             ? 'Ban can remain the enforcement engine while Monitor focuses on detection and diagnosis.'
-            : 'Optional: install/modernize Ban when centralized access blocking is required.';
+            : 'Ban is optional. Install or modernize it only when centralized access blocking is required.';
 
         $checks[] = MONITOR_HEALTH_result(
             'security.ban',
@@ -140,14 +146,6 @@ function MONITOR_HEALTH_collect()
     return $checks;
 }
 
-/**
- * Check that a site-scoped path exists and is writable.
- *
- * @param string $id
- * @param string $label
- * @param string $path
- * @return array
- */
 function MONITOR_HEALTH_pathCheck($id, $label, $path)
 {
     if ($path === '' || !is_dir($path)) {
@@ -179,15 +177,6 @@ function MONITOR_HEALTH_pathCheck($id, $label, $path)
     );
 }
 
-/**
- * Check one log size without reading its contents.
- *
- * @param string $id
- * @param string $label
- * @param string $path
- * @param int    $warningBytes
- * @return array
- */
 function MONITOR_HEALTH_logSizeCheck($id, $label, $path, $warningBytes)
 {
     if ($path === '' || !is_file($path)) {
@@ -224,11 +213,6 @@ function MONITOR_HEALTH_logSizeCheck($id, $label, $path, $warningBytes)
     );
 }
 
-/**
- * Check free space for the active site's data path filesystem.
- *
- * @return array
- */
 function MONITOR_HEALTH_diskCheck()
 {
     global $_CONF;
@@ -276,12 +260,6 @@ function MONITOR_HEALTH_diskCheck()
     );
 }
 
-/**
- * Summarize check states.
- *
- * @param array $checks
- * @return array
- */
 function MONITOR_HEALTH_summary($checks)
 {
     $summary = array(
@@ -302,12 +280,6 @@ function MONITOR_HEALTH_summary($checks)
     return $summary;
 }
 
-/**
- * Human-readable byte count.
- *
- * @param int|float $bytes
- * @return string
- */
 function MONITOR_HEALTH_formatBytes($bytes)
 {
     $bytes = (float) $bytes;
@@ -321,5 +293,3 @@ function MONITOR_HEALTH_formatBytes($bytes)
 
     return sprintf($index === 0 ? '%.0f %s' : '%.1f %s', $bytes, $units[$index]);
 }
-
-?>
