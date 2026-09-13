@@ -14,6 +14,7 @@ if (isset($_SERVER['PHP_SELF']) &&
 }
 
 require_once dirname(__FILE__) . '/lib/MonitorServices.php';
+require_once dirname(__FILE__) . '/lib/MonitorContentActivity.php';
 
 function MONITOR_SERVICE_authorized()
 {
@@ -39,6 +40,25 @@ function MONITOR_SERVICE_ok($value, &$output, &$svc_msg)
     $svc_msg = array();
 
     return defined('PLG_RET_OK') ? PLG_RET_OK : 0;
+}
+
+/**
+ * Observe Geeklog content lifecycle notifications without copying content.
+ * Signature defaults keep compatibility with older Geeklog callers while
+ * accepting the sub_type argument added in newer Geeklog releases.
+ */
+function plugin_itemsaved_monitor($id, $type, $old_id = '', $sub_type = '')
+{
+    MONITOR_ACTIVITY_record('saved', $id, $type, $sub_type, $old_id);
+
+    return true;
+}
+
+function plugin_itemdeleted_monitor($id, $type, $sub_type = '')
+{
+    MONITOR_ACTIVITY_record('deleted', $id, $type, $sub_type, '');
+
+    return true;
 }
 
 /**
