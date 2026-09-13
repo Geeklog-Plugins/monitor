@@ -50,8 +50,9 @@ function plugin_initconfig_monitor()
         return true;
     }
 
-    $c->add('sg_main', null, 'subgroup', 0, 0, null, 0, true, 'monitor');
-    $c->add('fs_main', null, 'fieldset', 0, 0, null, 0, true, 'monitor');
+    // Keep the final tab/subgroup selector explicit (0) for Geeklog 2.2.x.
+    $c->add('sg_main', null, 'subgroup', 0, 0, null, 0, true, 'monitor', 0);
+    $c->add('fs_main', null, 'fieldset', 0, 0, null, 0, true, 'monitor', 0);
     $c->add(
         'emails',
         $_monitor_DEFAULT['emails'],
@@ -61,7 +62,8 @@ function plugin_initconfig_monitor()
         0,
         10,
         true,
-        'monitor'
+        'monitor',
+        0
     );
     $c->add(
         'repository',
@@ -72,7 +74,8 @@ function plugin_initconfig_monitor()
         0,
         20,
         true,
-        'monitor'
+        'monitor',
+        0
     );
 
     return true;
