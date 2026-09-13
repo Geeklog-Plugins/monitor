@@ -209,6 +209,39 @@ function MONITOR_PLUGIN_CATALOG_repositories($refresh)
     );
 }
 
+function MONITOR_PLUGIN_CATALOG_normalizeName($name)
+{
+    return preg_replace('/[^a-z0-9]+/', '', strtolower((string) $name));
+}
+
+function MONITOR_PLUGIN_CATALOG_matchRepository($pluginName, $repositories)
+{
+    if (!is_array($repositories)) {
+        return null;
+    }
+
+    $exact = strtolower((string) $pluginName);
+    if (isset($repositories[$exact])) {
+        return $repositories[$exact];
+    }
+
+    $normalized = MONITOR_PLUGIN_CATALOG_normalizeName($pluginName);
+    if ($normalized === '') {
+        return null;
+    }
+
+    foreach ($repositories as $repo) {
+        if (!is_array($repo) || empty($repo['name'])) {
+            continue;
+        }
+        if (MONITOR_PLUGIN_CATALOG_normalizeName($repo['name']) === $normalized) {
+            return $repo;
+        }
+    }
+
+    return null;
+}
+
 function MONITOR_PLUGIN_CATALOG_release($owner, $repository, $refresh)
 {
     if ($owner === '' || $repository === '') {
