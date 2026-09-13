@@ -27,11 +27,15 @@ jobs:
           rm -rf package dist
           mkdir -p package/monitor dist
 
+          # Geeklog 2.2.2 does not tolerate archive entries whose name starts
+          # with a dot. The rsync rule excludes dotfiles and dot-directories at
+          # every depth; the find pass below is a defensive second barrier.
           rsync -a ./ package/monitor/ \
-            --exclude '.git/' \
-            --exclude '.github/' \
-            --exclude 'package/' \
-            --exclude 'dist/'
+            --exclude='.*' \
+            --exclude='package/' \
+            --exclude='dist/'
+
+          find package/monitor -depth -name '.*' -print -delete
 
       - name: Validate package structure
         shell: bash
@@ -44,6 +48,12 @@ jobs:
           test -f package/monitor/sql/mysql_install.php
           test -f package/monitor/templates/administration.thtml
           test -f package/monitor/lib/MonitorHealth.php
+
+          if find package/monitor -mindepth 1 -name '.*' -print -quit | grep -q .; then
+            echo 'Error: dotfile or dot-directory found in package tree.' >&2
+            find package/monitor -mindepth 1 -name '.*' -print >&2
+            exit 1
+          fi
 
       - name: Build ZIP in dist
         shell: bash
@@ -65,8 +75,12 @@ jobs:
           unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/functions.inc'
           unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/admin/index.php'
           unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/sql/mysql_install.php'
-          if unzip -Z1 "$ARCHIVE" | grep -q '^monitor/.github/'; then
-            echo 'Error: .github must not be included in the installable archive.' >&2
+
+          # Reject any archive entry for which any path component begins with a
+          # dot, e.g. monitor/.htaccess, monitor/lib/.gitkeep or .DS_Store.
+          if unzip -Z1 "$ARCHIVE" | awk -F/ '{ for (i = 1; i <= NF; i++) if ($i ~ /^\./) { print; exit 0 } } END { exit 1 }'; then
+            echo 'Error: archive contains a dotfile or dot-directory.' >&2
+            unzip -Z1 "$ARCHIVE" | awk -F/ '{ for (i = 1; i <= NF; i++) if ($i ~ /^\./) { print } }' >&2
             exit 1
           fi
 
