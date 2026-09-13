@@ -302,11 +302,11 @@ function MONITOR_LOG_archiveStats($path)
 }
 
 /**
- * Send one concise daily summary for the archives created by a rotation.
+ * Send one concise daily summary for the completed log day.
  *
- * The email setting is historical Monitor behavior. The summary is now based
- * on the immutable daily archives instead of emailing and then clearing the
- * only copy of the active log.
+ * The historical Monitor email setting is preserved. The report is now based
+ * on immutable daily archives instead of emailing and then clearing the only
+ * copy of the active log.
  *
  * @param array $rotation
  * @return bool
@@ -317,7 +317,7 @@ function MONITOR_LOG_sendDailySummary($rotation)
 
     if (empty($_MONITOR_CONF['emails'])
             || empty($rotation['archive_date'])
-            || empty($rotation['archives'])
+            || !isset($rotation['archives'])
             || !is_array($rotation['archives'])) {
         return false;
     }
@@ -353,25 +353,26 @@ function MONITOR_LOG_sendDailySummary($rotation)
         }
     }
 
+    $message = '<h2>' . htmlspecialchars($LANG_MONITOR_1['log_email_title'], ENT_QUOTES, 'UTF-8')
+             . ' — ' . htmlspecialchars($date, ENT_QUOTES, 'UTF-8') . '</h2>';
+
     if ($rows === '') {
-        return false;
+        $message .= '<p>' . htmlspecialchars($LANG_MONITOR_1['log_email_no_activity'], ENT_QUOTES, 'UTF-8') . '</p>';
+    } else {
+        $message .= '<table border="1" cellpadding="6" cellspacing="0">'
+                 . '<thead><tr>'
+                 . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_archive_log'], ENT_QUOTES, 'UTF-8') . '</th>'
+                 . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_archive_size'], ENT_QUOTES, 'UTF-8') . '</th>'
+                 . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_email_lines'], ENT_QUOTES, 'UTF-8') . '</th>'
+                 . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_email_issue_lines'], ENT_QUOTES, 'UTF-8') . '</th>'
+                 . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_archive_actions'], ENT_QUOTES, 'UTF-8') . '</th>'
+                 . '</tr></thead><tbody>' . $rows . '</tbody></table>';
     }
 
-    arsort($topPatterns);
-    $topPatterns = array_slice($topPatterns, 0, 5, true);
-
-    $message = '<h2>' . htmlspecialchars($LANG_MONITOR_1['log_archive_title'], ENT_QUOTES, 'UTF-8')
-             . ' — ' . htmlspecialchars($date, ENT_QUOTES, 'UTF-8') . '</h2>'
-             . '<table border="1" cellpadding="6" cellspacing="0">'
-             . '<thead><tr>'
-             . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_archive_log'], ENT_QUOTES, 'UTF-8') . '</th>'
-             . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_archive_size'], ENT_QUOTES, 'UTF-8') . '</th>'
-             . '<th>Lines</th><th>' . htmlspecialchars($LANG_MONITOR_1['changes_logs'], ENT_QUOTES, 'UTF-8') . '</th>'
-             . '<th>' . htmlspecialchars($LANG_MONITOR_1['log_archive_actions'], ENT_QUOTES, 'UTF-8') . '</th>'
-             . '</tr></thead><tbody>' . $rows . '</tbody></table>';
-
     if (!empty($topPatterns)) {
-        $message .= '<h3>' . htmlspecialchars($LANG_MONITOR_1['changes_logs'], ENT_QUOTES, 'UTF-8') . '</h3><ol>';
+        arsort($topPatterns);
+        $topPatterns = array_slice($topPatterns, 0, 5, true);
+        $message .= '<h3>' . htmlspecialchars($LANG_MONITOR_1['log_email_top_patterns'], ENT_QUOTES, 'UTF-8') . '</h3><ol>';
         foreach ($topPatterns as $pattern => $count) {
             $message .= '<li><strong>' . (int) $count . ' ×</strong> '
                      . htmlspecialchars($pattern, ENT_QUOTES, 'UTF-8') . '</li>';
@@ -392,7 +393,7 @@ function MONITOR_LOG_sendDailySummary($rotation)
 
         $mailResult = COM_mail(
             $contact,
-            $_CONF['site_name'] . ' | ' . $LANG_MONITOR_1['log_archive_title'] . ' | ' . $date,
+            $_CONF['site_name'] . ' | ' . $LANG_MONITOR_1['log_email_title'] . ' | ' . $date,
             $message,
             '',
             true
@@ -416,7 +417,7 @@ function MONITOR_LOG_sendDailySummary($rotation)
  */
 function MONITOR_LOG_rotateDaily()
 {
-    global $_CONF;
+    global $_CONF, $_MONITOR_CONF;
 
     $today = date('Y-m-d');
     $result = array(
@@ -480,8 +481,12 @@ function MONITOR_LOG_rotateDaily()
             'last_rotation_date' => $today,
             'updated_at' => time()
         ));
-        if (!empty($result['archives'])) {
-            $result['email_sent'] = MONITOR_LOG_sendDailySummary($result);
+        $result['email_sent'] = MONITOR_LOG_sendDailySummary($result);
+        if (!empty($_MONITOR_CONF['emails']) && !$result['email_sent']) {
+            COM_errorLog(
+                'MONITOR - Daily log summary email could not be sent for '
+                . $result['archive_date'] . '. Log archives were preserved.'
+            );
         }
     }
 
