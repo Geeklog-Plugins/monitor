@@ -15,6 +15,7 @@ if (isset($_SERVER['PHP_SELF']) &&
 
 require_once dirname(__FILE__) . '/lib/MonitorServices.php';
 require_once dirname(__FILE__) . '/lib/MonitorContentActivity.php';
+require_once dirname(__FILE__) . '/lib/MonitorPluginVersions.php';
 
 function MONITOR_SERVICE_authorized()
 {
@@ -99,8 +100,10 @@ function service_get_plugins_monitor($args, &$output, &$svc_msg)
     }
 
     $args = is_array($args) ? $args : array();
+    $plugins = MONITOR_SERVICE_plugins($args);
+    $plugins = MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($plugins);
 
-    return MONITOR_SERVICE_ok(MONITOR_SERVICE_plugins($args), $output, $svc_msg);
+    return MONITOR_SERVICE_ok($plugins, $output, $svc_msg);
 }
 
 /**
