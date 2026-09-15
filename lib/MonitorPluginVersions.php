@@ -16,9 +16,6 @@ if (isset($_SERVER['PHP_SELF']) &&
 /**
  * Normalize a version only when it is safe to compare with version_compare().
  *
- * Plugin callbacks should normally return values such as 1.4.0 or 2.9.1, but
- * this service must degrade cleanly when older plugins return custom strings.
- *
  * @param mixed $version
  * @return string
  */
@@ -41,7 +38,11 @@ function MONITOR_PLUGIN_VERSIONS_comparable($version)
 }
 
 /**
- * Inspect the local files through Geeklog's native plugin version callback.
+ * Inspect local plugin files using Geeklog APIs only.
+ *
+ * PLG_chkVersion() is authoritative when the callback is loaded. Disabled
+ * plugins may not have their functions.inc loaded, so PLG_getParams() is used
+ * as a safe metadata fallback instead of including plugin code from Monitor.
  *
  * @param string $pluginName
  * @return array
@@ -51,6 +52,14 @@ function MONITOR_PLUGIN_VERSIONS_localCode($pluginName)
     global $_CONF;
 
     $pluginName = trim((string) $pluginName);
+    if ($pluginName === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $pluginName)) {
+        return array(
+            'version' => '',
+            'comparable_version' => '',
+            'state' => 'code_missing'
+        );
+    }
+
     $root = isset($_CONF['path'])
         ? rtrim((string) $_CONF['path'], '/\\') . DIRECTORY_SEPARATOR . 'plugins'
         : '';
@@ -62,15 +71,7 @@ function MONITOR_PLUGIN_VERSIONS_localCode($pluginName)
         : '';
     $callback = 'plugin_chkVersion_' . $pluginName;
 
-    if ($pluginName === '' || $directory === '' || !is_dir($directory)) {
-        return array(
-            'version' => '',
-            'comparable_version' => '',
-            'state' => 'code_missing'
-        );
-    }
-
-    if (!is_file($functionsFile)) {
+    if ($directory === '' || !is_dir($directory) || !is_file($functionsFile)) {
         return array(
             'version' => '',
             'comparable_version' => '',
@@ -79,15 +80,34 @@ function MONITOR_PLUGIN_VERSIONS_localCode($pluginName)
     }
 
     $codeVersion = '';
+    $sourceState = 'callback_unavailable';
+
     if (function_exists('PLG_chkVersion')) {
         $value = @PLG_chkVersion($pluginName);
         if (is_scalar($value)) {
             $codeVersion = trim((string) $value);
         }
+        if ($codeVersion !== '') {
+            $sourceState = 'available';
+        }
     } elseif (function_exists($callback)) {
         $value = @$callback();
         if (is_scalar($value)) {
             $codeVersion = trim((string) $value);
+        }
+        if ($codeVersion !== '') {
+            $sourceState = 'available';
+        }
+    }
+
+    if ($codeVersion === '' && function_exists('PLG_getParams')) {
+        $params = @PLG_getParams($pluginName);
+        if (is_array($params) && isset($params['info']) && is_array($params['info'])
+                && isset($params['info']['pi_version']) && is_scalar($params['info']['pi_version'])) {
+            $codeVersion = trim((string) $params['info']['pi_version']);
+            if ($codeVersion !== '') {
+                $sourceState = 'available_from_metadata';
+            }
         }
     }
 
@@ -95,7 +115,7 @@ function MONITOR_PLUGIN_VERSIONS_localCode($pluginName)
         return array(
             'version' => '',
             'comparable_version' => '',
-            'state' => function_exists($callback) ? 'version_unavailable' : 'callback_unavailable'
+            'state' => function_exists($callback) ? 'version_unavailable' : $sourceState
         );
     }
 
@@ -104,7 +124,7 @@ function MONITOR_PLUGIN_VERSIONS_localCode($pluginName)
     return array(
         'version' => $codeVersion,
         'comparable_version' => $comparable,
-        'state' => $comparable === '' ? 'code_version_invalid' : 'available'
+        'state' => $comparable === '' ? 'code_version_invalid' : $sourceState
     );
 }
 
@@ -144,9 +164,9 @@ function MONITOR_PLUGIN_VERSIONS_localState($installedVersion, $code)
 /**
  * Enrich monitor.get_plugins without duplicating this logic in consumers.
  *
- * Remote update state is intentionally calculated from the local code version
- * when available. This keeps "upgrade required" (DB < local code) distinct
- * from "update available" (GitHub > local code).
+ * Remote update state is calculated from the local code version when known.
+ * This keeps "upgrade required" (DB < local code) separate from "update
+ * available" (GitHub > local code).
  *
  * @param array $envelope
  * @return array
@@ -182,10 +202,6 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
             $upgrades++;
         }
 
-        /*
-         * Preserve structural remote states such as no_repository/no_version.
-         * Only recompute a state when Monitor already obtained a remote tag.
-         */
         $latestTag = isset($plugin['latest_version'])
             ? trim((string) $plugin['latest_version']) : '';
         $remoteVersion = function_exists('MONITOR_PLUGIN_CATALOG_versionFromTag')
