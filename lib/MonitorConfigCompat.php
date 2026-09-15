@@ -9,12 +9,9 @@
 /**
  * Repair configuration rows created by early Monitor 1.4.0 builds.
  *
- * Official Geeklog plugins such as Polls use the hierarchy
- * subgroup -> tab -> fieldset -> setting and pass NULL when a setting has no
- * selection array. Early Monitor 1.4.0 builds omitted tab_main and stored 0 as
- * selectionArray for text fields, which breaks Geeklog 2.2.x configuration UI.
- *
- * This repair is idempotent and intentionally limited to Geeklog 2.2.x.
+ * The optional github_token setting is added idempotently on every supported
+ * Geeklog generation. The tab/selectionArray repair remains limited to 2.2.x,
+ * where that hierarchy is required by the native configuration UI.
  *
  * @return bool
  */
@@ -22,16 +19,27 @@ function MONITOR_repairConfiguration140()
 {
     global $_TABLES;
 
-    if (!defined('VERSION') || COM_versionCompare(VERSION, '2.2.0', '<')) {
-        return true;
-    }
-
     if (!isset($_TABLES['conf_values'])) {
         return false;
     }
 
     $group = 'monitor';
     $table = $_TABLES['conf_values'];
+
+    $tokenResult = DB_query(
+        "SELECT name FROM {$table} "
+        . "WHERE group_name = 'monitor' AND name = 'github_token' LIMIT 1",
+        1
+    );
+    $tokenRow = $tokenResult ? DB_fetchArray($tokenResult) : false;
+    if (!is_array($tokenRow) || empty($tokenRow['name'])) {
+        $c = config::get_instance();
+        $c->add('github_token', '', 'text', 0, 0, null, 30, true, $group, 0);
+    }
+
+    if (!defined('VERSION') || COM_versionCompare(VERSION, '2.2.0', '<')) {
+        return true;
+    }
 
     $result = DB_query(
         "SELECT name FROM {$table} "
@@ -57,17 +65,6 @@ function MONITOR_repairConfiguration140()
         if (!is_array($verifiedTab) || empty($verifiedTab['name'])) {
             return false;
         }
-    }
-
-    $tokenResult = DB_query(
-        "SELECT name FROM {$table} "
-        . "WHERE group_name = 'monitor' AND name = 'github_token' LIMIT 1",
-        1
-    );
-    $tokenRow = $tokenResult ? DB_fetchArray($tokenResult) : false;
-    if (!is_array($tokenRow) || empty($tokenRow['name'])) {
-        $c = config::get_instance();
-        $c->add('github_token', '', 'text', 0, 0, null, 30, true, $group, 0);
     }
 
     $updated = DB_query(
