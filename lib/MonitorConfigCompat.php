@@ -59,10 +59,21 @@ function MONITOR_repairConfiguration140()
         }
     }
 
+    $tokenResult = DB_query(
+        "SELECT name FROM {$table} "
+        . "WHERE group_name = 'monitor' AND name = 'github_token' LIMIT 1",
+        1
+    );
+    $tokenRow = $tokenResult ? DB_fetchArray($tokenResult) : false;
+    if (!is_array($tokenRow) || empty($tokenRow['name'])) {
+        $c = config::get_instance();
+        $c->add('github_token', '', 'text', 0, 0, null, 30, true, $group, 0);
+    }
+
     $updated = DB_query(
         "UPDATE {$table} SET selectionArray = -1, tab = 0 "
         . "WHERE group_name = 'monitor' "
-        . "AND name IN ('emails', 'repository') "
+        . "AND name IN ('emails', 'repository', 'github_token') "
         . "AND (selectionArray <> -1 OR tab <> 0)",
         1
     );
