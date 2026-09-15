@@ -69,12 +69,7 @@ function MONITOR_PLUGIN_ICONS_safeRuntimeUrl($url)
 
 function MONITOR_PLUGIN_ICONS_encodePath($path)
 {
-    $segments = explode('/', (string) $path);
-    foreach ($segments as $index => $segment) {
-        $segments[$index] = rawurlencode($segment);
-    }
-
-    return implode('/', $segments);
+    return MONITOR_PLUGIN_CATALOG_encodePath($path);
 }
 
 function MONITOR_PLUGIN_ICONS_fallbackUrl()
@@ -222,39 +217,7 @@ function MONITOR_PLUGIN_ICONS_coreRemoteUrl($pluginName)
 
 function MONITOR_PLUGIN_ICONS_remoteManifest($owner, $repo, $branch, $refresh)
 {
-    if ($owner === '' || $repo === '' || $branch === '') {
-        return null;
-    }
-
-    $cacheKey = 'plugin-manifest|'
-        . strtolower($owner . '/' . $repo . '|' . $branch);
-
-    if (!$refresh) {
-        $cached = MONITOR_PLUGIN_CATALOG_cacheRead($cacheKey, 21600);
-        if (is_array($cached)) {
-            if (!empty($cached['_missing'])) {
-                return null;
-            }
-            return $cached;
-        }
-    }
-
-    $url = 'https://raw.githubusercontent.com/'
-        . rawurlencode($owner) . '/'
-        . rawurlencode($repo) . '/'
-        . MONITOR_PLUGIN_ICONS_encodePath($branch)
-        . '/plugin.json';
-
-    $data = MONITOR_PLUGIN_CATALOG_httpGetJson($url);
-
-    if (is_array($data) && isset($data['schema']) && (int) $data['schema'] === 1) {
-        MONITOR_PLUGIN_CATALOG_cacheWrite($cacheKey, $data);
-        return $data;
-    }
-
-    MONITOR_PLUGIN_CATALOG_cacheWrite($cacheKey, array('_missing' => true));
-
-    return null;
+    return MONITOR_PLUGIN_CATALOG_manifest($owner, $repo, $branch, $refresh);
 }
 
 function MONITOR_PLUGIN_ICONS_remoteUrl($owner, $repo, $branch, $manifest)
