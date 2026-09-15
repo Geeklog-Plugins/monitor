@@ -28,6 +28,53 @@ function MONITOR_PLUGIN_CATALOG_owner()
     return $owner;
 }
 
+function MONITOR_PLUGIN_CATALOG_token()
+{
+    global $_MONITOR_CONF;
+
+    $token = getenv('MONITOR_GITHUB_TOKEN');
+    if (!is_string($token)) {
+        $token = '';
+    }
+    $token = trim($token);
+
+    if ($token === '' && isset($_MONITOR_CONF['github_token'])) {
+        $token = trim((string) $_MONITOR_CONF['github_token']);
+    }
+
+    if ($token === '' || preg_match('/\s/', $token)) {
+        return '';
+    }
+
+    return $token;
+}
+
+function MONITOR_PLUGIN_CATALOG_setHttpDiagnostic($diagnostic)
+{
+    $GLOBALS['MONITOR_PLUGIN_CATALOG_HTTP_DIAGNOSTIC'] = is_array($diagnostic)
+        ? $diagnostic : array();
+}
+
+function MONITOR_PLUGIN_CATALOG_lastHttpDiagnostic()
+{
+    return isset($GLOBALS['MONITOR_PLUGIN_CATALOG_HTTP_DIAGNOSTIC'])
+        && is_array($GLOBALS['MONITOR_PLUGIN_CATALOG_HTTP_DIAGNOSTIC'])
+        ? $GLOBALS['MONITOR_PLUGIN_CATALOG_HTTP_DIAGNOSTIC'] : array();
+}
+
+function MONITOR_PLUGIN_CATALOG_setFetchInfo($info)
+{
+    $GLOBALS['MONITOR_PLUGIN_CATALOG_FETCH_INFO'] = is_array($info)
+        ? $info : array();
+}
+
+function MONITOR_PLUGIN_CATALOG_lastFetchInfo()
+{
+    return isset($GLOBALS['MONITOR_PLUGIN_CATALOG_FETCH_INFO'])
+        && is_array($GLOBALS['MONITOR_PLUGIN_CATALOG_FETCH_INFO'])
+        ? $GLOBALS['MONITOR_PLUGIN_CATALOG_FETCH_INFO'] : array();
+}
+
 function MONITOR_PLUGIN_CATALOG_cachePath($key)
 {
     global $_CONF;
@@ -85,10 +132,47 @@ function MONITOR_PLUGIN_CATALOG_cacheWrite($key, $data)
     @file_put_contents($path, $json, LOCK_EX);
 }
 
+function MONITOR_PLUGIN_CATALOG_parseHeaders($headers)
+{
+    $result = array();
+
+    if (!is_array($headers)) {
+        return $result;
+    }
+
+    foreach ($headers as $header) {
+        if (!is_string($header) || strpos($header, ':') === false) {
+            continue;
+        }
+
+        list($name, $value) = explode(':', $header, 2);
+        $name = strtolower(trim($name));
+        if ($name !== '') {
+            $result[$name] = trim($value);
+        }
+    }
+
+    return $result;
+}
+
 function MONITOR_PLUGIN_CATALOG_httpGetJson($url)
 {
     $body = false;
+    $status = 0;
+    $error = '';
+    $headers = array();
     $userAgent = 'Geeklog-Monitor/1.4.0';
+    $host = parse_url((string) $url, PHP_URL_HOST);
+    $isGitHubApi = is_string($host) && strtolower($host) === 'api.github.com';
+    $token = $isGitHubApi ? MONITOR_PLUGIN_CATALOG_token() : '';
+    $requestHeaders = array(
+        'Accept: application/vnd.github+json',
+        'X-GitHub-Api-Version: 2022-11-28'
+    );
+
+    if ($token !== '') {
+        $requestHeaders[] = 'Authorization: Bearer ' . $token;
+    }
 
     if (function_exists('curl_init')) {
         $handle = curl_init($url);
@@ -97,32 +181,72 @@ function MONITOR_PLUGIN_CATALOG_httpGetJson($url)
             curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 3);
             curl_setopt($handle, CURLOPT_TIMEOUT, 6);
             curl_setopt($handle, CURLOPT_USERAGENT, $userAgent);
-            curl_setopt($handle, CURLOPT_HTTPHEADER, array(
-                'Accept: application/vnd.github+json'
-            ));
+            curl_setopt($handle, CURLOPT_HTTPHEADER, $requestHeaders);
             curl_setopt($handle, CURLOPT_SSL_VERIFYPEER, true);
             curl_setopt($handle, CURLOPT_SSL_VERIFYHOST, 2);
+            curl_setopt($handle, CURLOPT_HEADERFUNCTION, function ($handle, $line) use (&$headers) {
+                $length = strlen($line);
+                $line = trim($line);
+                if ($line !== '' && strpos($line, ':') !== false) {
+                    $headers[] = $line;
+                }
+                return $length;
+            });
+
             $body = curl_exec($handle);
             $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
-            curl_close($handle);
-
-            if ($status < 200 || $status >= 300) {
-                $body = false;
+            if ($body === false) {
+                $error = curl_error($handle);
             }
+            curl_close($handle);
+        } else {
+            $error = 'curl_init failed';
         }
     } elseif (ini_get('allow_url_fopen')) {
+        $headerText = "User-Agent: {$userAgent}\r\n"
+            . implode("\r\n", $requestHeaders) . "\r\n";
         $context = stream_context_create(array(
             'http' => array(
                 'method' => 'GET',
                 'timeout' => 6,
-                'header' => "User-Agent: {$userAgent}\r\n"
-                    . "Accept: application/vnd.github+json\r\n"
+                'ignore_errors' => true,
+                'header' => $headerText
             )
         ));
         $body = @file_get_contents($url, false, $context);
+
+        if (isset($http_response_header) && is_array($http_response_header)) {
+            foreach ($http_response_header as $line) {
+                if (preg_match('#^HTTP/\S+\s+([0-9]{3})#i', $line, $match)) {
+                    $status = (int) $match[1];
+                } elseif (strpos($line, ':') !== false) {
+                    $headers[] = $line;
+                }
+            }
+        }
+
+        if ($body === false) {
+            $error = 'file_get_contents failed';
+        }
+    } else {
+        $error = 'No HTTP transport is available';
     }
 
-    if ($body === false || $body === '') {
+    $parsedHeaders = MONITOR_PLUGIN_CATALOG_parseHeaders($headers);
+    MONITOR_PLUGIN_CATALOG_setHttpDiagnostic(array(
+        'url' => (string) $url,
+        'status' => $status,
+        'error' => $error,
+        'authenticated' => $token !== '',
+        'rate_limit' => isset($parsedHeaders['x-ratelimit-limit'])
+            ? $parsedHeaders['x-ratelimit-limit'] : '',
+        'rate_remaining' => isset($parsedHeaders['x-ratelimit-remaining'])
+            ? $parsedHeaders['x-ratelimit-remaining'] : '',
+        'rate_reset' => isset($parsedHeaders['x-ratelimit-reset'])
+            ? $parsedHeaders['x-ratelimit-reset'] : ''
+    ));
+
+    if ($body === false || $body === '' || $status < 200 || $status >= 300) {
         return null;
     }
 
@@ -136,19 +260,41 @@ function MONITOR_PLUGIN_CATALOG_getJson($url, $cacheKey, $maxAge, $refresh)
     if (!$refresh) {
         $cached = MONITOR_PLUGIN_CATALOG_cacheRead($cacheKey, $maxAge);
         if (is_array($cached)) {
+            MONITOR_PLUGIN_CATALOG_setFetchInfo(array(
+                'source' => 'cache',
+                'http' => array()
+            ));
             return $cached;
         }
     }
 
     $data = MONITOR_PLUGIN_CATALOG_httpGetJson($url);
+    $http = MONITOR_PLUGIN_CATALOG_lastHttpDiagnostic();
+
     if (is_array($data)) {
         MONITOR_PLUGIN_CATALOG_cacheWrite($cacheKey, $data);
+        MONITOR_PLUGIN_CATALOG_setFetchInfo(array(
+            'source' => 'remote',
+            'http' => $http
+        ));
         return $data;
     }
 
     $stale = MONITOR_PLUGIN_CATALOG_cacheRead($cacheKey, 2592000);
+    if (is_array($stale)) {
+        MONITOR_PLUGIN_CATALOG_setFetchInfo(array(
+            'source' => 'stale_cache',
+            'http' => $http
+        ));
+        return $stale;
+    }
 
-    return is_array($stale) ? $stale : null;
+    MONITOR_PLUGIN_CATALOG_setFetchInfo(array(
+        'source' => 'unavailable',
+        'http' => $http
+    ));
+
+    return null;
 }
 
 function MONITOR_PLUGIN_CATALOG_encodePath($path)
@@ -171,7 +317,7 @@ function MONITOR_PLUGIN_CATALOG_manifest($owner, $repository, $ref, $refresh)
         . strtolower($owner . '/' . $repository . '|' . $ref);
 
     if (!$refresh) {
-        $cached = MONITOR_PLUGIN_CATALOG_cacheRead($cacheKey, 21600);
+        $cached = MONITOR_PLUGIN_CATALOG_cacheRead($cacheKey, 86400);
         if (is_array($cached)) {
             return !empty($cached['_missing']) ? null : $cached;
         }
@@ -226,11 +372,33 @@ function MONITOR_PLUGIN_CATALOG_manifestRequirement($manifest, $kind)
     return '';
 }
 
+function MONITOR_PLUGIN_CATALOG_isRepositoryList($data)
+{
+    if (!is_array($data)) {
+        return false;
+    }
+
+    $index = 0;
+    foreach ($data as $key => $repo) {
+        if ($key !== $index || !is_array($repo)) {
+            return false;
+        }
+        $index++;
+    }
+
+    return true;
+}
+
 function MONITOR_PLUGIN_CATALOG_repositories($refresh)
 {
     $owner = MONITOR_PLUGIN_CATALOG_owner();
     if ($owner === '') {
-        return array('available' => false, 'owner' => '', 'repositories' => array());
+        return array(
+            'available' => false,
+            'owner' => '',
+            'repositories' => array(),
+            'diagnostic' => array('source' => 'disabled')
+        );
     }
 
     $encodedOwner = rawurlencode($owner);
@@ -239,28 +407,41 @@ function MONITOR_PLUGIN_CATALOG_repositories($refresh)
     $data = MONITOR_PLUGIN_CATALOG_getJson(
         $url,
         'repositories|' . strtolower($owner),
-        21600,
+        43200,
         $refresh
     );
+    $diagnostic = MONITOR_PLUGIN_CATALOG_lastFetchInfo();
 
-    if (!is_array($data)) {
-        $url = 'https://api.github.com/users/' . $encodedOwner
-            . '/repos?type=public&per_page=100&sort=updated';
-        $data = MONITOR_PLUGIN_CATALOG_getJson(
-            $url,
-            'repositories-user|' . strtolower($owner),
-            21600,
-            $refresh
-        );
+    if (!MONITOR_PLUGIN_CATALOG_isRepositoryList($data)) {
+        $http = isset($diagnostic['http']) && is_array($diagnostic['http'])
+            ? $diagnostic['http'] : array();
+        $status = isset($http['status']) ? (int) $http['status'] : 0;
+
+        if ($status === 404) {
+            $url = 'https://api.github.com/users/' . $encodedOwner
+                . '/repos?type=public&per_page=100&sort=updated';
+            $data = MONITOR_PLUGIN_CATALOG_getJson(
+                $url,
+                'repositories-user|' . strtolower($owner),
+                43200,
+                $refresh
+            );
+            $diagnostic = MONITOR_PLUGIN_CATALOG_lastFetchInfo();
+        }
     }
 
-    if (!is_array($data)) {
-        return array('available' => false, 'owner' => $owner, 'repositories' => array());
+    if (!MONITOR_PLUGIN_CATALOG_isRepositoryList($data)) {
+        return array(
+            'available' => false,
+            'owner' => $owner,
+            'repositories' => array(),
+            'diagnostic' => $diagnostic
+        );
     }
 
     $repositories = array();
     foreach ($data as $repo) {
-        if (!is_array($repo) || empty($repo['name'])) {
+        if (empty($repo['name'])) {
             continue;
         }
 
@@ -279,7 +460,8 @@ function MONITOR_PLUGIN_CATALOG_repositories($refresh)
     return array(
         'available' => true,
         'owner' => $owner,
-        'repositories' => $repositories
+        'repositories' => $repositories,
+        'diagnostic' => $diagnostic
     );
 }
 
@@ -327,7 +509,7 @@ function MONITOR_PLUGIN_CATALOG_release($owner, $repository, $refresh)
     $data = MONITOR_PLUGIN_CATALOG_getJson(
         $url,
         'release|' . strtolower($owner . '/' . $repository),
-        21600,
+        43200,
         $refresh
     );
 
@@ -354,7 +536,7 @@ function MONITOR_PLUGIN_CATALOG_tags($owner, $repository, $refresh)
     $data = MONITOR_PLUGIN_CATALOG_getJson(
         $url,
         'tags|' . strtolower($owner . '/' . $repository),
-        21600,
+        43200,
         $refresh
     );
 
@@ -378,20 +560,12 @@ function MONITOR_PLUGIN_CATALOG_versionFromTag($tag)
 function MONITOR_PLUGIN_CATALOG_latestVersion($owner, $repository, $refresh)
 {
     $best = null;
-    $release = MONITOR_PLUGIN_CATALOG_release($owner, $repository, $refresh);
 
-    if (is_array($release)) {
-        $version = MONITOR_PLUGIN_CATALOG_versionFromTag($release['tag']);
-        if ($version !== '') {
-            $best = array(
-                'tag' => $release['tag'],
-                'version' => $version,
-                'url' => $release['url'],
-                'source' => 'release'
-            );
-        }
-    }
-
+    /*
+     * One tags request is enough to identify the highest semantic version.
+     * Avoid the previous releases/latest + tags pair, which doubled API use
+     * for every installed plugin without improving version selection.
+     */
     foreach (MONITOR_PLUGIN_CATALOG_tags($owner, $repository, $refresh) as $tag) {
         if (!is_array($tag) || empty($tag['name'])) {
             continue;
@@ -439,7 +613,7 @@ function MONITOR_PLUGIN_CATALOG_versionState($installed, $remoteVersion)
 
 function MONITOR_PLUGIN_CATALOG_isDiscoverable($repo)
 {
-    if (!is_array($repo) || !empty($repo['archived']) || !empty($repo['fork'])) {
+    if (!is_array($repo) || !empty($repo['archived'])) {
         return false;
     }
 
@@ -449,8 +623,7 @@ function MONITOR_PLUGIN_CATALOG_isDiscoverable($repo)
         '.github',
         'artwork',
         'language-audit',
-        'memorandum',
-        'vthemes'
+        'memorandum'
     );
 
     if ($name === '' || in_array($name, $excluded, true)) {
