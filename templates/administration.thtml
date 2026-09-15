@@ -77,6 +77,41 @@
     gap: 10px;
     min-width: 0;
 }
+.monitor-plugin-icon-slot {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #d7dde2;
+    border-radius: 6px;
+    background: #f8fafc;
+    overflow: hidden;
+}
+.monitor-plugin-icon-spinner {
+    width: 19px;
+    height: 19px;
+    border: 2px solid #d4dbe1;
+    border-top-color: #607d8b;
+    border-radius: 50%;
+    animation: monitor-plugin-icon-spin .8s linear infinite;
+}
+.monitor-plugin-icon-slot.is-unavailable .monitor-plugin-icon-spinner {
+    animation: none;
+    width: 10px;
+    height: 10px;
+    border: 0;
+    border-radius: 50%;
+    background: #b8c1c8;
+}
+@keyframes monitor-plugin-icon-spin {
+    to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .monitor-plugin-icon-spinner {
+        animation-duration: 1.8s;
+    }
+}
 .monitor-admin .monitor-plugin-icon {
     width: 42px;
     height: 42px;
@@ -87,6 +122,35 @@
 }
 .monitor-admin .monitor-plugin-icon.monitor-plugin-icon-fallback {
     opacity: .55;
+}
+.monitor-plugin-manifest-meta {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #edf0f2;
+    color: #5f666d;
+    font-size: .88em;
+}
+.monitor-plugin-manifest-meta strong {
+    color: inherit;
+}
+.monitor-plugin-compatibility {
+    display: inline-block;
+    margin-left: 7px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+}
+.monitor-plugin-compatibility-compatible {
+    background: #e8f5e9;
+    color: #1b5e20;
+}
+.monitor-plugin-compatibility-incompatible {
+    background: #ffebee;
+    color: #b71c1c;
+}
+.monitor-plugin-compatibility-unknown {
+    background: #f5f5f5;
+    color: #555;
 }
 .monitor-admin div[style*="margin-bottom:18px"][style*="gap:8px"] {
     display: grid !important;
@@ -233,18 +297,10 @@
         }
 
         if (data.items_truncated) {
-            addText(
-                panel,
-                labels.more_files || 'Additional oversized images exist; the list is limited.',
-                'monitor-media-meta'
-            );
+            addText(panel, labels.more_files || 'Additional oversized images exist; the list is limited.', 'monitor-media-meta');
         }
         if (data.partial_scan) {
-            addText(
-                panel,
-                labels.partial_scan || 'The filesystem scan reached its safety limit.',
-                'monitor-media-meta'
-            );
+            addText(panel, labels.partial_scan || 'The filesystem scan reached its safety limit.', 'monitor-media-meta');
         }
 
         toggle.addEventListener('click', function () {
@@ -258,9 +314,11 @@
     function enhanceOversizedImages() {
         var rows = document.querySelectorAll('.monitor-admin table.admin-list tbody tr');
         var target = null;
+        var i;
+        var cells;
 
-        for (var i = 0; i < rows.length; i++) {
-            var cells = rows[i].querySelectorAll('td');
+        for (i = 0; i < rows.length; i++) {
+            cells = rows[i].querySelectorAll('td');
             if (cells.length >= 4 && cells[1].textContent.trim() === 'Oversized images') {
                 target = cells[3];
                 break;
@@ -307,44 +365,145 @@
         return strongs.length ? strongs[0] : null;
     }
 
-    function insertPluginIcon(card, iconUrl, fallbackUrl) {
+    function ensurePluginIconSlot(card) {
         var title = pluginCardTitle(card);
         var parent;
         var wrapper;
+        var slot;
+        var spinner;
+
+        if (!title) {
+            return null;
+        }
+
+        wrapper = card.querySelector('.monitor-plugin-title-with-icon');
+        if (!wrapper) {
+            parent = title.parentNode;
+            wrapper = document.createElement('div');
+            wrapper.className = 'monitor-plugin-title-with-icon';
+            parent.insertBefore(wrapper, title);
+            wrapper.appendChild(title);
+        }
+
+        slot = wrapper.querySelector('.monitor-plugin-icon-slot');
+        if (!slot) {
+            slot = document.createElement('span');
+            slot.className = 'monitor-plugin-icon-slot';
+            slot.setAttribute('role', 'status');
+            slot.setAttribute('aria-label', 'Loading plugin icon');
+            slot.title = 'Loading plugin icon';
+            spinner = document.createElement('span');
+            spinner.className = 'monitor-plugin-icon-spinner';
+            spinner.setAttribute('aria-hidden', 'true');
+            slot.appendChild(spinner);
+            wrapper.insertBefore(slot, title);
+        }
+
+        return slot;
+    }
+
+    function markPluginIconUnavailable(card) {
+        var slot = ensurePluginIconSlot(card);
+        if (!slot) {
+            return;
+        }
+        slot.className = 'monitor-plugin-icon-slot is-unavailable';
+        slot.setAttribute('aria-label', 'Plugin icon unavailable');
+        slot.title = 'Plugin icon unavailable';
+    }
+
+    function insertPluginIcon(card, iconUrl, fallbackUrl) {
+        var title = pluginCardTitle(card);
+        var slot = ensurePluginIconSlot(card);
         var image;
         var fallbackUsed = false;
 
-        if (!title || !iconUrl || card.querySelector('.monitor-plugin-icon')) {
+        if (!title || !slot || !iconUrl) {
+            markPluginIconUnavailable(card);
             return;
         }
-
-        parent = title.parentNode;
-        wrapper = document.createElement('div');
-        wrapper.className = 'monitor-plugin-title-with-icon';
-        parent.insertBefore(wrapper, title);
 
         image = document.createElement('img');
         image.className = 'monitor-plugin-icon';
         image.src = iconUrl;
         image.alt = title.textContent.trim() + ' icon';
-        image.loading = 'lazy';
         image.decoding = 'async';
+        image.addEventListener('load', function () {
+            slot.textContent = '';
+            slot.className = 'monitor-plugin-icon-slot';
+            slot.removeAttribute('role');
+            slot.removeAttribute('aria-label');
+            slot.removeAttribute('title');
+            slot.appendChild(image);
+        });
         image.addEventListener('error', function () {
             if (!fallbackUsed && fallbackUrl && image.src !== fallbackUrl) {
                 fallbackUsed = true;
                 image.className += ' monitor-plugin-icon-fallback';
                 image.src = fallbackUrl;
+                return;
             }
+            markPluginIconUnavailable(card);
         });
+    }
 
-        wrapper.appendChild(image);
-        wrapper.appendChild(title);
+    function renderPluginMetadata(card, metadata) {
+        var title = pluginCardTitle(card);
+        var requires;
+        var compatibility;
+        var values = [];
+        var block;
+        var badge;
+        var state;
+
+        if (!metadata || !title) {
+            return;
+        }
+
+        if (metadata.name) {
+            title.textContent = metadata.name;
+        }
+
+        requires = metadata.requires || {};
+        if (requires.geeklog) {
+            values.push('Geeklog ' + requires.geeklog + '+');
+        }
+        if (requires.php) {
+            values.push('PHP ' + requires.php + '+');
+        }
+
+        compatibility = metadata.compatibility || {};
+        state = compatibility.state || 'unknown';
+
+        if (!values.length && state === 'unknown') {
+            return;
+        }
+
+        block = card.querySelector('.monitor-plugin-manifest-meta');
+        if (!block) {
+            block = document.createElement('div');
+            block.className = 'monitor-plugin-manifest-meta';
+            card.appendChild(block);
+        }
+        block.textContent = values.join(' · ');
+
+        badge = document.createElement('span');
+        badge.className = 'monitor-plugin-compatibility monitor-plugin-compatibility-' + state;
+        if (state === 'compatible') {
+            badge.textContent = '✓ Compatible';
+        } else if (state === 'incompatible') {
+            badge.textContent = '✕ Incompatible';
+        } else {
+            badge.textContent = '? Compatibility unknown';
+        }
+        block.appendChild(badge);
     }
 
     function enhancePluginIcons() {
         var cards;
         var endpoint;
         var refresh;
+        var i;
 
         if (!window.fetch || window.location.search.indexOf('view=plugins') === -1) {
             return;
@@ -353,6 +512,10 @@
         cards = document.querySelectorAll('.monitor-admin section[id^="plugin-"]');
         if (!cards.length) {
             return;
+        }
+
+        for (i = 0; i < cards.length; i++) {
+            ensurePluginIconSlot(cards[i]);
         }
 
         refresh = /(?:^|[?&])refresh=1(?:&|$)/.test(window.location.search);
@@ -370,26 +533,34 @@
             })
             .then(function (data) {
                 var icons;
+                var metadata;
                 var fallback;
-                var i;
                 var key;
 
-                if (!data || !data.ok || !data.icons) {
-                    return;
+                if (!data || !data.ok) {
+                    throw new Error('plugin metadata unavailable');
                 }
 
-                icons = data.icons;
+                icons = data.icons || {};
+                metadata = data.metadata || {};
                 fallback = data.fallback || '';
 
                 for (i = 0; i < cards.length; i++) {
                     key = cards[i].id.substring(7);
                     if (icons[key]) {
                         insertPluginIcon(cards[i], icons[key], fallback);
+                    } else {
+                        markPluginIconUnavailable(cards[i]);
+                    }
+                    if (metadata[key]) {
+                        renderPluginMetadata(cards[i], metadata[key]);
                     }
                 }
             })
             .catch(function () {
-                /* Plugin cards remain fully usable without decorative icons. */
+                for (i = 0; i < cards.length; i++) {
+                    markPluginIconUnavailable(cards[i]);
+                }
             });
     }
 
