@@ -151,6 +151,81 @@ function MONITOR_PLUGIN_CATALOG_getJson($url, $cacheKey, $maxAge, $refresh)
     return is_array($stale) ? $stale : null;
 }
 
+function MONITOR_PLUGIN_CATALOG_encodePath($path)
+{
+    $segments = explode('/', (string) $path);
+    foreach ($segments as $index => $segment) {
+        $segments[$index] = rawurlencode($segment);
+    }
+
+    return implode('/', $segments);
+}
+
+function MONITOR_PLUGIN_CATALOG_manifest($owner, $repository, $ref, $refresh)
+{
+    if ($owner === '' || $repository === '' || $ref === '') {
+        return null;
+    }
+
+    $cacheKey = 'plugin-manifest|'
+        . strtolower($owner . '/' . $repository . '|' . $ref);
+
+    if (!$refresh) {
+        $cached = MONITOR_PLUGIN_CATALOG_cacheRead($cacheKey, 21600);
+        if (is_array($cached)) {
+            return !empty($cached['_missing']) ? null : $cached;
+        }
+    }
+
+    $url = 'https://raw.githubusercontent.com/'
+        . rawurlencode($owner) . '/'
+        . rawurlencode($repository) . '/'
+        . MONITOR_PLUGIN_CATALOG_encodePath($ref)
+        . '/plugin.json';
+    $data = MONITOR_PLUGIN_CATALOG_httpGetJson($url);
+
+    if (is_array($data) && isset($data['schema']) && (int) $data['schema'] === 1) {
+        MONITOR_PLUGIN_CATALOG_cacheWrite($cacheKey, $data);
+        return $data;
+    }
+
+    MONITOR_PLUGIN_CATALOG_cacheWrite($cacheKey, array('_missing' => true));
+
+    return null;
+}
+
+function MONITOR_PLUGIN_CATALOG_manifestRequirement($manifest, $kind)
+{
+    if (!is_array($manifest)) {
+        return '';
+    }
+
+    $kind = strtolower((string) $kind);
+    $aliases = $kind === 'php'
+        ? array('php', 'php_min', 'php_version', 'min_php')
+        : array('geeklog', 'geeklog_min', 'gl_version', 'geeklog_version', 'min_geeklog');
+    $containers = array('requires', 'requirements', 'compatibility');
+
+    foreach ($containers as $container) {
+        if (!isset($manifest[$container]) || !is_array($manifest[$container])) {
+            continue;
+        }
+        foreach ($aliases as $key) {
+            if (isset($manifest[$container][$key]) && is_scalar($manifest[$container][$key])) {
+                return trim((string) $manifest[$container][$key]);
+            }
+        }
+    }
+
+    foreach ($aliases as $key) {
+        if (isset($manifest[$key]) && is_scalar($manifest[$key])) {
+            return trim((string) $manifest[$key]);
+        }
+    }
+
+    return '';
+}
+
 function MONITOR_PLUGIN_CATALOG_repositories($refresh)
 {
     $owner = MONITOR_PLUGIN_CATALOG_owner();
