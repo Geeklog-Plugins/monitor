@@ -6,7 +6,7 @@
 // +---------------------------------------------------------------------------+
 // | admin/plugin-icons.php                                                    |
 // |                                                                           |
-// | Read-only icon resolver for the Monitor plugin catalog.                   |
+// | Read-only icon and plugin.json metadata resolver for the Monitor catalog. |
 // +---------------------------------------------------------------------------+
 
 require_once '../../../lib-common.php';
@@ -17,7 +17,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 if (!SEC_hasRights('monitor.admin')) {
     http_response_code(403);
-    echo json_encode(array('ok' => false, 'icons' => array()));
+    echo json_encode(array('ok' => false, 'icons' => array(), 'metadata' => array()));
     exit;
 }
 
@@ -142,41 +142,13 @@ function MONITOR_PLUGIN_ICONS_localUrl($pluginName, $manifest)
 function MONITOR_PLUGIN_ICONS_corePlugins()
 {
     return array(
-        'calendar' => array(
-            'file' => 'calendar/images/calendar.png',
-            'url' => 'calendar/images/calendar.png',
-            'source' => 'public_html/calendar/images/calendar.png',
-        ),
-        'links' => array(
-            'file' => 'links/images/links.png',
-            'url' => 'links/images/links.png',
-            'source' => 'public_html/links/images/links.png',
-        ),
-        'polls' => array(
-            'file' => 'polls/images/polls.png',
-            'url' => 'polls/images/polls.png',
-            'source' => 'public_html/polls/images/polls.png',
-        ),
-        'recaptcha' => array(
-            'file' => 'admin/plugins/recaptcha/images/recaptcha.png',
-            'url' => 'admin/plugins/recaptcha/images/recaptcha.png',
-            'source' => 'public_html/admin/plugins/recaptcha/images/recaptcha.png',
-        ),
-        'spamx' => array(
-            'file' => 'admin/plugins/spamx/images/spamx.png',
-            'url' => 'admin/plugins/spamx/images/spamx.png',
-            'source' => 'public_html/admin/plugins/spamx/images/spamx.png',
-        ),
-        'staticpages' => array(
-            'file' => 'staticpages/images/staticpages.png',
-            'url' => 'staticpages/images/staticpages.png',
-            'source' => 'public_html/staticpages/images/staticpages.png',
-        ),
-        'xmlsitemap' => array(
-            'file' => 'xmlsitemap/images/xmlsitemap.png',
-            'url' => 'xmlsitemap/images/xmlsitemap.png',
-            'source' => 'public_html/xmlsitemap/images/xmlsitemap.png',
-        ),
+        'calendar' => array('file' => 'calendar/images/calendar.png', 'url' => 'calendar/images/calendar.png', 'source' => 'public_html/calendar/images/calendar.png'),
+        'links' => array('file' => 'links/images/links.png', 'url' => 'links/images/links.png', 'source' => 'public_html/links/images/links.png'),
+        'polls' => array('file' => 'polls/images/polls.png', 'url' => 'polls/images/polls.png', 'source' => 'public_html/polls/images/polls.png'),
+        'recaptcha' => array('file' => 'admin/plugins/recaptcha/images/recaptcha.png', 'url' => 'admin/plugins/recaptcha/images/recaptcha.png', 'source' => 'public_html/admin/plugins/recaptcha/images/recaptcha.png'),
+        'spamx' => array('file' => 'admin/plugins/spamx/images/spamx.png', 'url' => 'admin/plugins/spamx/images/spamx.png', 'source' => 'public_html/admin/plugins/spamx/images/spamx.png'),
+        'staticpages' => array('file' => 'staticpages/images/staticpages.png', 'url' => 'staticpages/images/staticpages.png', 'source' => 'public_html/staticpages/images/staticpages.png'),
+        'xmlsitemap' => array('file' => 'xmlsitemap/images/xmlsitemap.png', 'url' => 'xmlsitemap/images/xmlsitemap.png', 'source' => 'public_html/xmlsitemap/images/xmlsitemap.png')
     );
 }
 
@@ -186,27 +158,23 @@ function MONITOR_PLUGIN_ICONS_coreLocalUrl($pluginName)
 
     $pluginName = strtolower((string) $pluginName);
     $plugins = MONITOR_PLUGIN_ICONS_corePlugins();
-
     if (!isset($plugins[$pluginName]) || empty($_CONF['path_html'])) {
         return '';
     }
 
     $definition = $plugins[$pluginName];
     $file = rtrim($_CONF['path_html'], '/\\') . '/' . $definition['file'];
-
     if (!is_file($file)) {
         return '';
     }
 
-    return rtrim($_CONF['site_url'], '/')
-        . '/' . MONITOR_PLUGIN_ICONS_encodePath($definition['url']);
+    return rtrim($_CONF['site_url'], '/') . '/' . MONITOR_PLUGIN_ICONS_encodePath($definition['url']);
 }
 
 function MONITOR_PLUGIN_ICONS_coreRemoteUrl($pluginName)
 {
     $pluginName = strtolower((string) $pluginName);
     $plugins = MONITOR_PLUGIN_ICONS_corePlugins();
-
     if (!isset($plugins[$pluginName])) {
         return '';
     }
@@ -244,22 +212,77 @@ function MONITOR_PLUGIN_ICONS_runtimeUrl($pluginName, $enabled)
         return '';
     }
 
-    $url = PLG_getIcon($pluginName);
-
-    return MONITOR_PLUGIN_ICONS_safeRuntimeUrl($url);
+    return MONITOR_PLUGIN_ICONS_safeRuntimeUrl(PLG_getIcon($pluginName));
 }
 
-function MONITOR_PLUGIN_ICONS_resolveInstalled($pluginName, $enabled, $owner, $repo, $refresh)
+function MONITOR_PLUGIN_ICONS_requirementVersion($value)
 {
+    if (preg_match('/([0-9]+(?:\.[0-9]+){1,3})/', trim((string) $value), $match)) {
+        return $match[1];
+    }
+    return '';
+}
+
+function MONITOR_PLUGIN_ICONS_requirementState($current, $required)
+{
+    $current = MONITOR_PLUGIN_ICONS_requirementVersion($current);
+    $required = MONITOR_PLUGIN_ICONS_requirementVersion($required);
+    if ($current === '' || $required === '') {
+        return 'unknown';
+    }
+    return version_compare($current, $required, '>=') ? 'compatible' : 'incompatible';
+}
+
+function MONITOR_PLUGIN_ICONS_metadata($manifest, $source)
+{
+    global $_CONF;
+
+    if (!is_array($manifest)) {
+        return array();
+    }
+
+    $geeklog = MONITOR_PLUGIN_CATALOG_manifestRequirement($manifest, 'geeklog');
+    $php = MONITOR_PLUGIN_CATALOG_manifestRequirement($manifest, 'php');
+    $currentGeeklog = defined('VERSION') ? (string) VERSION
+        : (isset($_CONF['version']) ? (string) $_CONF['version'] : '');
+    $geeklogState = MONITOR_PLUGIN_ICONS_requirementState($currentGeeklog, $geeklog);
+    $phpState = MONITOR_PLUGIN_ICONS_requirementState(PHP_VERSION, $php);
+    $overall = 'compatible';
+
+    if ($geeklogState === 'incompatible' || $phpState === 'incompatible') {
+        $overall = 'incompatible';
+    } elseif ($geeklogState === 'unknown' || $phpState === 'unknown') {
+        $overall = 'unknown';
+    }
+
+    return array(
+        'id' => isset($manifest['id']) && is_scalar($manifest['id']) ? trim((string) $manifest['id']) : '',
+        'name' => isset($manifest['name']) && is_scalar($manifest['name']) ? trim((string) $manifest['name']) : '',
+        'requires' => array('geeklog' => $geeklog, 'php' => $php),
+        'compatibility' => array(
+            'state' => $overall,
+            'geeklog' => $geeklogState,
+            'php' => $phpState,
+            'geeklog_current' => $currentGeeklog,
+            'php_current' => PHP_VERSION
+        ),
+        'source' => $source
+    );
+}
+
+function MONITOR_PLUGIN_ICONS_resolveInstalled($pluginName, $enabled, $owner, $repo, $refresh, &$manifest, &$source)
+{
+    $manifest = MONITOR_PLUGIN_ICONS_readLocalManifest($pluginName);
+    $source = is_array($manifest) ? 'local_plugin_json' : '';
+
+    $local = MONITOR_PLUGIN_ICONS_localUrl($pluginName, $manifest);
+    if ($local !== '') {
+        return $local;
+    }
+
     $runtime = MONITOR_PLUGIN_ICONS_runtimeUrl($pluginName, $enabled);
     if ($runtime !== '') {
         return $runtime;
-    }
-
-    $localManifest = MONITOR_PLUGIN_ICONS_readLocalManifest($pluginName);
-    $local = MONITOR_PLUGIN_ICONS_localUrl($pluginName, $localManifest);
-    if ($local !== '') {
-        return $local;
     }
 
     $coreLocal = MONITOR_PLUGIN_ICONS_coreLocalUrl($pluginName);
@@ -270,19 +293,13 @@ function MONITOR_PLUGIN_ICONS_resolveInstalled($pluginName, $enabled, $owner, $r
     if (is_array($repo)) {
         $repoName = isset($repo['name']) ? (string) $repo['name'] : '';
         $branch = isset($repo['default_branch']) ? (string) $repo['default_branch'] : '';
-        $remoteManifest = MONITOR_PLUGIN_ICONS_remoteManifest(
-            $owner,
-            $repoName,
-            $branch,
-            $refresh
-        );
-        $remote = MONITOR_PLUGIN_ICONS_remoteUrl(
-            $owner,
-            $repoName,
-            $branch,
-            $remoteManifest
-        );
+        $remoteManifest = MONITOR_PLUGIN_ICONS_remoteManifest($owner, $repoName, $branch, $refresh);
+        $remote = MONITOR_PLUGIN_ICONS_remoteUrl($owner, $repoName, $branch, $remoteManifest);
         if ($remote !== '') {
+            if (!is_array($manifest) && is_array($remoteManifest)) {
+                $manifest = $remoteManifest;
+                $source = 'remote_plugin_json';
+            }
             return $remote;
         }
     }
@@ -295,26 +312,17 @@ function MONITOR_PLUGIN_ICONS_resolveInstalled($pluginName, $enabled, $owner, $r
     return MONITOR_PLUGIN_ICONS_fallbackUrl();
 }
 
-function MONITOR_PLUGIN_ICONS_resolveRepository($owner, $repo, $refresh)
+function MONITOR_PLUGIN_ICONS_resolveRepository($owner, $repo, $refresh, &$manifest)
 {
+    $manifest = null;
     if (!is_array($repo)) {
         return MONITOR_PLUGIN_ICONS_fallbackUrl();
     }
 
     $repoName = isset($repo['name']) ? (string) $repo['name'] : '';
     $branch = isset($repo['default_branch']) ? (string) $repo['default_branch'] : '';
-    $manifest = MONITOR_PLUGIN_ICONS_remoteManifest(
-        $owner,
-        $repoName,
-        $branch,
-        $refresh
-    );
-    $remote = MONITOR_PLUGIN_ICONS_remoteUrl(
-        $owner,
-        $repoName,
-        $branch,
-        $manifest
-    );
+    $manifest = MONITOR_PLUGIN_ICONS_remoteManifest($owner, $repoName, $branch, $refresh);
+    $remote = MONITOR_PLUGIN_ICONS_remoteUrl($owner, $repoName, $branch, $manifest);
 
     return $remote !== '' ? $remote : MONITOR_PLUGIN_ICONS_fallbackUrl();
 }
@@ -326,11 +334,10 @@ $repositories = isset($catalog['repositories']) && is_array($catalog['repositori
     ? $catalog['repositories'] : array();
 
 $icons = array();
+$metadata = array();
 $installedNames = array();
 
-$result = DB_query(
-    "SELECT pi_name, pi_enabled FROM {$_TABLES['plugins']} ORDER BY pi_name"
-);
+$result = DB_query("SELECT pi_name, pi_enabled FROM {$_TABLES['plugins']} ORDER BY pi_name");
 
 if ($result) {
     while ($row = DB_fetchArray($result)) {
@@ -345,14 +352,21 @@ if ($result) {
         }
 
         $repo = MONITOR_PLUGIN_CATALOG_matchRepository($pluginName, $repositories);
+        $manifest = null;
+        $source = '';
         $installedNames[$normalized] = true;
         $icons[$normalized] = MONITOR_PLUGIN_ICONS_resolveInstalled(
             $pluginName,
             !empty($row['pi_enabled']),
             $owner,
             $repo,
-            $refresh
+            $refresh,
+            $manifest,
+            $source
         );
+        if (is_array($manifest)) {
+            $metadata[$normalized] = MONITOR_PLUGIN_ICONS_metadata($manifest, $source);
+        }
     }
 }
 
@@ -361,23 +375,21 @@ foreach ($repositories as $repo) {
         continue;
     }
 
-    $normalized = MONITOR_PLUGIN_ICONS_normalize(
-        isset($repo['name']) ? $repo['name'] : ''
-    );
-
+    $normalized = MONITOR_PLUGIN_ICONS_normalize(isset($repo['name']) ? $repo['name'] : '');
     if ($normalized === '' || isset($installedNames[$normalized])) {
         continue;
     }
 
-    $icons[$normalized] = MONITOR_PLUGIN_ICONS_resolveRepository(
-        $owner,
-        $repo,
-        $refresh
-    );
+    $manifest = null;
+    $icons[$normalized] = MONITOR_PLUGIN_ICONS_resolveRepository($owner, $repo, $refresh, $manifest);
+    if (is_array($manifest)) {
+        $metadata[$normalized] = MONITOR_PLUGIN_ICONS_metadata($manifest, 'remote_plugin_json');
+    }
 }
 
 echo json_encode(array(
     'ok' => true,
     'fallback' => MONITOR_PLUGIN_ICONS_fallbackUrl(),
-    'icons' => $icons
+    'icons' => $icons,
+    'metadata' => $metadata
 ));
