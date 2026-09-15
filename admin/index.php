@@ -288,7 +288,8 @@ function MONITOR_ADMIN_pluginBadge($state)
         'ahead' => $LANG_MONITOR_1['plugin_catalog_ahead'],
         'unknown' => $LANG_MONITOR_1['plugin_catalog_unknown'],
         'no_version' => $LANG_MONITOR_1['plugin_catalog_no_version'],
-        'no_repository' => $LANG_MONITOR_1['plugin_catalog_no_repository']
+        'no_repository' => $LANG_MONITOR_1['plugin_catalog_no_repository'],
+        'catalog_unavailable' => $LANG_MONITOR_1['plugin_catalog_catalog_unavailable']
     );
     $styles = array(
         'current' => 'background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;',
@@ -296,7 +297,8 @@ function MONITOR_ADMIN_pluginBadge($state)
         'ahead' => 'background:#e3f2fd;color:#0d47a1;border:1px solid #90caf9;',
         'unknown' => 'background:#f5f5f5;color:#555;border:1px solid #d7dde2;',
         'no_version' => 'background:#f5f5f5;color:#555;border:1px solid #d7dde2;',
-        'no_repository' => 'background:#f5f5f5;color:#555;border:1px solid #d7dde2;'
+        'no_repository' => 'background:#f5f5f5;color:#555;border:1px solid #d7dde2;',
+        'catalog_unavailable' => 'background:#fff8e1;color:#7a4f00;border:1px solid #ffe082;'
     );
 
     if (!isset($labels[$state])) {
@@ -389,12 +391,62 @@ function MONITOR_ADMIN_discoveryCard($repo)
     return $html . '</section>';
 }
 
+function MONITOR_ADMIN_catalogDiagnostic($catalog)
+{
+    global $LANG_MONITOR_1;
+
+    if (!is_array($catalog) || !empty($catalog['available'])) {
+        return '';
+    }
+
+    $diagnostic = isset($catalog['diagnostic']) && is_array($catalog['diagnostic'])
+        ? $catalog['diagnostic'] : array();
+    $source = isset($diagnostic['source']) ? (string) $diagnostic['source'] : 'unavailable';
+    $http = isset($diagnostic['http']) && is_array($diagnostic['http'])
+        ? $diagnostic['http'] : array();
+    $details = array();
+
+    if (!empty($http['status'])) {
+        $details[] = 'HTTP ' . (int) $http['status'];
+    }
+    if (isset($http['rate_remaining']) && $http['rate_remaining'] !== '') {
+        $limit = isset($http['rate_limit']) && $http['rate_limit'] !== ''
+            ? '/' . $http['rate_limit'] : '';
+        $details[] = 'GitHub API remaining: ' . $http['rate_remaining'] . $limit;
+    }
+    if (!empty($http['rate_reset']) && ctype_digit((string) $http['rate_reset'])) {
+        $details[] = 'reset: ' . date('Y-m-d H:i:s T', (int) $http['rate_reset']);
+    }
+    if (!empty($http['error'])) {
+        $details[] = (string) $http['error'];
+    }
+    if (isset($http['authenticated'])) {
+        $details[] = !empty($http['authenticated'])
+            ? 'authenticated request' : 'anonymous request';
+    }
+    if ($source === 'stale_cache') {
+        $details[] = 'using stale cache';
+    }
+
+    $html = '<div style="padding:11px;border:1px solid #ffe082;background:#fffaf0;border-radius:7px;margin-bottom:16px">'
+          . '<strong>' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_catalog_unavailable']) . '</strong><br>'
+          . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_remote_unavailable']);
+
+    if (!empty($details)) {
+        $html .= '<div style="margin-top:7px;font-size:.92em;color:#555"><code>'
+              . MONITOR_ADMIN_h(implode(' · ', $details)) . '</code></div>';
+    }
+
+    return $html . '</div>';
+}
+
 function MONITOR_ADMIN_plugins()
 {
     global $_TABLES, $_CONF, $LANG_MONITOR_1;
 
     $refresh = isset($_GET['refresh']) && $_GET['refresh'] === '1';
     $catalog = MONITOR_PLUGIN_CATALOG_repositories($refresh);
+    $catalogAvailable = !empty($catalog['available']);
     $owner = isset($catalog['owner']) ? $catalog['owner'] : '';
     $repositories = isset($catalog['repositories']) && is_array($catalog['repositories'])
         ? $catalog['repositories'] : array();
@@ -426,21 +478,23 @@ function MONITOR_ADMIN_plugins()
             }
 
             $installed = isset($row['pi_version']) ? (string) $row['pi_version'] : '';
-            $repo = MONITOR_PLUGIN_CATALOG_matchRepository($name, $repositories);
-            $state = 'no_repository';
+            $repo = $catalogAvailable
+                ? MONITOR_PLUGIN_CATALOG_matchRepository($name, $repositories)
+                : null;
+            $state = $catalogAvailable ? 'no_repository' : 'catalog_unavailable';
             $repositoryUrl = '';
             $remoteUrl = '';
-            $remoteLabel = $LANG_MONITOR_1['plugin_catalog_no_repository'];
+            $remoteLabel = $catalogAvailable
+                ? $LANG_MONITOR_1['plugin_catalog_no_repository']
+                : $LANG_MONITOR_1['plugin_catalog_catalog_unavailable'];
 
-            if (is_array($repo)) {
+            if ($catalogAvailable && is_array($repo)) {
                 $repositoryUrl = isset($repo['url']) ? $repo['url'] : '';
-                $remote = !empty($catalog['available'])
-                    ? MONITOR_PLUGIN_CATALOG_latestVersion(
-                        $owner,
-                        isset($repo['name']) ? $repo['name'] : '',
-                        $refresh
-                    )
-                    : null;
+                $remote = MONITOR_PLUGIN_CATALOG_latestVersion(
+                    $owner,
+                    isset($repo['name']) ? $repo['name'] : '',
+                    $refresh
+                );
 
                 if (is_array($remote)) {
                     $remoteLabel = isset($remote['tag']) ? $remote['tag'] : '';
@@ -456,7 +510,7 @@ function MONITOR_ADMIN_plugins()
                     $remoteLabel = $LANG_MONITOR_1['plugin_catalog_no_version'];
                     $state = 'no_version';
                 }
-            } else {
+            } elseif ($catalogAvailable) {
                 $withoutRepository++;
             }
 
@@ -479,20 +533,22 @@ function MONITOR_ADMIN_plugins()
 
     $recent = array();
     $legacy = array();
-    foreach ($repositories as $repo) {
-        if (!MONITOR_PLUGIN_CATALOG_isDiscoverable($repo)) {
-            continue;
-        }
+    if ($catalogAvailable) {
+        foreach ($repositories as $repo) {
+            if (!MONITOR_PLUGIN_CATALOG_isDiscoverable($repo)) {
+                continue;
+            }
 
-        $normalized = MONITOR_PLUGIN_CATALOG_normalizeName($repo['name']);
-        if ($normalized !== '' && isset($installedNames[$normalized])) {
-            continue;
-        }
+            $normalized = MONITOR_PLUGIN_CATALOG_normalizeName($repo['name']);
+            if ($normalized !== '' && isset($installedNames[$normalized])) {
+                continue;
+            }
 
-        if (MONITOR_PLUGIN_CATALOG_discoveryState($repo) === 'active') {
-            $recent[] = $repo;
-        } else {
-            $legacy[] = $repo;
+            if (MONITOR_PLUGIN_CATALOG_discoveryState($repo) === 'active') {
+                $recent[] = $repo;
+            } else {
+                $legacy[] = $repo;
+            }
         }
     }
 
@@ -519,9 +575,8 @@ function MONITOR_ADMIN_plugins()
     if ($owner === '') {
         $html .= '<div style="padding:11px;border:1px solid #ffe082;background:#fffaf0;border-radius:7px;margin-bottom:16px">'
               . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_remote_disabled']) . '</div>';
-    } elseif (empty($catalog['available'])) {
-        $html .= '<div style="padding:11px;border:1px solid #ffe082;background:#fffaf0;border-radius:7px;margin-bottom:16px">'
-              . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_remote_unavailable']) . '</div>';
+    } elseif (!$catalogAvailable) {
+        $html .= MONITOR_ADMIN_catalogDiagnostic($catalog);
     }
 
     $html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px">'
@@ -529,9 +584,12 @@ function MONITOR_ADMIN_plugins()
           . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_enabled'], $enabledCount, 'ok')
           . MONITOR_ADMIN_summaryCard(ucfirst($LANG_MONITOR_1['changes_disabled']), $disabledCount, 'info')
           . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_updates'], $updatesAvailable, $updatesAvailable > 0 ? 'warning' : 'ok')
-          . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_discover'], count($recent), 'info')
-          . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_unmatched'], $withoutRepository, 'info')
-          . '</div>';
+          . MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_discover'], count($recent), 'info');
+
+    if ($catalogAvailable) {
+        $html .= MONITOR_ADMIN_summaryCard($LANG_MONITOR_1['plugin_catalog_summary_unmatched'], $withoutRepository, 'info');
+    }
+    $html .= '</div>';
 
     $html .= '<h3>' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_installed']) . '</h3>';
     $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:24px">';
@@ -543,7 +601,9 @@ function MONITOR_ADMIN_plugins()
     $html .= '<h3>' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_discover']) . '</h3>';
     $html .= '<p style="color:#555">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_discover_intro']) . '</p>';
 
-    if (empty($recent)) {
+    if (!$catalogAvailable) {
+        $html .= '<p>' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_catalog_unavailable']) . '</p>';
+    } elseif (empty($recent)) {
         $html .= '<p>' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_none_discoverable']) . '</p>';
     } else {
         $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">';
@@ -553,7 +613,7 @@ function MONITOR_ADMIN_plugins()
         $html .= '</div>';
     }
 
-    if (!empty($legacy)) {
+    if ($catalogAvailable && !empty($legacy)) {
         $html .= '<details style="margin-top:20px"><summary style="cursor:pointer;font-weight:bold">'
               . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_legacy_discover'])
               . ' (' . count($legacy) . ')</summary>'
