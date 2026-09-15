@@ -192,6 +192,22 @@ function plugin_upgrade_monitor()
      * interrupted upgrade can be retried safely.
      */
     if (version_compare($installed_version, '1.4.0', '<')) {
+        $c = config::get_instance();
+        if (!array_key_exists('github_token', $_MONITOR_CONF)) {
+            $c->add(
+                'github_token',
+                '',
+                'text',
+                0,
+                0,
+                null,
+                30,
+                true,
+                'monitor',
+                0
+            );
+        }
+
         if (!MONITOR_upgradeSecurityTable140()) {
             COM_errorLog(
                 'MONITOR - Upgrade to 1.4.0 stopped before version update: '
