@@ -105,12 +105,53 @@ Geeklog action: `get_plugins`
 
 Returns installed plugins with:
 
-- installed version;
+- installed version recorded in `gl_plugins.pi_version`;
+- local code version reported through Geeklog's native plugin metadata APIs;
+- normalized local alignment state;
+- `upgrade_required` when the local code is newer than the recorded database version;
 - enabled/disabled state;
 - Geeklog requirement;
 - latest known GitHub version when remote metadata is enabled;
-- normalized version state;
+- normalized remote version state;
 - public repository/version URLs when known.
+
+Typical item:
+
+```php
+array(
+    'name'                => 'monitor',
+    'installed_version'   => '1.3.1',
+    'code_version'        => '1.4.0',
+    'upgrade_required'    => true,
+    'local_version_state' => 'upgrade_required',
+    'enabled'             => true,
+    'geeklog_requirement' => '2.1.1',
+    'latest_version'      => 'v1.4.0',
+    'version_state'       => 'current',
+    'repository_url'      => 'https://github.com/example/monitor',
+    'version_url'         => 'https://github.com/example/monitor/releases/tag/v1.4.0'
+)
+```
+
+The service deliberately separates two different operational states:
+
+1. **Local upgrade required** — the files already present on the server declare a version newer than the version stored in the Geeklog plugins table. Geeklog's native plugin manager must run the plugin upgrade/migrations.
+2. **Remote update available** — GitHub exposes a version newer than the code currently present on the server. This is informational only; Monitor does not install it.
+
+When a local code version is available, remote comparison uses that code version rather than the database version. This prevents a plugin whose new files are already copied but whose database upgrade is still pending from being reported simultaneously as the same remote update.
+
+Local states include:
+
+- `current`;
+- `upgrade_required`;
+- `installed_ahead`;
+- `code_missing`;
+- `callback_unavailable`;
+- `version_unavailable`;
+- `code_version_invalid`;
+- `installed_version_invalid`.
+
+For disabled plugins, Geeklog may not have loaded the plugin callback. Monitor therefore uses `PLG_getParams()` as a read-only metadata fallback when possible instead of including plugin code itself.
 
 Optional argument:
 
@@ -119,6 +160,18 @@ array('include_remote' => false)
 ```
 
 Remote metadata is enabled by default. Monitor uses its normal cache and never force-refreshes GitHub metadata from this service.
+
+The summary explicitly keeps the two counts separate:
+
+```php
+array(
+    'installed'         => 12,
+    'enabled'           => 11,
+    'disabled'          => 1,
+    'upgrades_required' => 2,
+    'updates_available' => 4
+)
+```
 
 ## `monitor.get_log_summary`
 
@@ -201,4 +254,4 @@ Monitor remains authoritative for operational diagnostics. Consumers should not 
 
 - Hub may include Monitor status/change signals in its own integrity context but should not parse Monitor logs or snapshots. Hub should continue to listen to Geeklog lifecycle events directly when it needs them for relationship maintenance.
 - Connector may expose these services externally after applying its own authentication/authorization policy but should not read Monitor storage directly.
-- Eclipse may present concise administrator-facing status but should not contain Monitor diagnostic business logic.
+- Eclipse may present concise administrator-facing status but should not contain Monitor diagnostic business logic. Local plugin upgrades belong in its attention area, while remote releases belong in an informational updates card.
