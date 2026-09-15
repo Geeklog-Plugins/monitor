@@ -32,7 +32,8 @@ if (file_exists($langfile)) {
 
 $_monitor_DEFAULT = array(
     'emails' => $_CONF['site_mail'],
-    'repository' => 'Geeklog-Plugins'
+    'repository' => 'Geeklog-Plugins',
+    'github_token' => ''
 );
 
 function plugin_initconfig_monitor()
@@ -50,6 +51,7 @@ function plugin_initconfig_monitor()
     $c->add('fs_main', null, 'fieldset', 0, 0, null, 0, true, 'monitor', 0);
     $c->add('emails', $_monitor_DEFAULT['emails'], 'text', 0, 0, null, 10, true, 'monitor', 0);
     $c->add('repository', $_monitor_DEFAULT['repository'], 'text', 0, 0, null, 20, true, 'monitor', 0);
+    $c->add('github_token', $_monitor_DEFAULT['github_token'], 'text', 0, 0, null, 30, true, 'monitor', 0);
 
     return true;
 }
