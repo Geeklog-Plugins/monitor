@@ -2,5 +2,8 @@
   "schema": 1,
   "id": "monitor",
   "name": "Monitor",
-  "icon": "admin/images/monitor.png"
+  "icon": "admin/images/monitor.png",
+  "requires": {
+    "geeklog": "1.8.0"
+  }
 }
