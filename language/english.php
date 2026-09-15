@@ -219,6 +219,7 @@ $LANG_MONITOR_1 = array(
     'plugin_catalog_no_release' => 'No release metadata',
     'plugin_catalog_no_version' => 'No release or version tag found',
     'plugin_catalog_no_repository' => 'No matching repository',
+    'plugin_catalog_catalog_unavailable' => 'GitHub catalog unavailable',
     'plugin_catalog_current' => 'Up to date',
     'plugin_catalog_update' => 'Update available',
     'plugin_catalog_ahead' => 'Installed version newer',
@@ -257,7 +258,8 @@ $GLOBALS['LANG_fs']['monitor'] = array(
 
 $GLOBALS['LANG_confignames']['monitor'] = array(
     'emails' => 'List of email addresses for optional Monitor notifications (comma-separated)',
-    'repository' => 'GitHub repository owner reserved for plugin release metadata (default: Geeklog-Plugins). Leave blank to disable remote metadata checks.'
+    'repository' => 'GitHub repository owner reserved for plugin release metadata (default: Geeklog-Plugins). Leave blank to disable remote metadata checks.',
+    'github_token' => 'Optional GitHub token for API metadata requests. Prefer a fine-grained read-only token. MONITOR_GITHUB_TOKEN environment variable takes priority.'
 );
 
 $LANG_configsections =& $GLOBALS['LANG_configsections'];
