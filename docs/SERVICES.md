@@ -12,6 +12,44 @@ Monitor 1.4.0 exposes structured diagnostics through Geeklog's native `PLG_invok
 - Consumers should use `PLG_invokeService()` rather than call Monitor implementation helpers directly.
 - Consumers must not read Monitor tables, JSON snapshots or archive files directly.
 
+
+## Shared capability declaration
+
+Monitor implements the memorandum capability convention through:
+
+```php
+plugin_getcapabilities_monitor()
+```
+
+It declares the provider roles:
+
+```text
+diagnostic
+service
+```
+
+and the capabilities:
+
+```text
+monitor.health
+monitor.diagnostics
+monitor.logs.summary
+monitor.plugins.status
+dashboard.summary
+```
+
+These identifiers advertise existing Monitor-owned data and do not bypass permissions. Agent, Eclipse, Hub and future consumers should discover the declaration and then invoke the documented Monitor services. They must not maintain a parallel Monitor capability registry.
+
+### Capability-to-service mapping
+
+| Capability | Geeklog service | Purpose |
+|---|---|---|
+| `monitor.health` | `monitor / get_status` | Current site-health state and checks |
+| `monitor.diagnostics` | `monitor / get_changes` and Root-only `get_configuration_audit` where appropriate | Operational change/configuration diagnostics |
+| `monitor.logs.summary` | `monitor / get_log_summary`, `get_log_archives` | Bounded archived-log summaries |
+| `monitor.plugins.status` | `monitor / get_plugins` | Installed/code/remote plugin status |
+| `dashboard.summary` | `monitor / dashboard_summary` | Compact local summary for administrative dashboards |
+
 ## Content lifecycle observation
 
 Monitor listens to Geeklog's native `PLG_itemSaved()` and `PLG_itemDeleted()` notifications through:
@@ -52,6 +90,21 @@ if ($ret == PLG_RET_OK) {
 ```
 
 Conceptual service names use `monitor.<action>` while Geeklog invocation uses the plugin and action separately.
+
+
+## `dashboard.summary`
+
+Geeklog action: `dashboard_summary`
+
+Returns a compact local-only operational summary intended for Eclipse and other capability-aware administrative consumers. It combines Monitor's current health summary with local plugin alignment counts and deliberately disables remote repository checks so dashboard rendering remains bounded and does not depend on an external request.
+
+The service requires `monitor.admin` and remains read-only.
+
+Typical consumers:
+
+- Eclipse provider card;
+- Agent administrative diagnostics when the caller is authorized;
+- Hub administrative interoperability/integrity views.
 
 ## `monitor.get_status`
 
