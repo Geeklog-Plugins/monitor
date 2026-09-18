@@ -57,11 +57,25 @@ The development branch removes or changes several historical behaviours:
 - plugin installation from the Monitor dashboard removed while the update architecture is redesigned;
 - fresh-install legacy security storage uses InnoDB and lookup indexes.
 
+## Shared interoperability
+
+Monitor 1.4.0 exposes provider-owned, read-only operational data for capability-aware consumers such as Agent, Eclipse and Hub.
+
+The plugin declares the shared capabilities:
+
+- `monitor.health`;
+- `monitor.diagnostics`;
+- `monitor.logs.summary`;
+- `monitor.plugins.status`;
+- `dashboard.summary`.
+
+The data remains owned and calculated by Monitor. Consumers use Geeklog's service dispatcher instead of reading Monitor tables, snapshots or files directly. See [docs/SERVICES.md](docs/SERVICES.md).
+
+A static `plugin.json` manifest also exposes Monitor identity, icon and minimum Geeklog/PHP requirements without executing plugin code.
+
 ## Development notes
 
-Monitor 1.4.0 is still under active modernization. In particular, the plugin version in `autoinstall.php` remains at the previous persisted version until the 1.4.0 upgrade migrations and compatibility tests are ready.
-
-Before release, the branch must pass the release gates documented in `ROADMAP.md`, including PHP 5.6/PHP 8.1 testing, Geeklog 2.1.1/2.2.2 testing, shared-files multisite transition testing and security review.
+The code version and installer metadata now declare **Monitor 1.4.0**. The release remains subject to the release gates documented in `ROADMAP.md`, especially the two-site shared-files upgrade test, interrupted-migration/retry test, Ban-present integration test and complete scheduled-task runtime test.
 
 ## Issues and contributions
 
