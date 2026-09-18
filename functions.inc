@@ -86,6 +86,21 @@ function plugin_geticon_monitor()
  * Enable Geeklog's native service dispatcher for Monitor.
  * Every Monitor service performs its own ACL check and is read-only.
  */
+function plugin_getcapabilities_monitor()
+{
+    return array(
+        'schema' => 1,
+        'roles' => array('diagnostic', 'service'),
+        'capabilities' => array(
+            'monitor.health',
+            'monitor.diagnostics',
+            'monitor.logs.summary',
+            'monitor.plugins.status',
+            'dashboard.summary'
+        )
+    );
+}
+
 function plugin_wsEnabled_monitor()
 {
     return true;
