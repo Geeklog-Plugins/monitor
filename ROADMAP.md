@@ -369,8 +369,32 @@ admin/index.php
 - [x] CI/build workflows documented by repository structure;
 - [x] installable archive generated under `dist/`;
 - [x] configuration API lessons contributed back to the Geeklog development memorandum;
-- [ ] add/complete `CHANGELOG.md` before final release if not already present;
+- [x] add `RELEASE-NOTES-1.4.0.md` with the release summary and upgrade notes;
 - [ ] consider `SECURITY.md` for public release maintenance expectations.
+
+---
+
+
+# Phase 15 - Shared capabilities and consumers (P1)
+
+Monitor follows the shared capability contract in the development memorandum rather than creating Agent-, Eclipse- or Hub-specific APIs.
+
+- [x] declare provider roles `diagnostic` and `service` through `plugin_getcapabilities_monitor()`;
+- [x] declare `monitor.health`;
+- [x] declare `monitor.diagnostics`;
+- [x] declare `monitor.logs.summary`;
+- [x] declare `monitor.plugins.status`;
+- [x] declare `dashboard.summary`;
+- [x] expose a compact read-only `dashboard.summary` service for capability-aware administrative consumers;
+- [x] keep all service data permission-checked and provider-owned;
+- [x] keep Agent, Eclipse and Hub as consumers rather than dependencies;
+- [x] add root-level `plugin.json` metadata manifest;
+- [x] document the service/capability mapping in `docs/SERVICES.md`;
+- [ ] validate the capability-driven Eclipse card against Eclipse 1.2 when that consumer implementation is ready;
+- [ ] validate Agent discovery against the current Agent development branch;
+- [ ] validate Hub interoperability audit recognition when the Hub implementation reaches that phase.
+
+The release of Monitor 1.4.0 is not blocked by future consumer implementations as long as the provider contract remains stable, read-only and covered by CI guardrails.
 
 ---
 
@@ -419,6 +443,14 @@ Monitor 1.4.0 is not intended to become:
 - [x] legacy ban behaviour reduced/transitioned;
 - [x] expensive historical frontend scans removed;
 - [x] dashboard responsibilities narrowed to monitoring/diagnostics.
+
+## Interoperability
+
+- [x] shared capability declaration present;
+- [x] `dashboard.summary` is implemented as a bounded read-only service;
+- [x] `plugin.json` metadata manifest is present;
+- [x] service contracts for Agent/Eclipse/Hub are documented;
+- [x] no consumer-specific dependency is introduced.
 
 ## Reference-quality monitoring
 
