@@ -233,7 +233,19 @@ $LANG_MONITOR_1 = array(
     'plugin_catalog_summary_installed' => 'Installed',
     'plugin_catalog_summary_updates' => 'Updates available',
     'plugin_catalog_summary_discover' => 'Recent candidates',
-    'plugin_catalog_summary_unmatched' => 'Without GitHub match'
+    'plugin_catalog_summary_unmatched' => 'Without GitHub match',
+
+    // Active logs
+    'logs_active_title' => 'Geeklog logs',
+    'logs_active_intro' => 'Active logs for the current Geeklog site. Monitor reads the current site path_log directly and does not use Geeklog\\Log static path state.',
+    'logs_active_empty' => 'No readable .log files were found for the current site.',
+    'logs_active_file' => 'Log file',
+    'logs_active_size' => 'Size',
+    'logs_active_modified' => 'Modified',
+    'logs_active_actions' => 'Actions',
+    'logs_active_view' => 'View',
+    'logs_active_download' => 'Download',
+    'logs_active_preview_limited' => 'Preview limited to the most recent 512 KiB.'
 );
 
 $PLG_monitor_MESSAGE3002 = $LANG32[9];
