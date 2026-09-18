@@ -44,6 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f package/monitor/autoinstall.php
+          test -f package/monitor/plugin.json
           test -f package/monitor/functions.inc
           test -f package/monitor/install_defaults.php
           test -f package/monitor/admin/index.php
@@ -74,6 +75,7 @@ jobs:
           test -s "$ARCHIVE"
           unzip -t "$ARCHIVE"
           unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/autoinstall.php'
+          unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/plugin.json'
           unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/functions.inc'
           unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/admin/index.php'
           unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/sql/mysql_install.php'
