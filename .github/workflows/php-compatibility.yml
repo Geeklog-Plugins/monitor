@@ -161,6 +161,33 @@ jobs:
           fi
           echo 'Read-only Monitor service contract guardrails present.'
 
+
+      - name: Check shared capability contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f plugin.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path('plugin.json').read_text(encoding='utf-8'))
+          assert manifest['schema'] == 1
+          assert manifest['id'] == 'monitor'
+          assert manifest['name'] == 'Monitor'
+          assert manifest['requires']['geeklog'] == '2.1.1'
+          assert manifest['requires']['php'] == '5.6.0'
+          PY
+          grep -q "function plugin_getcapabilities_monitor" functions.inc
+          grep -q "'monitor.health'" functions.inc
+          grep -q "'monitor.diagnostics'" functions.inc
+          grep -q "'monitor.logs.summary'" functions.inc
+          grep -q "'monitor.plugins.status'" functions.inc
+          grep -q "'dashboard.summary'" functions.inc
+          grep -q "service_dashboard_summary_monitor" services.inc.php
+          grep -q "include_remote' => false" services.inc.php
+          echo 'Shared Monitor capability contract present.'
+
       - name: Check lifecycle observation guardrails
         shell: bash
         run: |
