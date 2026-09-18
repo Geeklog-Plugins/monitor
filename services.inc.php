@@ -155,3 +155,34 @@ function service_get_configuration_audit_monitor($args, &$output, &$svc_msg)
 
     return MONITOR_SERVICE_ok(MONITOR_SERVICE_configurationAudit(), $output, $svc_msg);
 }
+
+/**
+ * dashboard.summary
+ *
+ * Compact operational summary intended for Eclipse, Agent, Hub and other
+ * capability-aware administrative consumers. Remote repository checks are
+ * deliberately disabled so dashboard rendering remains local and bounded.
+ */
+function service_dashboard_summary_monitor($args, &$output, &$svc_msg)
+{
+    if (!MONITOR_SERVICE_authorized()) {
+        return MONITOR_SERVICE_denied($output, $svc_msg);
+    }
+
+    $status = MONITOR_SERVICE_status();
+    $plugins = MONITOR_SERVICE_plugins(array('include_remote' => false));
+
+    $statusData = isset($status['data']) && is_array($status['data'])
+        ? $status['data'] : array();
+    $pluginData = isset($plugins['data']) && is_array($plugins['data'])
+        ? $plugins['data'] : array();
+
+    return MONITOR_SERVICE_ok(MONITOR_SERVICE_envelope('dashboard.summary', array(
+        'status' => isset($statusData['status']) ? $statusData['status'] : 'unknown',
+        'health' => isset($statusData['summary']) && is_array($statusData['summary'])
+            ? $statusData['summary'] : array(),
+        'plugins' => isset($pluginData['summary']) && is_array($pluginData['summary'])
+            ? $pluginData['summary'] : array()
+    )), $output, $svc_msg);
+}
+
