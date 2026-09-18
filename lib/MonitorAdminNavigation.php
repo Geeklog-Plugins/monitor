@@ -31,7 +31,7 @@ function MONITOR_ADMIN_NAV_h($value)
  * stay outside Monitor. Configuration remains a POST because Geeklog expects
  * conf_group when opening a plugin's configuration panel.
  *
- * @param string $active overview|changes|security|plugins|log_archives
+ * @param string $active overview|changes|security|plugins|logs|log_archives
  * @return string
  */
 function MONITOR_ADMIN_NAV_render($active)
@@ -46,8 +46,8 @@ function MONITOR_ADMIN_NAV_render($active)
         'changes' => array($LANG_MONITOR_1['changes'], $pluginBase . 'changes.php'),
         'security' => array($LANG_MONITOR_1['security'], $pluginBase . 'index.php?view=security'),
         'plugins' => array($LANG_MONITOR_1['updates'], $pluginBase . 'index.php?view=plugins'),
-        'log_archives' => array($LANG_MONITOR_1['log_archive_title'], $pluginBase . 'log-archives.php'),
-        'geeklog_logs' => array('Geeklog logs', $adminBase . 'logviewer.php')
+        'logs' => array($LANG_MONITOR_1['logs_active_title'], $pluginBase . 'logs.php'),
+        'log_archives' => array($LANG_MONITOR_1['log_archive_title'], $pluginBase . 'log-archives.php')
     );
 
     $baseStyle = 'display:inline-block;padding:7px 11px;border:1px solid #c7ccd1;'
