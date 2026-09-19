@@ -11,10 +11,6 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: monitor-dist-v2-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
     name: Build monitor_1.4.0_2.1.1.zip
@@ -23,8 +19,6 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          ref: monitor-1.4.0
 
       - name: Prepare installable plugin tree
         shell: bash
@@ -104,9 +98,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # A newer source commit may have reached the branch while this run was
-          # building. Never push an archive generated from stale sources over a
-          # newer branch head; the newer run will publish its own archive.
+          # Each run builds the commit that triggered it. If the branch moved
+          # while the ZIP was being built, do not publish a stale archive.
           git fetch origin monitor-1.4.0
           REMOTE_HEAD="$(git rev-parse origin/monitor-1.4.0)"
           if [ "$REMOTE_HEAD" != "$GITHUB_SHA" ]; then
