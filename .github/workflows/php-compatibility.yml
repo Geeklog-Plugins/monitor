@@ -76,6 +76,9 @@ jobs:
           grep -q "add('emails', \$_monitor_DEFAULT\['emails'\], 'text', 0, 0, null" install_defaults.php
           grep -q "add('repository', \$_monitor_DEFAULT\['repository'\], 'text', 0, 0, null" install_defaults.php
           grep -q "selectionArray = -1" lib/MonitorConfigCompat.php
+          grep -q "MONITOR_repairConfiguration140" functions.inc
+          grep -q "basename(\$_SERVER\['SCRIPT_NAME'\]) === 'configuration.php'" functions.inc
+          grep -q "name = 'github_token'" lib/MonitorConfigCompat.php
           test -f language/english_utf-8.php
 
       - name: Check shared Monitor navigation
@@ -126,6 +129,10 @@ jobs:
           grep -q "@ftruncate(\$handle, 0)" lib/MonitorLogRotation.php
           grep -q "MONITOR_LOG_cleanupArchives" lib/MonitorLogRotation.php
           grep -q "SEC_hasRights('monitor.admin')" admin/log-archives.php
+          grep -q "ADMIN_simpleList" admin/log-archives.php
+          grep -q "MONITOR_LOG_ADMIN_sortArchives" admin/log-archives.php
+          grep -q "target=\"_blank\"" admin/log-archives.php
+          grep -q "log_archive_back" admin/log-archives.php
           if grep -q "path_public_html" lib/MonitorLogRotation.php; then
             echo 'Log archives must stay outside public_html.'
             exit 1
