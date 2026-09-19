@@ -264,7 +264,7 @@ Oversized image scanning is bounded and read-only; a future detailed inventory s
 - [x] never clear a log merely because it was emailed;
 - [x] render archive catalogue through Geeklog `ADMIN_simpleList()`;
 - [x] sortable archive columns for date, log name and size;
-- [x] open archive preview in a separate page/tab with explicit back links;
+- [x] open archive preview as a dedicated same-tab detail view with explicit back links;
 - [ ] optional search/filter;
 - [ ] optional severity filtering;
 - [ ] optional explicit download action.
