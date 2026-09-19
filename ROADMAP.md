@@ -250,6 +250,7 @@ Oversized image scanning is bounded and read-only; a future detailed inventory s
 - [x] use a single icon resolver (`plugin-icons.php`) and avoid duplicated server/client icon rendering;
 - [x] keep requirement/compatibility presentation server-owned to avoid duplicate metadata blocks;
 - [x] show compatibility badges only when an update is available, including explicit incompatible/unknown states;
+- [x] show pre-install compatibility and declared Geeklog/PHP requirements on Discover plugin cards using remote `plugin.json` metadata;
 - [x] Security view;
 - [x] Ban capability visibility;
 - [x] Geeklog 2.2.2-compatible rendering using `COM_createHTMLDocument()`;
