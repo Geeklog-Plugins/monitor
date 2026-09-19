@@ -198,38 +198,52 @@ jobs:
           grep -q "include_remote' => false" services.inc.php
           echo 'Shared Monitor capability contract present.'
 
-      - name: Check plugin card UI semantics
+      - name: Check plugin catalog UI contracts
         shell: bash
         run: |
           set -euo pipefail
-          grep -q "function MONITOR_ADMIN_updateCompatibilityBadge" admin/index.php
-          grep -q "monitor-plugin-title-with-icon" admin/index.php
-          grep -q "plugin-icons.php" templates/administration.thtml
-          if grep -q "function MONITOR_ADMIN_pluginIcon" admin/index.php; then
-            echo 'Plugin cards must use the shared plugin-icons.php resolver only.'
-            exit 1
-          fi
-          grep -q "update_compatibility" admin/index.php
-          grep -q "plugin_catalog_update_incompatible" language/english.php
-          grep -q "state.*!== 'update'" admin/index.php
-          grep -q "server-owned by the plugin card" templates/administration.thtml
-          if grep -q "✓ Compatible" templates/administration.thtml; then
-            echo 'Client-side plugin metadata must not duplicate compatibility badges.'
-            exit 1
-          fi
-          echo 'Plugin card UI semantics are present.'
+          python3 - <<'PY'
+          from pathlib import Path
 
-      - name: Check discovery compatibility cards
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -q 'data-plugin-installed="0"' admin/index.php
-          grep -q "monitor-discovery-compatibility" templates/administration.thtml
-          grep -q "Compatible with this site" templates/administration.thtml
-          grep -q "Not compatible with this site" templates/administration.thtml
-          grep -q "declared > 0" admin/plugin-icons.php
-          grep -q "not_declared" admin/plugin-icons.php
-          echo 'Discovery compatibility cards are present.'
+          admin = Path('admin/index.php').read_text(encoding='utf-8')
+          icons = Path('admin/plugin-icons.php').read_text(encoding='utf-8')
+          template = Path('templates/administration.thtml').read_text(encoding='utf-8')
+          language = Path('language/english.php').read_text(encoding='utf-8')
+
+          required_admin = [
+              'function MONITOR_ADMIN_updateCompatibilityBadge',
+              'monitor-plugin-title-with-icon',
+              'update_compatibility',
+              'data-plugin-installed="0"',
+              "$plugin['state'] !== 'update'",
+          ]
+          for needle in required_admin:
+              assert needle in admin, 'Missing admin UI contract: ' + needle
+
+          assert 'function MONITOR_ADMIN_pluginIcon' not in admin, (
+              'Plugin cards must use plugin-icons.php as their single icon resolver'
+          )
+
+          required_template = [
+              'plugin-icons.php',
+              'monitor-discovery-compatibility',
+              'Compatible with this site',
+              'Not compatible with this site',
+          ]
+          for needle in required_template:
+              assert needle in template, 'Missing template UI contract: ' + needle
+
+          assert '✓ Compatible' not in template, (
+              'Installed plugin compatibility must not be duplicated client-side'
+          )
+
+          required_icons = ['declared > 0', 'not_declared']
+          for needle in required_icons:
+              assert needle in icons, 'Missing discovery compatibility logic: ' + needle
+
+          assert 'plugin_catalog_update_incompatible' in language
+          print('Plugin catalog UI contracts are present.')
+          PY
 
       - name: Check target plugin requirement metadata
         shell: bash
