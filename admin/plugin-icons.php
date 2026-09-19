@@ -245,14 +245,34 @@ function MONITOR_PLUGIN_ICONS_metadata($manifest, $source)
     $php = MONITOR_PLUGIN_CATALOG_manifestRequirement($manifest, 'php');
     $currentGeeklog = defined('VERSION') ? (string) VERSION
         : (isset($_CONF['version']) ? (string) $_CONF['version'] : '');
-    $geeklogState = MONITOR_PLUGIN_ICONS_requirementState($currentGeeklog, $geeklog);
-    $phpState = MONITOR_PLUGIN_ICONS_requirementState(PHP_VERSION, $php);
-    $overall = 'compatible';
+    $geeklogState = $geeklog !== ''
+        ? MONITOR_PLUGIN_ICONS_requirementState($currentGeeklog, $geeklog) : 'not_declared';
+    $phpState = $php !== ''
+        ? MONITOR_PLUGIN_ICONS_requirementState(PHP_VERSION, $php) : 'not_declared';
+    $declared = 0;
+    $unknown = false;
+    $overall = 'unknown';
 
-    if ($geeklogState === 'incompatible' || $phpState === 'incompatible') {
-        $overall = 'incompatible';
-    } elseif ($geeklogState === 'unknown' || $phpState === 'unknown') {
-        $overall = 'unknown';
+    foreach (array(
+        array($geeklog, $geeklogState),
+        array($php, $phpState)
+    ) as $requirement) {
+        if ($requirement[0] === '') {
+            continue;
+        }
+        $declared++;
+        if ($requirement[1] === 'incompatible') {
+            $overall = 'incompatible';
+            $unknown = false;
+            break;
+        }
+        if ($requirement[1] === 'unknown') {
+            $unknown = true;
+        }
+    }
+
+    if ($overall !== 'incompatible' && $declared > 0) {
+        $overall = $unknown ? 'unknown' : 'compatible';
     }
 
     return array(
