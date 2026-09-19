@@ -422,17 +422,25 @@ function MONITOR_ADMIN_pluginCard($plugin)
     $html .= '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;margin-top:13px;font-size:.93em">';
 
     if (isset($plugin['distribution_source']) && $plugin['distribution_source'] === 'core') {
-        $html .= '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_installed_version']) . '</span> <strong>'
-              . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['installed'])) . '</strong><br>'
-              . '<span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_core_version']) . '</span> <strong>'
-              . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['remote_label'])) . '</strong></div>'
-              . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_current_geeklog']) . '</span><br><strong>'
-              . MONITOR_ADMIN_h(MONITOR_PLUGIN_VERSIONS_siteGeeklogVersion()) . '</strong></div>';
-
-        if (!empty($plugin['core_geeklog_baseline'])
-                && $plugin['core_geeklog_baseline'] !== MONITOR_PLUGIN_VERSIONS_siteGeeklogVersion()) {
-            $html .= '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_geeklog_baseline']) . '</span><br><strong>'
-                  . MONITOR_ADMIN_h($plugin['core_geeklog_baseline']) . '</strong></div>';
+        if (isset($plugin['state']) && $plugin['state'] === 'core_update') {
+            $html .= '<div style="grid-column:1 / -1">'
+                  . '<span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_installed_version']) . '</span> <strong>'
+                  . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['installed'])) . '</strong><br>'
+                  . '<span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_available_with_geeklog'])
+                  . ' ' . MONITOR_ADMIN_h($plugin['core_geeklog_baseline']) . '</span> <strong>'
+                  . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['remote_label'])) . '</strong>'
+                  . '</div>'
+                  . '<div style="grid-column:1 / -1;color:#666;font-size:.94em">'
+                  . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_current_geeklog']) . ' '
+                  . '<strong style="color:inherit">' . MONITOR_ADMIN_h(MONITOR_PLUGIN_VERSIONS_siteGeeklogVersion()) . '</strong>'
+                  . '</div>';
+        } else {
+            $html .= '<div style="grid-column:1 / -1">'
+                  . '<span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_version']) . '</span> <strong>'
+                  . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['installed'])) . '</strong><br>'
+                  . '<span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_bundled_with_geeklog']) . '</span> <strong>'
+                  . MONITOR_ADMIN_h(MONITOR_PLUGIN_VERSIONS_siteGeeklogVersion()) . '</strong>'
+                  . '</div>';
         }
     } else {
         $html .= '<div style="grid-column:1 / -1">'
