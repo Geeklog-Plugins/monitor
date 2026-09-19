@@ -44,9 +44,9 @@ Validated in September 2026:
 
 Still requiring dedicated validation before declaring every release gate complete:
 
-- [ ] Ban-present runtime integration test;
-- [ ] complete scheduled-task runtime test;
-- [ ] two-site shared-files/multisite upgrade test;
+- [x] Ban-present runtime integration test;
+- [x] complete scheduled-task runtime test;
+- [x] two-site shared-files/multisite upgrade test;
 - [ ] interrupted database migration/retry test on a disposable installation.
 
 The Geeklog configuration lessons discovered during this work have also been incorporated into the development memorandum, using the official Polls plugin and Geeklog `ConfigInterface`/`config.class.php` as reference implementations.
