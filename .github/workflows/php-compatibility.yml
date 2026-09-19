@@ -229,6 +229,8 @@ jobs:
               'monitor-discovery-compatibility',
               'Compatible with this site',
               'Not compatible with this site',
+              'Requirements not declared',
+              'Metadata unavailable',
           ]
           for needle in required_template:
               assert needle in template, 'Missing template UI contract: ' + needle
@@ -237,7 +239,14 @@ jobs:
               'Installed plugin compatibility must not be duplicated client-side'
           )
 
-          required_icons = ['declared > 0', 'not_declared']
+          required_icons = [
+              'declared > 0',
+              'not_declared',
+              "'requirements_declared' => $declared > 0",
+              "'manifest_available' => true",
+              "'manifest_available' => false",
+              "'source' => 'no_plugin_json'",
+          ]
           for needle in required_icons:
               assert needle in icons, 'Missing discovery compatibility logic: ' + needle
 
@@ -273,6 +282,9 @@ jobs:
           assert "'core_geeklog_baseline' => $coreGeeklogBaseline" in admin
           assert 'plugin_catalog_core_plugin' in language
           assert 'plugin_catalog_core_update' in language
+          assert "distribution_source'] !== 'core'" in admin, (
+              'Core plugins must not expose a standalone Open version action'
+          )
           assert "'distribution_source' => $distributionSource" in services
           assert "'core_repository' => 'Geeklog-Core/geeklog'" in services
           assert "'state' => 'managed_by_core'" in versions
