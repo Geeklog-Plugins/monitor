@@ -213,6 +213,7 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
     $sitePhp = PHP_VERSION;
     $upgrades = 0;
     $updates = 0;
+    $coreUpdates = 0;
     $compatibleUpdates = 0;
     $incompatibleUpdates = 0;
     $unknownCompatibilityUpdates = 0;
@@ -225,6 +226,8 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
         $name = isset($plugin['name']) ? (string) $plugin['name'] : '';
         $installed = isset($plugin['installed_version'])
             ? (string) $plugin['installed_version'] : '';
+        $distributionSource = isset($plugin['distribution_source'])
+            ? (string) $plugin['distribution_source'] : 'standalone';
         $code = MONITOR_PLUGIN_VERSIONS_localCode($name);
         $local = MONITOR_PLUGIN_VERSIONS_localState($installed, $code);
 
@@ -247,9 +250,13 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
         $referenceVersion = $codeComparable !== '' ? $codeComparable : $installedComparable;
 
         if ($latestTag !== '' && $remoteVersion !== '') {
-            $plugin['version_state'] = ($referenceVersion !== '')
+            $resolvedState = ($referenceVersion !== '')
                 ? MONITOR_PLUGIN_CATALOG_versionState($referenceVersion, $remoteVersion)
                 : 'unknown';
+            if ($distributionSource === 'core' && $resolvedState === 'update') {
+                $resolvedState = 'core_update';
+            }
+            $plugin['version_state'] = $resolvedState;
         }
 
         $plugin['remote_requirements'] = array(
@@ -263,6 +270,28 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
             'geeklog_current' => $siteGeeklog,
             'php_current' => $sitePhp
         );
+
+        if (isset($plugin['version_state'])
+                && $plugin['version_state'] === 'core_update') {
+            $updates++;
+            $coreUpdates++;
+            $coreBaseline = isset($plugin['core_geeklog_baseline'])
+                ? (string) $plugin['core_geeklog_baseline'] : '';
+            $plugin['remote_requirements'] = array(
+                'geeklog_min' => $coreBaseline,
+                'php_min' => ''
+            );
+            $plugin['compatibility'] = array(
+                'state' => 'managed_by_core',
+                'geeklog' => MONITOR_PLUGIN_VERSIONS_requirementState(
+                    $siteGeeklog,
+                    $coreBaseline
+                ),
+                'php' => 'not_applicable',
+                'geeklog_current' => $siteGeeklog,
+                'php_current' => $sitePhp
+            );
+        }
 
         if (isset($plugin['version_state']) && $plugin['version_state'] === 'update') {
             $updates++;
@@ -338,6 +367,7 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
     }
     $envelope['data']['summary']['upgrades_required'] = $upgrades;
     $envelope['data']['summary']['updates_available'] = $updates;
+    $envelope['data']['summary']['core_updates_available'] = $coreUpdates;
     $envelope['data']['summary']['updates_compatible'] = $compatibleUpdates;
     $envelope['data']['summary']['updates_incompatible'] = $incompatibleUpdates;
     $envelope['data']['summary']['updates_compatibility_unknown'] = $unknownCompatibilityUpdates;
