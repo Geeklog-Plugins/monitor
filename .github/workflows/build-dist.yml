@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: monitor-dist-${{ github.ref }}
+  group: monitor-dist-v2-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
