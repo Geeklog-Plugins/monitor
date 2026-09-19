@@ -435,10 +435,12 @@ function MONITOR_ADMIN_pluginCard($plugin)
                   . '<strong style="color:inherit">' . MONITOR_ADMIN_h(MONITOR_PLUGIN_VERSIONS_siteGeeklogVersion()) . '</strong>'
                   . '</div>';
         } else {
-            $html .= '<div style="grid-column:1 / -1">'
-                  . '<span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_version']) . '</span> <strong>'
-                  . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['installed'])) . '</strong><br>'
-                  . '<span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_bundled_with_geeklog']) . '</span> <strong>'
+            $html .= '<div style="grid-column:1 / -1;color:#666">'
+                  . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_version']) . ' '
+                  . '<strong style="color:inherit">'
+                  . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['installed'])) . '</strong>'
+                  . ' &nbsp;·&nbsp; Geeklog '
+                  . '<strong style="color:inherit">'
                   . MONITOR_ADMIN_h(MONITOR_PLUGIN_VERSIONS_siteGeeklogVersion()) . '</strong>'
                   . '</div>';
         }
