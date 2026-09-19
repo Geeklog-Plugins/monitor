@@ -251,10 +251,12 @@ Oversized image scanning is bounded and read-only; a future detailed inventory s
 - [x] keep requirement/compatibility presentation server-owned to avoid duplicate metadata blocks;
 - [x] show compatibility badges only when an update is available, including explicit incompatible/unknown states;
 - [x] show pre-install compatibility and declared Geeklog/PHP requirements on Discover plugin cards using remote `plugin.json` metadata;
+- [x] distinguish `Requirements not declared` (manifest exists without requirements) from `Metadata unavailable` (no usable `plugin.json`), without inferring compatibility from README text;
 - [x] recognize Geeklog Core-bundled plugins in the same Installed plugins list;
 - [x] distinguish `distribution_source = core|standalone` for Agent/Eclipse/Hub;
 - [x] resolve Core plugin metadata from local/remote `autoinstall.php` without executing plugin code;
 - [x] report newer bundled versions as `core_update` / “Available with Geeklog update”, never as an independent plugin update;
+- [x] hide standalone version link for Core plugins and keep only `Open Core plugin`;
 - [x] Security view;
 - [x] Ban capability visibility;
 - [x] Geeklog 2.2.2-compatible rendering using `COM_createHTMLDocument()`;
