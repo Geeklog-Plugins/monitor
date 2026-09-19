@@ -166,7 +166,9 @@ Returns installed plugins with:
 - Geeklog requirement;
 - latest known GitHub version when remote metadata is enabled;
 - normalized remote version state;
-- public repository/version URLs when known.
+- public repository/version URLs when known;
+- `distribution_source` with `standalone` or `core`;
+- `core_geeklog_baseline` for plugins bundled in the Geeklog Core repository.
 
 Typical item:
 
@@ -179,12 +181,31 @@ array(
     'local_version_state' => 'upgrade_required',
     'enabled'             => true,
     'geeklog_requirement' => '2.1.1',
+    'distribution_source' => 'standalone',
     'latest_version'      => 'v1.4.0',
     'version_state'       => 'current',
     'repository_url'      => 'https://github.com/example/monitor',
     'version_url'         => 'https://github.com/example/monitor/releases/tag/v1.4.0'
 )
 ```
+
+### Geeklog Core plugins
+
+Official plugins bundled directly in `Geeklog-Core/geeklog/plugins/` stay in the same installed-plugin list. Monitor currently recognizes:
+
+- `calendar`;
+- `links`;
+- `polls`;
+- `recaptcha`;
+- `spamx`;
+- `staticpages`;
+- `xmlsitemap`.
+
+These items expose `distribution_source = core`. Their local metadata is read from the installed plugin's `autoinstall.php` without executing it. Remote metadata is read from the corresponding `Geeklog-Core/geeklog/plugins/<name>/autoinstall.php` path.
+
+A newer Core-bundled plugin is reported as `version_state = core_update`, meaning that the newer plugin is delivered with a Geeklog Core update rather than as an independent plugin deployment. Consumers must not present this as a normal standalone plugin update.
+
+For Core plugins, `core_geeklog_baseline` reports the Geeklog requirement declared by the current Core version.
 
 The service deliberately separates two different operational states:
 
@@ -222,7 +243,8 @@ array(
     'enabled'           => 11,
     'disabled'          => 1,
     'upgrades_required' => 2,
-    'updates_available' => 4
+    'updates_available' => 4,
+    'core_updates_available' => 1
 )
 ```
 
