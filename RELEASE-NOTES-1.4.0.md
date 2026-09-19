@@ -13,7 +13,7 @@ Monitor 1.4.0 modernizes the plugin around a narrower role: **site health, diagn
 - Read-only plugin version/update advisor; Monitor no longer deploys plugin code.
 - Bounded, escaped log viewing and non-destructive log archive analysis.
 - Daily log rotation/archive support with private storage.
-- Geeklog administrative log archive list with sortable date, log and size columns; archive previews open separately with an explicit return link.
+- Geeklog administrative log archive list with sortable date, log and size columns; archive previews use a dedicated same-tab detail view with an explicit return link.
 - Structured health, change, plugin, log and configuration-audit services.
 - Content lifecycle observation through Geeklog save/delete notifications without copying content.
 - Multisite/shared-files-aware upgrade design with idempotent migrations.
