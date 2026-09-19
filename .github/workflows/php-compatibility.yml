@@ -202,11 +202,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q "function MONITOR_ADMIN_pluginIcon" admin/index.php
           grep -q "function MONITOR_ADMIN_updateCompatibilityBadge" admin/index.php
+          grep -q "monitor-plugin-title-with-icon" admin/index.php
+          grep -q "plugin-icons.php" templates/administration.thtml
+          if grep -q "function MONITOR_ADMIN_pluginIcon" admin/index.php; then
+            echo 'Plugin cards must use the shared plugin-icons.php resolver only.'
+            exit 1
+          fi
           grep -q "update_compatibility" admin/index.php
           grep -q "plugin_catalog_update_incompatible" language/english.php
           grep -q "state.*!== 'update'" admin/index.php
+          grep -q "server-owned by the plugin card" templates/administration.thtml
+          if grep -q "✓ Compatible" templates/administration.thtml; then
+            echo 'Client-side plugin metadata must not duplicate compatibility badges.'
+            exit 1
+          fi
           echo 'Plugin card UI semantics are present.'
 
       - name: Check target plugin requirement metadata
