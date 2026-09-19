@@ -255,6 +255,7 @@ Oversized image scanning is bounded and read-only; a future detailed inventory s
 - [x] show pre-install compatibility and declared Geeklog/PHP requirements on Discover plugin cards using remote `plugin.json` metadata;
 - [x] Discover cards also resolve the latest compatible release when the newest release targets a newer Geeklog/PHP runtime, while retaining the newest overall release as secondary information;
 - [x] Discover compatibility is release-oriented: evaluate stable releases first and use default-branch `plugin.json` only as fallback metadata;
+- [x] inline the compatible release requirements on the `Latest compatible version` line to avoid duplicate requirement rows;
 - [x] distinguish `Requirements not declared` (manifest exists without requirements) from `Metadata unavailable` (no usable `plugin.json`), without inferring compatibility from README text;
 - [x] recognize Geeklog Core-bundled plugins in the same Installed plugins list;
 - [x] distinguish `distribution_source = core|standalone` for Agent/Eclipse/Hub;
