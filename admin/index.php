@@ -445,7 +445,9 @@ function MONITOR_ADMIN_pluginCard($plugin)
                         ? $LANG_MONITOR_1['plugin_catalog_open_core_plugin']
                         : $LANG_MONITOR_1['plugin_catalog_open_repository']
                 ) . '</a>';
-        if ($plugin['remote_url'] !== '') {
+        if ($plugin['remote_url'] !== ''
+                && (!isset($plugin['distribution_source'])
+                    || $plugin['distribution_source'] !== 'core')) {
             $html .= '<a href="' . MONITOR_ADMIN_h($plugin['remote_url']) . '" target="_blank" rel="noopener noreferrer">'
                   . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_open_version']) . '</a>';
         }
