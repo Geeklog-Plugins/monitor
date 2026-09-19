@@ -51,7 +51,7 @@ Already-installed 1.4.0 development builds that do not yet contain the optional 
 
 The package declares version **1.4.0** and minimum Geeklog version **2.1.1**. Upgrade logic is sequential and records 1.4.0 only after required migrations succeed.
 
-The scheduled-task runtime and two-site shared-files/multisite upgrade paths have been validated. See `docs/UPGRADE-1.4.0.md` and `ROADMAP.md` for the remaining release gates.
+The Ban-present integration, scheduled-task runtime and two-site shared-files/multisite upgrade paths have been validated. See `docs/UPGRADE-1.4.0.md` and `ROADMAP.md` for the remaining release gates.
 
 ## Distribution
 
