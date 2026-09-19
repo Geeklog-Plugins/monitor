@@ -207,6 +207,36 @@ A newer Core-bundled plugin is reported as `version_state = core_update`, meanin
 
 For Core plugins, `core_geeklog_baseline` reports the Geeklog requirement declared by the current Core version.
 
+### Latest compatible standalone release
+
+For standalone plugins, Monitor distinguishes the newest published release from the newest release compatible with the current Geeklog/PHP runtime.
+
+If the newest release is incompatible, Monitor checks up to 10 stable GitHub releases in descending semantic-version order. Requirement sources are evaluated in this order:
+
+1. `plugin.json` at the release tag;
+2. `autoinstall.php` at the release tag;
+3. explicit GitHub release metadata/body;
+4. release asset filename as a last-resort Geeklog-version hint.
+
+README text is not used to infer compatibility.
+
+When a compatible older release is found, service items may include:
+
+```php
+array(
+    'latest_version' => 'v2.0.2',
+    'latest_compatible_version' => 'v2.0.2',
+    'latest_overall_version' => 'v2.0.5',
+    'latest_overall_requirements' => array(
+        'geeklog_min' => '2.2.1',
+        'php_min' => ''
+    ),
+    'version_state' => 'current_compatible'
+)
+```
+
+`current_compatible` means the installed/local version is already at least as new as the latest release supported by the current runtime, even though a newer release exists for a newer runtime. Consumers should present this as "Up to date for this Geeklog", not as an incompatible update.
+
 The service deliberately separates two different operational states:
 
 1. **Local upgrade required** — the files already present on the server declare a version newer than the version stored in the Geeklog plugins table. Geeklog's native plugin manager must run the plugin upgrade/migrations.
