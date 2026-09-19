@@ -245,6 +245,41 @@ jobs:
           print('Plugin catalog UI contracts are present.')
           PY
 
+      - name: Check Geeklog Core plugin integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          catalog = Path('lib/MonitorPluginCatalog.php').read_text(encoding='utf-8')
+          admin = Path('admin/index.php').read_text(encoding='utf-8')
+          services = Path('lib/MonitorServices.php').read_text(encoding='utf-8')
+          versions = Path('lib/MonitorPluginVersions.php').read_text(encoding='utf-8')
+          language = Path('language/english.php').read_text(encoding='utf-8')
+
+          for plugin in ('calendar', 'links', 'polls', 'recaptcha', 'spamx', 'staticpages', 'xmlsitemap'):
+              assert ("'%s'" % plugin) in catalog
+
+          for needle in (
+              'MONITOR_PLUGIN_CATALOG_isCorePlugin',
+              'MONITOR_PLUGIN_CATALOG_coreLocalMetadata',
+              'MONITOR_PLUGIN_CATALOG_coreRemoteMetadata',
+              'Geeklog-Core/geeklog',
+          ):
+              assert needle in catalog, 'Missing Core catalog contract: ' + needle
+
+          assert "'distribution_source' => $distributionSource" in admin
+          assert "'core_geeklog_baseline' => $coreGeeklogBaseline" in admin
+          assert 'plugin_catalog_core_plugin' in language
+          assert 'plugin_catalog_core_update' in language
+          assert "'distribution_source' => $distributionSource" in services
+          assert "'core_repository' => 'Geeklog-Core/geeklog'" in services
+          assert "'state' => 'managed_by_core'" in versions
+          assert "core_updates_available" in versions
+          print('Geeklog Core plugin integration is present.')
+          PY
+
       - name: Check target plugin requirement metadata
         shell: bash
         run: |
