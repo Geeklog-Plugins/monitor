@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: monitor-dist-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build monitor_1.4.0_2.1.1.zip
@@ -99,6 +103,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          # A newer source commit may have reached the branch while this run was
+          # building. Never push an archive generated from stale sources over a
+          # newer branch head; the newer run will publish its own archive.
+          git fetch origin monitor-1.4.0
+          REMOTE_HEAD="$(git rev-parse origin/monitor-1.4.0)"
+          if [ "$REMOTE_HEAD" != "$GITHUB_SHA" ]; then
+            echo "Branch advanced from $GITHUB_SHA to $REMOTE_HEAD; skipping stale dist commit."
+            exit 0
+          fi
+
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -f dist/monitor_1.4.0_2.1.1.zip
