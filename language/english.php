@@ -1,117 +1,292 @@
 <?php
 
-/* Reminder: always indent with 4 spaces (no tabs). */
 // +---------------------------------------------------------------------------+
-// | Monitor Plugin 1.3                                                        |
+// | Monitor Plugin 1.4.0                                                      |
 // +---------------------------------------------------------------------------+
 // | english.php                                                               |
-// |                                                                           |
-// | English language file                                                     |
-// +---------------------------------------------------------------------------+
-// | Copyright (C) 2014-2016 by the following authors:                         |
-// |                                                                           |
-// | Authors: Ben - ben AT geeklog DOT fr                                      |
-// +---------------------------------------------------------------------------+
-// | Created with the Geeklog Plugin Toolkit.                                  |
-// +---------------------------------------------------------------------------+
-// |                                                                           |
-// | This program is free software; you can redistribute it and/or             |
-// | modify it under the terms of the GNU General Public License               |
-// | as published by the Free Software Foundation; either version 2            |
-// | of the License, or (at your option) any later version.                    |
-// |                                                                           |
-// | This program is distributed in the hope that it will be useful,           |
-// | but WITHOUT ANY WARRANTY; without even the implied warranty of            |
-// | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             |
-// | GNU General Public License for more details.                              |
-// |                                                                           |
-// | You should have received a copy of the GNU General Public License         |
-// | along with this program; if not, write to the Free Software Foundation,   |
-// | Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.           |
-// |                                                                           |
 // +---------------------------------------------------------------------------+
 
 /**
-* @package Monitor
-*/
+ * @package Monitor
+ */
 
-/**
-* Import Geeklog plugin messages for reuse
-*
-* @global array $LANG32
-*/
 global $LANG32;
-
-// +---------------------------------------------------------------------------+
-// | Array Format:                                                             |
-// | $LANGXX[YY]:  $LANG - variable name                                       |
-// |               XX    - specific array name                                 |
-// |               YY    - phrase id or number                                 |
-// +---------------------------------------------------------------------------+
+global $LANG_configsections, $LANG_confignames, $LANG_configsubgroups, $LANG_tab, $LANG_fs;
 
 $LANG_MONITOR_1 = array(
-    'plugin_name'         => 'Monitor',
-    'home'                => 'Home', // change 1.3.0
-    'view_clear_logs'     => 'View/Clear the Log Files',
-    'file'                => 'File:',
-    'log_file'            => 'Log file :',
-    'view_logs'           => 'View logs',
-    'clear_logs'          => 'Clear logs',
-    'images_folder'       => 'Images from public_html/images folder',
-    'resize'              => 'Resize images',
-    'resize_images'       => 'Resize all images',
-    'resize_images_help'  => 'Monitor plugin can resize pictures bigger than 1600px from your public_html/images folder. The width-height ratio will be kept. ',
-    'no_images_to_resize' => 'There is no image bigger than 1600px',
-    'change_user_photo'   => 'Change user photo',
-    'comments'            => 'Comments',
-    'comments_list'       => 'Comments list',
-    'anonymous'           => 'Anonymous',
-    'configuration'       => 'Configuration',
-    'images'              => 'Images',
-    'images_list'         => 'Images list',
-    'main'                => 'Monitor main page',
-    'logs'                => 'Log files',
-    'updates'             => 'Updates',
-    'available_updates'   => 'Available updates from:',
-    'plugin_list'         => 'Plugin updates',
-    'no_update'           => 'This plugin can not be updated',
-    'up_to_date'          => 'This plugin is already up to date',
-    'update_to'           => 'Update to',
-    'need_upgrade'        => 'You need to upgrade to Geeklog v',
-    'before_update'       => 'before you can update to',
-    'not_available'       => 'Plugin not avaible in this repository',
-    'ask_author'          => 'This plugin do not support this feature. Ask his author to change this.',
-    'github_limit'        => 'The rate limit on github allows you to make up to 60 requests per hour. Remaining is:',
+    'plugin_name'           => 'Monitor',
+    'home'                  => 'Overview',
+    'health'                => 'Health',
+    'security'              => 'Security',
+    'file'                  => 'File:',
+    'log_file'              => 'Log file:',
+    'view_logs'             => 'View current logs',
+    'clear_logs'            => 'Clear logs',
+    'configuration'         => 'Configuration',
+    'main'                  => 'Site health overview',
+    'logs'                  => 'Log files',
+    'updates'               => 'Plugins',
+    'status'                => 'Status',
+    'check'                 => 'Check',
+    'value'                 => 'Value',
+    'recommendation'        => 'Recommendation',
+    'health_ok'             => 'OK',
+    'health_info'           => 'Info',
+    'health_warning'        => 'Warning',
+    'health_error'          => 'Error',
+    'security_observations' => 'Security observations',
+    'ban_integration'       => 'Ban plugin',
+    'legacy_ban_notice'     => 'Monitor records limited security observations. The optional Ban plugin can provide centralized blocking capabilities without turning Monitor into a second ban engine.',
+    'security_status' => 'Security status',
+    'security_no_issue' => 'No issue detected by the available Monitor security checks.',
+    'ban_not_installed' => 'Not installed',
+    'ban_installed' => 'Installed',
+    'ban_optional_intro' => 'Ban is optional. Monitor continues to record its limited security observations without it.',
+    'ban_optional_capability' => 'Installing Ban adds centralized blocking capabilities that Monitor can use when available.',
+    'ban_view_plugin' => 'View Ban plugin information',
+    'ban_version' => 'Version',
+    'ban_ip_capability' => 'IP ban request capability',
+    'ban_capability_available' => 'Available',
+    'ban_capability_unavailable' => 'Unavailable',
+    'ban_direct_sql' => 'Direct Ban SQL coupling',
+    'ban_direct_sql_no' => 'No',
+    'security_no_legacy_table' => 'No legacy Monitor security table is present.',
+    'security_no_observations' => 'No recent security observations.',
+    'read_only_advice'      => 'Monitor observes and recommends by default. Changes require an explicit administrator action.',
+
+    // Media diagnostics
+    'media_oversized_single' => '1 image exceeds the recommended limits.',
+    'media_oversized_multiple' => '%d images exceed the recommended limits.',
+    'media_show_files' => 'Show files (%d)',
+    'media_hide_files' => 'Hide files (%d)',
+    'media_open_file_manager' => 'Open File Manager',
+    'media_view_image' => 'View image',
+    'media_more_files' => 'Additional oversized images exist; the list is limited.',
+    'media_partial_scan' => 'The filesystem scan reached its safety limit.',
+
+    // Daily log archives
+    'log_archive_title' => 'Log archives',
+    'log_archive_intro' => 'Monitor rotates Geeklog .log files daily and keeps the last %d days of archives.',
+    'log_archive_safety' => 'An active log is truncated only after its archive copy has been written successfully. Archives are stored below path_data, outside the public web directory.',
+    'log_archive_empty' => 'No daily log archive is available yet. The first scheduled run creates the rotation baseline; archives appear after the next calendar day.',
+    'log_archive_date' => 'Date',
+    'log_archive_log' => 'Log',
+    'log_archive_size' => 'Size',
+    'log_archive_actions' => 'Actions',
+    'log_archive_view' => 'View',
+    'log_archive_download' => 'Download',
+    'log_archive_back' => 'Back to log archives',
+    'log_archive_preview_limited' => 'This preview shows only the most recent 512 KiB of the archive. Download the file to retrieve the complete daily log.',
+    'log_email_title' => 'Daily log summary',
+    'log_email_lines' => 'Lines scanned',
+    'log_email_issue_lines' => 'Error/warning lines',
+    'log_email_top_patterns' => 'Top error.log patterns',
+    'log_email_no_activity' => 'No non-empty Geeklog log was archived for this day.',
+
+    // Changes monitor
+    'changes' => 'Changes',
+    'changes_page_title' => 'Monitor changes',
+    'changes_intro' => 'Compare lightweight snapshots of the site to see what changed between two checks. Monitor records state only; it does not modify the site.',
+    'changes_capture' => 'Capture current state',
+    'changes_capture_ok' => 'Current state saved.',
+    'changes_capture_failed' => 'Monitor could not save the snapshot. Check that path_data is writable.',
+    'changes_baseline_created' => 'Baseline created. Capture another state later to see what changed.',
+    'changes_waiting' => 'A second snapshot is required before changes can be compared.',
+    'changes_period' => 'Compared period:',
+    'changes_previous' => 'Previous',
+    'changes_current' => 'Current',
+    'changes_summary_changes' => 'Changes',
+    'changes_summary_plugins' => 'Plugin changes',
+    'changes_summary_log' => 'New log patterns',
+    'changes_summary_snapshots' => 'Snapshots',
+    'changes_none' => 'No meaningful change was detected between these two snapshots.',
+    'changes_detected' => 'Detected changes',
+    'changes_environment' => 'Environment',
+    'changes_plugins' => 'Plugins',
+    'changes_storage' => 'Storage',
+    'changes_logs' => 'New error.log activity',
+    'changes_before' => 'Before',
+    'changes_after' => 'After',
+    'changes_occurrences' => 'occurrence(s)',
+    'changes_log_none' => 'No new error, warning or exception pattern was detected in error.log for this period.',
+    'changes_log_rotated' => 'error.log was rotated or truncated between the two snapshots, so the new portion cannot be compared reliably.',
+    'changes_log_truncated' => 'The new log data exceeded the analysis limit. Monitor analyzed only the most recent 512 KiB.',
+    'changes_current_state' => 'Current state',
+    'changes_geeklog' => 'Geeklog',
+    'changes_php' => 'PHP',
+    'changes_plugins_count' => 'Installed plugins',
+    'changes_disk_free' => 'Free disk space',
+    'changes_error_log_size' => 'error.log size',
+    'changes_unknown' => 'Unknown',
+    'changes_enabled' => 'enabled',
+    'changes_disabled' => 'disabled',
+    'changes_code_geeklog_changed' => 'Geeklog version changed',
+    'changes_code_php_changed' => 'PHP version changed',
+    'changes_code_plugin_installed' => 'Plugin installed',
+    'changes_code_plugin_removed' => 'Plugin removed',
+    'changes_code_plugin_version_changed' => 'Plugin version changed',
+    'changes_code_plugin_enabled' => 'Plugin enabled',
+    'changes_code_plugin_disabled' => 'Plugin disabled',
+    'changes_code_disk_free_decreased' => 'Free disk space decreased',
+
+    // Configuration audit
+    'config_audit_title' => 'Configuration audit',
+    'config_audit_page_title' => 'Monitor configuration audit',
+    'config_audit_quick_description' => 'Check for differences between siteconfig.php and matching Core values in the database.',
+    'config_audit_back' => 'Monitor overview',
+    'config_audit_access_denied' => 'Access denied',
+    'config_audit_root_only' => 'Access reserved for Root administrators.',
+    'config_audit_intro_title' => 'Read-only configuration audit.',
+    'config_audit_intro' => 'Compares Core values explicitly defined in siteconfig.php with matching values in conf_values. Only differences or invalid values require attention.',
+    'config_audit_issues' => 'Issues',
+    'config_audit_review' => 'Review',
+    'config_audit_normal' => 'Normal',
+    'config_audit_active_host' => 'Host:',
+    'config_audit_siteconfig' => 'siteconfig.php:',
+    'config_audit_unreadable_title' => 'Warning:',
+    'config_audit_unreadable' => 'Monitor could not read the active siteconfig.php, so the comparison is incomplete.',
+    'config_audit_items_review' => 'Needs attention',
+    'config_audit_no_issues' => 'Configuration is consistent. No conflicting Core value requires attention.',
+    'config_audit_secondary' => 'Show %d normal or informational value(s)',
+    'config_audit_footer' => 'Sensitive values are redacted. Optional database alignment SQL is never executed automatically.',
+    'config_audit_source_siteconfig' => 'siteconfig.php',
+    'config_audit_source_database' => 'Database',
+    'config_audit_priority' => 'Effective source:',
+    'config_audit_effective_value' => 'Effective value',
+    'config_audit_details' => 'Details',
+    'config_audit_recommendation' => 'Recommendation',
+    'config_audit_path' => 'Path:',
+    'config_audit_path_exists' => 'exists',
+    'config_audit_path_missing' => 'missing',
+    'config_audit_optional_sql' => 'Optional database alignment',
+    'config_audit_absent' => 'ABSENT',
+    'config_audit_redacted' => '[REDACTED]',
+    'config_audit_value_true' => 'true',
+    'config_audit_value_false' => 'false',
+    'config_audit_value_null' => 'NULL',
+    'config_audit_value_object' => '[OBJECT]',
+
+    'config_audit_level_ok' => 'Expected',
+    'config_audit_level_info' => 'Information',
+    'config_audit_level_review' => 'Review',
+    'config_audit_level_warning' => 'Warning',
+
+    'config_audit_status_identical' => 'Identical',
+    'config_audit_status_core_file' => 'Expected in siteconfig.php',
+    'config_audit_status_file_only' => 'siteconfig.php only',
+    'config_audit_status_db_unset' => 'Database value unset',
+    'config_audit_status_different' => 'Different values',
+    'config_audit_status_decode_error' => 'Database value unreadable',
+    'config_audit_status_invalid_path' => 'Invalid path',
+
+    'config_audit_why_identical' => 'The same value exists in siteconfig.php and conf_values.',
+    'config_audit_why_core_file' => 'This Core key is normally defined directly in siteconfig.php.',
+    'config_audit_why_file_only' => 'No matching Core value exists in conf_values. The siteconfig.php value is used.',
+    'config_audit_why_db_unset' => 'A matching Core row exists in conf_values but its value is unset. siteconfig.php remains effective.',
+    'config_audit_why_different' => 'siteconfig.php and conf_values contain different values. siteconfig.php is effective at runtime.',
+    'config_audit_why_decode_error' => 'The matching Core value in conf_values could not be decoded reliably.',
+    'config_audit_why_invalid_path' => 'The effective filesystem path does not currently exist.',
+
+    'config_audit_action_none' => 'No action required.',
+    'config_audit_action_file_only' => 'No action required unless this value should also be managed in the database.',
+    'config_audit_action_db_unset' => 'Verify that the database value is intentionally unset.',
+    'config_audit_action_different' => 'Verify that this override is intentional. Align the database value only if the stored value is obsolete.',
+    'config_audit_action_decode_error' => 'Inspect the matching Core row in conf_values before making any change.',
+    'config_audit_action_invalid_path' => 'Check the configured path and filesystem availability.',
+
+    // Plugin catalog
+    'plugin_catalog_intro' => 'Installed plugins are compared with public repositories from the configured GitHub owner. Monitor reports available versions and discovery candidates but never installs or updates code.',
+    'plugin_catalog_owner' => 'GitHub source:',
+    'plugin_catalog_refresh' => 'Refresh GitHub data',
+    'plugin_catalog_installed' => 'Installed plugins',
+    'plugin_catalog_discover' => 'Discover plugins',
+    'plugin_catalog_discover_compatible' => 'Compatible with this site',
+    'plugin_catalog_discover_incompatible' => 'Not compatible with this site',
+    'plugin_catalog_discover_unknown' => 'Compatibility unknown',
+    'plugin_catalog_discover_requirements_missing' => 'Requirements not declared',
+    'plugin_catalog_discover_metadata_unavailable' => 'Metadata unavailable',
+    'plugin_catalog_discover_intro' => 'Recent public repositories not installed on this site. Review compatibility and documentation before installing anything.',
+    'plugin_catalog_legacy_discover' => 'Older repositories',
+    'plugin_catalog_legacy_intro' => 'Older public repositories may still be useful, but their recent Geeklog and PHP compatibility is unknown.',
+    'plugin_catalog_plugin' => 'Plugin',
+    'plugin_catalog_core_plugin' => 'Core plugin',
+    'plugin_catalog_core_update' => 'Available with Geeklog update',
+    'plugin_catalog_latest_core_version' => 'Latest Core version',
+    'plugin_catalog_current_geeklog' => 'Current Geeklog',
+    'plugin_catalog_latest_geeklog_baseline' => 'Latest Geeklog baseline',
+    'plugin_catalog_open_core_plugin' => 'Open Core plugin',
+    'plugin_catalog_version' => 'Version',
+    'plugin_catalog_bundled_with_geeklog' => 'Bundled with Geeklog',
+    'plugin_catalog_available_with_geeklog' => 'Available with Geeklog',
+    'plugin_catalog_installed_version' => 'Installed',
+    'plugin_catalog_code_version' => 'Code',
+    'plugin_catalog_latest_release' => 'Latest release',
+    'plugin_catalog_latest_version' => 'Latest GitHub version',
+    'plugin_catalog_version_source_release' => 'Release',
+    'plugin_catalog_version_source_tag' => 'Tag',
+    'plugin_catalog_state' => 'State',
+    'plugin_catalog_enabled' => 'Enabled',
+    'plugin_catalog_geeklog' => 'Geeklog requirement',
+    'plugin_catalog_php_requirement' => 'PHP requirement',
+    'plugin_catalog_update_compatible' => 'Update compatible',
+    'plugin_catalog_update_incompatible' => 'Update not compatible',
+    'plugin_catalog_compatibility_unknown' => 'Compatibility unknown',
+    'plugin_catalog_repository' => 'Repository',
+    'plugin_catalog_yes' => 'Yes',
+    'plugin_catalog_no' => 'No',
+    'plugin_catalog_unknown' => 'Unknown',
+    'plugin_catalog_no_release' => 'No release metadata',
+    'plugin_catalog_no_version' => 'No release or version tag found',
+    'plugin_catalog_no_repository' => 'No matching repository',
+    'plugin_catalog_catalog_unavailable' => 'GitHub catalog unavailable',
+    'plugin_catalog_current_compatible' => 'Up to date for this Geeklog',
+    'plugin_catalog_latest_compatible_version' => 'Latest compatible version',
+    'plugin_catalog_newer_release' => 'Newer release',
+    'plugin_catalog_requires_geeklog' => 'requires Geeklog %s',
+    'plugin_catalog_requires_php' => 'requires PHP %s',
+    'plugin_catalog_current' => 'Up to date',
+    'plugin_catalog_update' => 'Update available',
+    'plugin_catalog_ahead' => 'Installed version newer',
+    'plugin_catalog_remote_unavailable' => 'GitHub metadata is unavailable. Local plugin information is still shown.',
+    'plugin_catalog_remote_disabled' => 'Remote metadata checks are disabled because no valid GitHub owner is configured.',
+    'plugin_catalog_none_discoverable' => 'No additional recent plugin repository was found for this GitHub owner.',
+    'plugin_catalog_open_repository' => 'Open repository',
+    'plugin_catalog_open_release' => 'Open release',
+    'plugin_catalog_open_version' => 'Open version',
+    'plugin_catalog_updated' => 'Updated',
+    'plugin_catalog_summary_installed' => 'Installed',
+    'plugin_catalog_summary_updates' => 'Updates available',
+    'plugin_catalog_summary_discover' => 'Recent candidates',
+    'plugin_catalog_summary_unmatched' => 'Without GitHub match');
+
+$PLG_monitor_MESSAGE3002 = $LANG32[9];
+$PLG_monitor_MESSAGE3003 = 'Monitor could not complete its database migration. The installed version was not changed; review error.log and retry the upgrade.';
+
+$GLOBALS['LANG_configsections']['monitor'] = array(
+    'label' => 'Monitor',
+    'title' => 'Monitor Configuration'
 );
 
-// Messages for the plugin upgrade
-$PLG_monitor_MESSAGE3002 = $LANG32[9]; // "requires a newer version of Geeklog"
-
-/*
-**
-*   Configuration system subgroup strings
-*   @global array $LANG_configsubgroups['monitor']
-*/
-$LANG_configsubgroups['monitor'] = array(
+$GLOBALS['LANG_configsubgroups']['monitor'] = array(
     'sg_main' => 'Main Settings'
 );
 
-/**
-*   Configuration system fieldset names
-*   @global array $LANG_fs['monitor']
-*/
-$LANG_fs['monitor'] = array(
-    'fs_main'            => 'General Settings'
- );
- 
-/**
-*   Configuration system prompt strings
-*   @global array $LANG_confignames['monitor']
-*/
-$LANG_confignames['monitor'] = array(
-    //Main settings
-    'emails'  => 'List of emails to send the logs to (separated with a coma if more than one email is needed)',
-    'repository'  => 'Name of the repository owner you want to use for plugins updates on Github (default is Geeklog-Plugins). Leave blank to disable this feature.'
-)
+$GLOBALS['LANG_tab']['monitor'] = array(
+    'tab_main' => 'Main'
+);
 
-?>
+$GLOBALS['LANG_fs']['monitor'] = array(
+    'fs_main' => 'General Settings'
+);
+
+$GLOBALS['LANG_confignames']['monitor'] = array(
+    'emails' => 'List of email addresses for optional Monitor notifications (comma-separated)',
+    'repository' => 'GitHub repository owner reserved for plugin release metadata (default: Geeklog-Plugins). Leave blank to disable remote metadata checks.',
+    'github_token' => 'Optional GitHub token for API metadata requests. Prefer a fine-grained read-only token. MONITOR_GITHUB_TOKEN environment variable takes priority.'
+);
+
+$LANG_configsections =& $GLOBALS['LANG_configsections'];
+$LANG_configsubgroups =& $GLOBALS['LANG_configsubgroups'];
+$LANG_tab =& $GLOBALS['LANG_tab'];
+$LANG_fs =& $GLOBALS['LANG_fs'];
+$LANG_confignames =& $GLOBALS['LANG_confignames'];

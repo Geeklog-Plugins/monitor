@@ -1,0 +1,414 @@
+name: PHP compatibility
+
+on:
+  push:
+    branches:
+      - monitor-1.4.0
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  php-lint:
+    name: PHP ${{ matrix.php }} syntax
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php:
+          - '5.6'
+          - '8.1'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Lint PHP and INC files
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find . -type f \( -name '*.php' -o -name '*.inc' \) -print0)
+
+  security-regressions:
+    name: Security and API regression guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Reject known unsafe or incompatible patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if grep -R -n -E \
+            --exclude-dir='.git' --exclude-dir='dist' --exclude-dir='package' \
+            --include='*.php' --include='*.inc' \
+            'CURLOPT_SSL_VERIFYPEER[[:space:]]*(=>|,)[[:space:]]*false|sleep[[:space:]]*\([[:space:]]*60[[:space:]]*\)|ben@geeklog\.fr|COM_siteHeader[[:space:]]*\(|COM_siteFooter[[:space:]]*\(' \
+            .; then
+            echo 'Known unsafe, deprecated, or Geeklog 2.2.x-incompatible Monitor pattern detected.'
+            exit 1
+          fi
+
+          echo 'No guarded regression pattern found.'
+
+      - name: Check Geeklog 2.2.x configuration metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "GLOBALS\['LANG_configsections'\]\['monitor'\]" language/english.php
+          grep -q "GLOBALS\['LANG_configsubgroups'\]\['monitor'\]" language/english.php
+          grep -q "GLOBALS\['LANG_confignames'\]\['monitor'\]" language/english.php
+          grep -q "GLOBALS\['LANG_tab'\]\['monitor'\]" language/english.php
+          grep -q "'tab_main' => 'Main'" language/english.php
+          grep -q "GLOBALS\['LANG_fs'\]\['monitor'\]" language/english.php
+          grep -q "add('tab_main', null, 'tab'" install_defaults.php
+          grep -q "add('emails', \$_monitor_DEFAULT\['emails'\], 'text', 0, 0, null" install_defaults.php
+          grep -q "add('repository', \$_monitor_DEFAULT\['repository'\], 'text', 0, 0, null" install_defaults.php
+          grep -q "selectionArray = -1" lib/MonitorConfigCompat.php
+          grep -q "MONITOR_repairConfiguration140" functions.inc
+          grep -q "basename(\$_SERVER\['SCRIPT_NAME'\]) === 'configuration.php'" functions.inc
+          grep -q "name = 'github_token'" lib/MonitorConfigCompat.php
+          test -f language/english_utf-8.php
+
+      - name: Check shared Monitor navigation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f lib/MonitorAdminNavigation.php
+          grep -q "MONITOR_ADMIN_NAV_render" admin/index.php
+          grep -q "MONITOR_ADMIN_NAV_render('changes')" admin/changes.php
+          grep -q "MONITOR_ADMIN_NAV_render('log_archives')" admin/log-archives.php
+          grep -q "index.php?view=overview" lib/MonitorAdminNavigation.php
+          grep -q "changes.php" lib/MonitorAdminNavigation.php
+          grep -q "index.php?view=security" lib/MonitorAdminNavigation.php
+          grep -q "index.php?view=plugins" lib/MonitorAdminNavigation.php
+          grep -q "log-archives.php" lib/MonitorAdminNavigation.php
+          grep -q "logviewer.php" lib/MonitorAdminNavigation.php
+          grep -q "configuration.php" lib/MonitorAdminNavigation.php
+          grep -q "conf_group" lib/MonitorAdminNavigation.php
+          echo 'Shared Monitor administration navigation is complete.'
+
+      - name: Check Changes monitoring guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f lib/MonitorChanges.php
+          test -f admin/changes.php
+          grep -q "SEC_hasRights('monitor.admin')" admin/changes.php
+          grep -q "SEC_checkToken()" admin/changes.php
+          grep -q "SEC_createToken()" admin/changes.php
+          grep -q "monitor-changes-" lib/MonitorChanges.php
+          grep -q "array_slice(\$snapshots, -10)" lib/MonitorChanges.php
+          grep -q "524288" lib/MonitorChanges.php
+          if grep -q "path_public_html" lib/MonitorChanges.php; then
+            echo 'Changes snapshots must stay outside public_html.'
+            exit 1
+          fi
+          echo 'Changes monitoring guardrails present.'
+
+      - name: Check daily log rotation guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f lib/MonitorLogRotation.php
+          test -f admin/log-archives.php
+          grep -q "MONITOR_LOG_rotateDaily" functions.inc
+          grep -q "MONITOR_LOG_archiveOne" lib/MonitorLogRotation.php
+          grep -q "@copy(\$path, \$archive)" lib/MonitorLogRotation.php
+          grep -q "@ftruncate(\$handle, 0)" lib/MonitorLogRotation.php
+          grep -q "MONITOR_LOG_cleanupArchives" lib/MonitorLogRotation.php
+          grep -q "SEC_hasRights('monitor.admin')" admin/log-archives.php
+          grep -q "ADMIN_simpleList" admin/log-archives.php
+          grep -q "MONITOR_LOG_ADMIN_sortArchives" admin/log-archives.php
+          grep -q "log_archive_back" admin/log-archives.php
+          if grep -q 'target="_blank"' admin/log-archives.php; then
+            echo 'Log archive View links must stay in the same tab.'
+            exit 1
+          fi
+          if grep -q "path_public_html" lib/MonitorLogRotation.php; then
+            echo 'Log archives must stay outside public_html.'
+            exit 1
+          fi
+          echo 'Daily log rotation guardrails present.'
+
+      - name: Check read-only service contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f services.inc.php
+          test -f lib/MonitorServices.php
+          test -f docs/SERVICES.md
+          grep -q "plugin_wsEnabled_monitor" functions.inc
+          grep -q "services.inc.php" functions.inc
+          grep -q "service_get_status_monitor" services.inc.php
+          grep -q "service_get_changes_monitor" services.inc.php
+          grep -q "service_get_plugins_monitor" services.inc.php
+          grep -q "service_get_log_summary_monitor" services.inc.php
+          grep -q "service_get_log_archives_monitor" services.inc.php
+          grep -q "service_get_configuration_audit_monitor" services.inc.php
+          grep -q "SEC_hasRights('monitor.admin')" services.inc.php
+          grep -q "SEC_inGroup('Root')" services.inc.php
+          grep -q "schema_version" lib/MonitorServices.php
+          grep -q "include_remote" lib/MonitorServices.php
+          if grep -E -q "site_value|db_value|effective_value|['\"]sql['\"]|siteconfig_path" services.inc.php; then
+            echo 'Service callbacks must not expose configuration values, SQL or siteconfig paths.'
+            exit 1
+          fi
+          if grep -E -q "unlink\(|ftruncate\(|file_put_contents\(|DB_(insert|delete)|UPDATE |DELETE FROM|INSERT INTO" lib/MonitorServices.php services.inc.php; then
+            echo 'Monitor service layer must remain read-only.'
+            exit 1
+          fi
+          echo 'Read-only Monitor service contract guardrails present.'
+
+
+      - name: Check shared capability contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f plugin.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path('plugin.json').read_text(encoding='utf-8'))
+          assert manifest['schema'] == 1
+          assert manifest['id'] == 'monitor'
+          assert manifest['name'] == 'Monitor'
+          assert manifest['requires']['geeklog'] == '2.1.1'
+          assert manifest['requires']['php'] == '5.6.0'
+          PY
+          grep -q "function plugin_getcapabilities_monitor" functions.inc
+          grep -q "'monitor.health'" functions.inc
+          grep -q "'monitor.diagnostics'" functions.inc
+          grep -q "'monitor.logs.summary'" functions.inc
+          grep -q "'monitor.plugins.status'" functions.inc
+          grep -q "'dashboard.summary'" functions.inc
+          grep -q "service_dashboard_summary_monitor" services.inc.php
+          grep -q "include_remote' => false" services.inc.php
+          echo 'Shared Monitor capability contract present.'
+
+      - name: Check plugin catalog UI contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          admin = Path('admin/index.php').read_text(encoding='utf-8')
+          icons = Path('admin/plugin-icons.php').read_text(encoding='utf-8')
+          template = Path('templates/administration.thtml').read_text(encoding='utf-8')
+          language = Path('language/english.php').read_text(encoding='utf-8')
+
+          required_admin = [
+              'function MONITOR_ADMIN_updateCompatibilityBadge',
+              'function MONITOR_ADMIN_displayVersion',
+              'monitor-plugin-title-with-icon',
+              'update_compatibility',
+              'data-plugin-installed="0"',
+              "$plugin['state'] !== 'update'",
+          ]
+          for needle in required_admin:
+              assert needle in admin, 'Missing admin UI contract: ' + needle
+
+          assert 'function MONITOR_ADMIN_pluginIcon' not in admin, (
+              'Plugin cards must use plugin-icons.php as their single icon resolver'
+          )
+
+          required_template = [
+              'plugin-icons.php',
+              'monitor-discovery-compatibility',
+              'Compatible with this site',
+              'Not compatible with this site',
+              'Requirements not declared',
+              'Metadata unavailable',
+              'Latest compatible version',
+              "values = [];",
+              'Newer release',
+          ]
+          for needle in required_template:
+              assert needle in template, 'Missing template UI contract: ' + needle
+
+          assert '✓ Compatible' not in template, (
+              'Installed plugin compatibility must not be duplicated client-side'
+          )
+
+          required_icons = [
+              'declared > 0',
+              'not_declared',
+              "'requirements_declared' => $declared > 0",
+              "'manifest_available' => true",
+              "'manifest_available' => false",
+              "'source' => 'no_plugin_json'",
+          ]
+          for needle in required_icons:
+              assert needle in icons, 'Missing discovery compatibility logic: ' + needle
+
+          assert "state'] === 'update'" in admin
+          assert "grid-column:1 / -1" in admin
+          assert 'plugin_catalog_update_incompatible' in language
+          print('Plugin catalog UI contracts are present.')
+          PY
+
+      - name: Check Geeklog Core plugin integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          catalog = Path('lib/MonitorPluginCatalog.php').read_text(encoding='utf-8')
+          admin = Path('admin/index.php').read_text(encoding='utf-8')
+          services = Path('lib/MonitorServices.php').read_text(encoding='utf-8')
+          versions = Path('lib/MonitorPluginVersions.php').read_text(encoding='utf-8')
+          language = Path('language/english.php').read_text(encoding='utf-8')
+
+          for plugin in ('calendar', 'links', 'polls', 'recaptcha', 'spamx', 'staticpages', 'xmlsitemap'):
+              assert ("'%s'" % plugin) in catalog
+
+          for needle in (
+              'MONITOR_PLUGIN_CATALOG_isCorePlugin',
+              'MONITOR_PLUGIN_CATALOG_coreLocalMetadata',
+              'MONITOR_PLUGIN_CATALOG_coreRemoteMetadata',
+              'Geeklog-Core/geeklog',
+          ):
+              assert needle in catalog, 'Missing Core catalog contract: ' + needle
+
+          assert "'distribution_source' => $distributionSource" in admin
+          assert "'core_geeklog_baseline' => $coreGeeklogBaseline" in admin
+          assert 'plugin_catalog_core_plugin' in language
+          assert 'plugin_catalog_core_update' in language
+          assert 'plugin_catalog_bundled_with_geeklog' in language
+          assert "' &nbsp;·&nbsp; Geeklog '" in admin
+          assert 'plugin_catalog_available_with_geeklog' in language
+          assert "state'] === 'core_update'" in admin
+          assert "distribution_source'] !== 'core'" in admin, (
+              'Core plugins must not expose a standalone Open version action'
+          )
+          assert "'distribution_source' => $distributionSource" in services
+          assert "'core_repository' => 'Geeklog-Core/geeklog'" in services
+          assert "'state' => 'managed_by_core'" in versions
+          assert "core_updates_available" in versions
+          print('Geeklog Core plugin integration is present.')
+          PY
+
+      - name: Check latest compatible release resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          catalog = Path('lib/MonitorPluginCatalog.php').read_text(encoding='utf-8')
+          admin = Path('admin/index.php').read_text(encoding='utf-8')
+          versions = Path('lib/MonitorPluginVersions.php').read_text(encoding='utf-8')
+          language = Path('language/english.php').read_text(encoding='utf-8')
+
+          required_catalog = [
+              'MONITOR_PLUGIN_CATALOG_releases',
+              'MONITOR_PLUGIN_CATALOG_repositoryFile',
+              'MONITOR_PLUGIN_CATALOG_autoinstallRequirements',
+              'MONITOR_PLUGIN_CATALOG_releaseRequirements',
+              'MONITOR_PLUGIN_CATALOG_latestCompatibleRelease',
+              'if ($checked >= 10)',
+              "'source' => 'compatible_release'",
+          ]
+          for needle in required_catalog:
+              assert needle in catalog, 'Missing compatible-release catalog contract: ' + needle
+
+          required_admin = [
+              'latest_compatible_active',
+              'latest_overall_label',
+              'current_compatible',
+              'MONITOR_PLUGIN_CATALOG_latestCompatibleRelease',
+          ]
+          for needle in required_admin:
+              assert needle in admin, 'Missing compatible-release admin contract: ' + needle
+
+          for needle in (
+              'latest_overall_version',
+              'Discovery is release-oriented',
+              'latest_compatible_version',
+              'current_compatible',
+          ):
+              assert needle in versions, 'Missing compatible-release service contract: ' + needle
+
+          assert 'plugin_catalog_current_compatible' in language
+          assert 'plugin_catalog_latest_compatible_version' in language
+          print('Latest compatible release resolution is present.')
+          PY
+
+      - name: Check target plugin requirement metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "remoteGeeklog" admin/index.php
+          grep -q "default_branch" admin/index.php
+          grep -q "MONITOR_PLUGIN_CATALOG_manifestRequirement" admin/index.php
+          grep -q "Some historical tags/releases do not expose plugin.json" lib/MonitorPluginVersions.php
+          grep -q "MONITOR_PLUGIN_CATALOG_repositories(false)" lib/MonitorPluginVersions.php
+          echo 'Target plugin requirement metadata fallback is present.'
+
+      - name: Check lifecycle observation guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          required = {
+              'services.inc.php': [
+                  'plugin_itemsaved_monitor',
+                  'plugin_itemdeleted_monitor',
+                  'MONITOR_ACTIVITY_record',
+                  'MonitorContentActivity.php',
+              ],
+              'lib/MonitorContentActivity.php': [
+                  'monitor-content-activity-',
+                  '30 * 86400',
+                  'array_slice($kept, -500)',
+                  'LOCK_EX',
+                  "'timestamp' => time()",
+                  "'sub_type' => $subType",
+                  "'old_id' =>",
+              ],
+              'lib/MonitorServices.php': ['content_activity'],
+          }
+
+          for filename, needles in required.items():
+              source = Path(filename).read_text(encoding='utf-8')
+              for needle in needles:
+                  if needle not in source:
+                      raise SystemExit('%s is missing lifecycle guard: %s' % (filename, needle))
+          PY
+          echo 'Lifecycle observation guardrails present.'
+
+      - name: Check oversized media locator guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f lib/MonitorMediaDiagnostics.php
+          test -f admin/media-diagnostics.php
+          grep -q "MONITOR_MEDIA_oversizedImages" lib/MonitorHealth.php
+          grep -q "relative_path" lib/MonitorMediaDiagnostics.php
+          grep -q "public_url" lib/MonitorMediaDiagnostics.php
+          grep -q "SEC_hasRights('monitor.admin')" admin/media-diagnostics.php
+          grep -F -q "filemanager/index.php?Type=Root" admin/media-diagnostics.php
+          grep -q "Show files" templates/administration.thtml
+          grep -q "Open File Manager" templates/administration.thtml
+          grep -q "maxItems" lib/MonitorMediaDiagnostics.php
+          if grep -E -q "unlink\(|rename\(|copy\(|file_put_contents\(|ftruncate\(" lib/MonitorMediaDiagnostics.php admin/media-diagnostics.php; then
+            echo 'Media locator must remain read-only.'
+            exit 1
+          fi
+          echo 'Oversized media locator guardrails present.'

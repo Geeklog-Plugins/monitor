@@ -1,0 +1,260 @@
+<?php
+
+// +---------------------------------------------------------------------------+
+// | Monitor Plugin 1.4.0                                                      |
+// +---------------------------------------------------------------------------+
+// | lib/MonitorConfigAudit.php                                                |
+// |                                                                           |
+// | Read-only comparison of siteconfig.php keys and Geeklog conf_values.      |
+// +---------------------------------------------------------------------------+
+
+if (isset($_SERVER['PHP_SELF']) &&
+        strpos(strtolower($_SERVER['PHP_SELF']), 'monitorconfigaudit.php') !== false) {
+    die();
+}
+
+function MONITOR_CONFIG_AUDIT_siteconfigKeys($path)
+{
+    $keys = array();
+
+    if (!is_file($path) || !is_readable($path)) {
+        return $keys;
+    }
+
+    $contents = @file_get_contents($path);
+    if ($contents === false || $contents === '') {
+        return $keys;
+    }
+
+    if (preg_match_all(
+        '/\$_CONF\s*\[\s*([\'\"])([^\'\"]+)\1\s*\]\s*=/',
+        $contents,
+        $matches
+    )) {
+        foreach ($matches[2] as $key) {
+            $key = trim($key);
+            if ($key !== '') {
+                $keys[$key] = true;
+            }
+        }
+    }
+
+    $result = array_keys($keys);
+    natcasesort($result);
+
+    return array_values($result);
+}
+
+function MONITOR_CONFIG_AUDIT_decode($raw)
+{
+    if ($raw === 'unset') {
+        return array('unset' => true, 'value' => null, 'valid' => true);
+    }
+
+    $value = @unserialize($raw);
+    $valid = !($value === false && $raw !== serialize(false));
+
+    return array('unset' => false, 'value' => $value, 'valid' => $valid);
+}
+
+function MONITOR_CONFIG_AUDIT_isPathKey($key)
+{
+    if (strpos($key, 'path_') === 0) {
+        return true;
+    }
+
+    return in_array($key, array('backup_path', 'rdf_file'), true);
+}
+
+function MONITOR_CONFIG_AUDIT_isSensitiveKey($key)
+{
+    $key = strtolower((string) $key);
+    $patterns = array(
+        'password',
+        'passwd',
+        'secret',
+        'token',
+        'private_key',
+        'apikey',
+        'api_key',
+        'auth_key'
+    );
+
+    foreach ($patterns as $pattern) {
+        if (strpos($key, $pattern) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function MONITOR_CONFIG_AUDIT_pathState($key, $value)
+{
+    if (!MONITOR_CONFIG_AUDIT_isPathKey($key) ||
+            !is_string($value) || $value === '') {
+        return array('checked' => false, 'exists' => null);
+    }
+
+    return array('checked' => true, 'exists' => file_exists($value));
+}
+
+function MONITOR_CONFIG_AUDIT_collect()
+{
+    global $_CONF, $_TABLES;
+
+    $siteconfigPath = isset($_CONF['path_html'])
+        ? rtrim($_CONF['path_html'], '/\\') . '/siteconfig.php'
+        : '';
+
+    if ($siteconfigPath === '' || !is_file($siteconfigPath)) {
+        $fallback = isset($_CONF['path'])
+            ? dirname(rtrim($_CONF['path'], '/\\')) . '/public_html/siteconfig.php'
+            : '';
+        if ($fallback !== '' && is_file($fallback)) {
+            $siteconfigPath = $fallback;
+        }
+    }
+
+    $siteKeys = MONITOR_CONFIG_AUDIT_siteconfigKeys($siteconfigPath);
+    $dbValues = array();
+    $result = DB_query(
+        "SELECT name, value, type, subgroup, tab "
+        . "FROM {$_TABLES['conf_values']} WHERE group_name = 'Core'",
+        1
+    );
+
+    if ($result) {
+        while ($row = DB_fetchArray($result)) {
+            if (!isset($row['name'])) {
+                continue;
+            }
+
+            $decoded = MONITOR_CONFIG_AUDIT_decode(
+                isset($row['value']) ? $row['value'] : ''
+            );
+
+            $dbValues[$row['name']] = array(
+                'value' => $decoded['value'],
+                'unset' => $decoded['unset'],
+                'valid' => $decoded['valid'],
+                'type' => isset($row['type']) ? $row['type'] : '',
+                'subgroup' => isset($row['subgroup']) ? $row['subgroup'] : '',
+                'tab' => isset($row['tab']) ? $row['tab'] : ''
+            );
+        }
+    }
+
+    $fileOnlyNormal = array('path', 'path_system', 'site_enabled', 'default_charset');
+    $rows = array();
+    $summary = array(
+        'issues' => 0,
+        'review' => 0,
+        'normal' => 0,
+        'invalid_paths' => 0,
+        'redacted' => 0
+    );
+
+    foreach ($siteKeys as $key) {
+        $dbExists = isset($dbValues[$key]);
+        $siteValue = array_key_exists($key, $_CONF) ? $_CONF[$key] : null;
+        $dbValue = ($dbExists && !$dbValues[$key]['unset'])
+            ? $dbValues[$key]['value']
+            : null;
+        $sensitive = MONITOR_CONFIG_AUDIT_isSensitiveKey($key);
+
+        if ($sensitive) {
+            $summary['redacted']++;
+        }
+
+        $status = 'identical';
+        $level = 'ok';
+        $whyKey = 'config_audit_why_identical';
+        $actionKey = 'config_audit_action_none';
+
+        if ($dbExists && !$dbValues[$key]['valid']) {
+            $status = 'decode_error';
+            $level = 'warning';
+            $whyKey = 'config_audit_why_decode_error';
+            $actionKey = 'config_audit_action_decode_error';
+        } elseif ($dbExists && $dbValues[$key]['unset']) {
+            $status = 'db_unset';
+            $level = 'review';
+            $whyKey = 'config_audit_why_db_unset';
+            $actionKey = 'config_audit_action_db_unset';
+        } elseif ($dbExists && $siteValue === $dbValue) {
+            $status = 'identical';
+        } elseif ($dbExists) {
+            $status = 'different';
+            $level = 'review';
+            $whyKey = 'config_audit_why_different';
+            $actionKey = 'config_audit_action_different';
+        } elseif (in_array($key, $fileOnlyNormal, true)) {
+            $status = 'core_file';
+            $whyKey = 'config_audit_why_core_file';
+        } else {
+            $status = 'file_only';
+            $level = 'info';
+            $whyKey = 'config_audit_why_file_only';
+            $actionKey = 'config_audit_action_file_only';
+        }
+
+        $pathState = MONITOR_CONFIG_AUDIT_pathState($key, $siteValue);
+        if ($pathState['checked'] && !$pathState['exists']) {
+            $status = 'invalid_path';
+            $level = 'warning';
+            $whyKey = 'config_audit_why_invalid_path';
+            $actionKey = 'config_audit_action_invalid_path';
+            $summary['invalid_paths']++;
+        }
+
+        if ($level === 'warning') {
+            $summary['issues']++;
+        } elseif ($level === 'review') {
+            $summary['review']++;
+        } else {
+            $summary['normal']++;
+        }
+
+        $sql = '';
+        if (!$sensitive && $status === 'different') {
+            $canSuggest = true;
+            if (MONITOR_CONFIG_AUDIT_isPathKey($key)) {
+                $sitePath = MONITOR_CONFIG_AUDIT_pathState($key, $siteValue);
+                $canSuggest = $sitePath['checked'] && $sitePath['exists'];
+            }
+
+            if ($canSuggest) {
+                $safeName = MONITOR_dbEscape($key);
+                $safeValue = MONITOR_dbEscape(serialize($siteValue));
+                $safeTable = str_replace('`', '``', $_TABLES['conf_values']);
+                $sql = "UPDATE `{$safeTable}`\n"
+                     . "SET `value` = '{$safeValue}'\n"
+                     . "WHERE `name` = '{$safeName}'\n"
+                     . "  AND `group_name` = 'Core';";
+            }
+        }
+
+        $rows[] = array(
+            'key' => $key,
+            'site_value' => $siteValue,
+            'db_exists' => $dbExists,
+            'db_value' => $dbValue,
+            'effective_value' => $siteValue,
+            'status' => $status,
+            'level' => $level,
+            'why_key' => $whyKey,
+            'action_key' => $actionKey,
+            'path' => $pathState,
+            'sql' => $sql,
+            'sensitive' => $sensitive
+        );
+    }
+
+    return array(
+        'siteconfig_path' => $siteconfigPath,
+        'siteconfig_readable' => ($siteconfigPath !== '' && is_readable($siteconfigPath)),
+        'rows' => $rows,
+        'summary' => $summary
+    );
+}

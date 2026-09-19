@@ -1,0 +1,127 @@
+name: Build installable archive
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - monitor-1.4.0
+    paths-ignore:
+      - 'dist/**'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build monitor_1.4.0_2.1.1.zip
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Prepare installable plugin tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf package dist
+          mkdir -p package/monitor dist
+
+          # Geeklog 2.2.2 does not tolerate archive entries whose name starts
+          # with a dot. The rsync rule excludes dotfiles and dot-directories at
+          # every depth; the find pass below is a defensive second barrier.
+          rsync -a ./ package/monitor/ \
+            --exclude='.*' \
+            --exclude='package/' \
+            --exclude='dist/'
+
+          find package/monitor -depth -name '.*' -print -delete
+
+      - name: Validate package structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f package/monitor/autoinstall.php
+          test -f package/monitor/plugin.json
+          test -f package/monitor/functions.inc
+          test -f package/monitor/install_defaults.php
+          test -f package/monitor/admin/index.php
+          test -f package/monitor/sql/mysql_install.php
+          test -f package/monitor/templates/administration.thtml
+          test -f package/monitor/lib/MonitorHealth.php
+
+          if find package/monitor -mindepth 1 -name '.*' -print -quit | grep -q .; then
+            echo 'Error: dotfile or dot-directory found in package tree.' >&2
+            find package/monitor -mindepth 1 -name '.*' -print >&2
+            exit 1
+          fi
+
+      - name: Build ZIP in dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd package
+            zip -r -9 ../dist/monitor_1.4.0_2.1.1.zip monitor
+          )
+
+      - name: Validate ZIP contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE='dist/monitor_1.4.0_2.1.1.zip'
+          test -s "$ARCHIVE"
+          unzip -t "$ARCHIVE"
+          unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/autoinstall.php'
+          unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/plugin.json'
+          unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/functions.inc'
+          unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/admin/index.php'
+          unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/sql/mysql_install.php'
+
+          # Reject any archive entry for which any path component begins with a
+          # dot, e.g. monitor/.htaccess, monitor/lib/.gitkeep or .DS_Store.
+          if unzip -Z1 "$ARCHIVE" | awk -F/ '{ for (i = 1; i <= NF; i++) if ($i ~ /^\./) { print; exit 0 } } END { exit 1 }'; then
+            echo 'Error: archive contains a dotfile or dot-directory.' >&2
+            unzip -Z1 "$ARCHIVE" | awk -F/ '{ for (i = 1; i <= NF; i++) if ($i ~ /^\./) { print } }' >&2
+            exit 1
+          fi
+
+      - name: Show distribution
+        shell: bash
+        run: |
+          ls -lh dist/
+          sha256sum dist/monitor_1.4.0_2.1.1.zip
+
+      - name: Commit dist archive to branch
+        if: github.ref == 'refs/heads/monitor-1.4.0'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Each run builds the commit that triggered it. If the branch moved
+          # while the ZIP was being built, do not publish a stale archive.
+          git fetch origin monitor-1.4.0
+          REMOTE_HEAD="$(git rev-parse origin/monitor-1.4.0)"
+          if [ "$REMOTE_HEAD" != "$GITHUB_SHA" ]; then
+            echo "Branch advanced from $GITHUB_SHA to $REMOTE_HEAD; skipping stale dist commit."
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f dist/monitor_1.4.0_2.1.1.zip
+
+          if git diff --cached --quiet; then
+            echo 'Distribution archive is already up to date.'
+          else
+            git commit -m 'Update Monitor 1.4.0 distribution archive'
+            git push origin HEAD:monitor-1.4.0
+          fi
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitor_1.4.0_2.1.1-dist
+          path: dist/monitor_1.4.0_2.1.1.zip
+          if-no-files-found: error
+          retention-days: 30

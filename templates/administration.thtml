@@ -1,12 +1,650 @@
-<h2 style="margin:0;">{title}</h2>
-<table style="width:100%;" cellspacing="0" cellpadding="0">
-<tr>
-  <td style="vertical-align:top;width:75%;">
-     <div style="padding:5px 5px 0 0">
-     {status_msg}
-     {admin_body}
-     </div>
-  </td>
-</tr>
-</table>
+<style>
+.monitor-admin {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.monitor-admin *,
+.monitor-admin *::before,
+.monitor-admin *::after {
+    box-sizing: border-box;
+}
+.monitor-admin img,
+.monitor-admin video,
+.monitor-admin iframe {
+    max-width: 100%;
+    height: auto;
+}
+.monitor-admin pre {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.monitor-admin code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.monitor-admin table {
+    max-width: 100%;
+}
+.monitor-admin input,
+.monitor-admin select,
+.monitor-admin textarea,
+.monitor-admin button {
+    max-width: 100%;
+}
+.monitor-media-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 7px;
+    align-items: center;
+}
+.monitor-media-action {
+    display: inline-block;
+    padding: 5px 9px;
+    border: 1px solid #b8c1c8;
+    border-radius: 5px;
+    background: #fff;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    font: inherit;
+    line-height: 1.3;
+}
+.monitor-media-panel {
+    margin-top: 9px;
+    padding: 9px 11px;
+    border-left: 3px solid #d7dde2;
+    background: #fafbfc;
+}
+.monitor-media-item + .monitor-media-item {
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid #e2e6e9;
+}
+.monitor-media-meta {
+    margin-top: 2px;
+    color: #5f666d;
+    font-size: .91em;
+    overflow-wrap: anywhere;
+}
+.monitor-plugin-title-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+.monitor-plugin-icon-slot {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #d7dde2;
+    border-radius: 6px;
+    background: #f8fafc;
+    overflow: hidden;
+}
+.monitor-plugin-icon-spinner {
+    width: 19px;
+    height: 19px;
+    border: 2px solid #d4dbe1;
+    border-top-color: #607d8b;
+    border-radius: 50%;
+    animation: monitor-plugin-icon-spin .8s linear infinite;
+}
+.monitor-discovery-compatibility {
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid #edf0f2;
+    font-size: .9em;
+}
+.monitor-discovery-requirements {
+    color: #5f666d;
+    margin-bottom: 6px;
+}
+.monitor-discovery-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+}
+.monitor-discovery-badge-compatible {
+    background: #e8f5e9;
+    color: #1b5e20;
+    border: 1px solid #a5d6a7;
+}
+.monitor-discovery-badge-incompatible {
+    background: #ffebee;
+    color: #b71c1c;
+    border: 1px solid #ef9a9a;
+}
+.monitor-discovery-badge-unknown,
+.monitor-discovery-badge-requirements_missing,
+.monitor-discovery-badge-metadata_unavailable {
+    background: #f5f5f5;
+    color: #555;
+    border: 1px solid #d7dde2;
+}
+.monitor-plugin-icon-slot.is-unavailable .monitor-plugin-icon-spinner {
+    animation: none;
+    width: 10px;
+    height: 10px;
+    border: 0;
+    border-radius: 50%;
+    background: #b8c1c8;
+}
+@keyframes monitor-plugin-icon-spin {
+    to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .monitor-plugin-icon-spinner {
+        animation-duration: 1.8s;
+    }
+}
+.monitor-admin .monitor-plugin-icon {
+    width: 42px;
+    height: 42px;
+    max-width: 42px;
+    flex: 0 0 42px;
+    object-fit: contain;
+    border-radius: 6px;
+}
+.monitor-admin .monitor-plugin-icon.monitor-plugin-icon-fallback {
+    opacity: .55;
+}
+.monitor-plugin-manifest-meta strong {
+    color: inherit;
+}
+.monitor-admin div[style*="margin-bottom:18px"][style*="gap:8px"] {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: stretch;
+}
+.monitor-admin div[style*="margin-bottom:18px"][style*="gap:8px"] > div {
+    min-width: 0 !important;
+    width: 100%;
+}
+@media (max-width: 1100px) {
+    .monitor-admin div[style*="margin-bottom:18px"][style*="gap:8px"] {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+@media (max-width: 720px) {
+    .monitor-admin div[style*="margin-bottom:18px"][style*="gap:8px"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 480px) {
+    .monitor-admin div[style*="margin-bottom:18px"][style*="gap:8px"] {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 640px) {
+    .monitor-admin [style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+    .monitor-admin [style*="min-width:"] {
+        min-width: 0 !important;
+    }
+    .monitor-admin h2,
+    .monitor-admin h3 {
+        overflow-wrap: anywhere;
+    }
+}
+</style>
 
+<div class="monitor-admin">
+    <h2 style="margin:0;">{title}</h2>
+    <div style="padding-top:5px;min-width:0;max-width:100%;">
+        {status_msg}
+        {admin_body}
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    function formatBytes(bytes) {
+        var value = Number(bytes) || 0;
+        var units = ['B', 'KB', 'MB', 'GB'];
+        var index = 0;
+        while (value >= 1024 && index < units.length - 1) {
+            value = value / 1024;
+            index++;
+        }
+        return (index === 0 ? Math.round(value) : value.toFixed(1)) + ' ' + units[index];
+    }
+
+    function label(template, total, fallback) {
+        var text = template || fallback || '';
+        return String(text).replace('%d', total);
+    }
+
+    function addText(parent, text, className) {
+        var node = document.createElement('div');
+        if (className) {
+            node.className = className;
+        }
+        node.textContent = text;
+        parent.appendChild(node);
+        return node;
+    }
+
+    function renderMediaRecommendation(cell, data) {
+        var total = Number(data.total) || 0;
+        var items = Array.isArray(data.items) ? data.items : [];
+        var labels = data.labels || {};
+
+        cell.textContent = '';
+        addText(
+            cell,
+            total === 1
+                ? (labels.oversized_single || '1 image exceeds the recommended limits.')
+                : label(labels.oversized_multiple, total, total + ' images exceed the recommended limits.')
+        );
+
+        var actions = document.createElement('div');
+        actions.className = 'monitor-media-actions';
+        cell.appendChild(actions);
+
+        var toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'monitor-media-action';
+        toggle.textContent = label(labels.show_files, total, 'Show files (' + total + ')');
+        actions.appendChild(toggle);
+
+        if (data.file_manager_url) {
+            var manager = document.createElement('a');
+            manager.className = 'monitor-media-action';
+            manager.href = data.file_manager_url;
+            manager.textContent = labels.open_file_manager || 'Open File Manager';
+            actions.appendChild(manager);
+        }
+
+        var panel = document.createElement('div');
+        panel.className = 'monitor-media-panel';
+        panel.hidden = true;
+        cell.appendChild(panel);
+
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var block = document.createElement('div');
+            block.className = 'monitor-media-item';
+            panel.appendChild(block);
+
+            if (item.public_url) {
+                var view = document.createElement('a');
+                view.href = item.public_url;
+                view.target = '_blank';
+                view.rel = 'noopener noreferrer';
+                view.textContent = item.file || item.relative_path || labels.view_image || 'View image';
+                block.appendChild(view);
+            } else {
+                var strong = document.createElement('strong');
+                strong.textContent = item.file || item.relative_path || labels.view_image || 'Image';
+                block.appendChild(strong);
+            }
+
+            var meta = [];
+            if (item.width && item.height) {
+                meta.push(item.width + ' × ' + item.height + ' px');
+            }
+            if (item.size_bytes) {
+                meta.push(formatBytes(item.size_bytes));
+            }
+            if (item.relative_path) {
+                meta.push(item.relative_path);
+            }
+            addText(block, meta.join(' · '), 'monitor-media-meta');
+        }
+
+        if (data.items_truncated) {
+            addText(panel, labels.more_files || 'Additional oversized images exist; the list is limited.', 'monitor-media-meta');
+        }
+        if (data.partial_scan) {
+            addText(panel, labels.partial_scan || 'The filesystem scan reached its safety limit.', 'monitor-media-meta');
+        }
+
+        toggle.addEventListener('click', function () {
+            panel.hidden = !panel.hidden;
+            toggle.textContent = panel.hidden
+                ? label(labels.show_files, total, 'Show files (' + total + ')')
+                : label(labels.hide_files, total, 'Hide files (' + total + ')');
+        });
+    }
+
+    function enhanceOversizedImages() {
+        var rows = document.querySelectorAll('.monitor-admin table.admin-list tbody tr');
+        var target = null;
+        var i;
+        var cells;
+
+        for (i = 0; i < rows.length; i++) {
+            cells = rows[i].querySelectorAll('td');
+            if (cells.length >= 4 && cells[1].textContent.trim() === 'Oversized images') {
+                target = cells[3];
+                break;
+            }
+        }
+
+        if (!target || !window.fetch) {
+            return;
+        }
+
+        fetch('media-diagnostics.php', {
+            credentials: 'same-origin',
+            headers: {'Accept': 'application/json'}
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('media diagnostics unavailable');
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                if (data && data.ok && Number(data.total) > 0) {
+                    renderMediaRecommendation(target, data);
+                }
+            })
+            .catch(function () {
+                /* Keep the server-rendered recommendation as a safe fallback. */
+            });
+    }
+
+    function pluginCardTitle(card) {
+        var first = card.firstElementChild;
+        var strongs;
+
+        if (!first) {
+            return null;
+        }
+
+        if (first.tagName && first.tagName.toLowerCase() === 'strong') {
+            return first;
+        }
+
+        strongs = first.getElementsByTagName('strong');
+        return strongs.length ? strongs[0] : null;
+    }
+
+    function ensurePluginIconSlot(card) {
+        var title = pluginCardTitle(card);
+        var parent;
+        var wrapper;
+        var slot;
+        var spinner;
+
+        if (!title) {
+            return null;
+        }
+
+        wrapper = card.querySelector('.monitor-plugin-title-with-icon');
+        if (!wrapper) {
+            parent = title.parentNode;
+            wrapper = document.createElement('div');
+            wrapper.className = 'monitor-plugin-title-with-icon';
+            parent.insertBefore(wrapper, title);
+            wrapper.appendChild(title);
+        }
+
+        slot = wrapper.querySelector('.monitor-plugin-icon-slot');
+        if (!slot) {
+            slot = document.createElement('span');
+            slot.className = 'monitor-plugin-icon-slot';
+            slot.setAttribute('role', 'status');
+            slot.setAttribute('aria-label', 'Loading plugin icon');
+            slot.title = 'Loading plugin icon';
+            spinner = document.createElement('span');
+            spinner.className = 'monitor-plugin-icon-spinner';
+            spinner.setAttribute('aria-hidden', 'true');
+            slot.appendChild(spinner);
+            wrapper.insertBefore(slot, title);
+        }
+
+        return slot;
+    }
+
+    function markPluginIconUnavailable(card) {
+        var slot = ensurePluginIconSlot(card);
+        if (!slot) {
+            return;
+        }
+        slot.className = 'monitor-plugin-icon-slot is-unavailable';
+        slot.setAttribute('aria-label', 'Plugin icon unavailable');
+        slot.title = 'Plugin icon unavailable';
+    }
+
+    function insertPluginIcon(card, iconUrl, fallbackUrl) {
+        var title = pluginCardTitle(card);
+        var slot = ensurePluginIconSlot(card);
+        var image;
+        var fallbackUsed = false;
+
+        if (!title || !slot || !iconUrl) {
+            markPluginIconUnavailable(card);
+            return;
+        }
+
+        image = document.createElement('img');
+        image.className = 'monitor-plugin-icon';
+        image.src = iconUrl;
+        image.alt = title.textContent.trim() + ' icon';
+        image.decoding = 'async';
+        image.addEventListener('load', function () {
+            slot.textContent = '';
+            slot.className = 'monitor-plugin-icon-slot';
+            slot.removeAttribute('role');
+            slot.removeAttribute('aria-label');
+            slot.removeAttribute('title');
+            slot.appendChild(image);
+        });
+        image.addEventListener('error', function () {
+            if (!fallbackUsed && fallbackUrl && image.src !== fallbackUrl) {
+                fallbackUsed = true;
+                image.className += ' monitor-plugin-icon-fallback';
+                image.src = fallbackUrl;
+                return;
+            }
+            markPluginIconUnavailable(card);
+        });
+    }
+
+    function renderPluginMetadata(card, metadata) {
+        var title = pluginCardTitle(card);
+        var requires;
+        var compatibility;
+        var values = [];
+        var block;
+        var requirements;
+        var badge;
+        var state;
+        var versionInfo;
+        var newerInfo;
+        var overallRequires;
+        var blocked = [];
+
+        if (!metadata || !title) {
+            return;
+        }
+
+        if (metadata.name) {
+            title.textContent = metadata.name;
+        }
+
+        // Installed cards already render version and update compatibility on
+        // the server. Only discovery cards need pre-install compatibility here.
+        if (card.getAttribute('data-plugin-installed') !== '0') {
+            return;
+        }
+
+        requires = metadata.requires || {};
+        if (requires.geeklog) {
+            values.push('Geeklog ' + requires.geeklog + '+');
+        }
+        if (requires.php) {
+            values.push('PHP ' + requires.php + '+');
+        }
+
+        compatibility = metadata.compatibility || {};
+        state = compatibility.state || 'unknown';
+
+        if (metadata.manifest_available === false) {
+            state = 'metadata_unavailable';
+        } else if (metadata.requirements_declared === false) {
+            state = 'requirements_missing';
+        }
+
+        block = card.querySelector('.monitor-discovery-compatibility');
+        if (!block) {
+            block = document.createElement('div');
+            block.className = 'monitor-discovery-compatibility';
+            card.appendChild(block);
+        }
+        block.textContent = '';
+
+        if (metadata.latest_compatible_version) {
+            versionInfo = document.createElement('div');
+            versionInfo.className = 'monitor-discovery-requirements';
+            versionInfo.textContent = 'Latest compatible version '
+                + String(metadata.latest_compatible_version).replace(/^[vV](?=[0-9])/, '');
+
+            if (requires.geeklog) {
+                versionInfo.textContent += ' · Geeklog ' + requires.geeklog + '+';
+            }
+            if (requires.php) {
+                versionInfo.textContent += ' · PHP ' + requires.php + '+';
+            }
+
+            block.appendChild(versionInfo);
+
+            /*
+             * The compatible-release line already carries its runtime
+             * requirements, so do not repeat them again below.
+             */
+            values = [];
+        }
+
+        if (metadata.latest_compatible_version && metadata.latest_overall_version
+                && metadata.latest_compatible_version !== metadata.latest_overall_version) {
+            overallRequires = metadata.latest_overall_requires || {};
+            newerInfo = document.createElement('div');
+            newerInfo.className = 'monitor-discovery-requirements';
+            if (overallRequires.geeklog) {
+                blocked.push('requires Geeklog ' + overallRequires.geeklog);
+            }
+            if (overallRequires.php) {
+                blocked.push('requires PHP ' + overallRequires.php);
+            }
+            newerInfo.textContent = 'Newer release '
+                + String(metadata.latest_overall_version).replace(/^[vV](?=[0-9])/, '')
+                + (blocked.length ? ' · ' + blocked.join(' · ') : '');
+            block.appendChild(newerInfo);
+        }
+
+        if (values.length) {
+            requirements = document.createElement('div');
+            requirements.className = 'monitor-discovery-requirements';
+            requirements.textContent = values.join(' · ');
+            block.appendChild(requirements);
+        }
+
+        badge = document.createElement('span');
+        badge.className = 'monitor-discovery-badge monitor-discovery-badge-' + state;
+
+        if (state === 'compatible') {
+            badge.textContent = 'Compatible with this site';
+        } else if (state === 'incompatible') {
+            badge.textContent = 'Not compatible with this site';
+        } else if (state === 'requirements_missing') {
+            badge.textContent = 'Requirements not declared';
+        } else if (state === 'metadata_unavailable') {
+            badge.textContent = 'Metadata unavailable';
+        } else {
+            badge.textContent = 'Compatibility unknown';
+        }
+
+        block.appendChild(badge);
+    }
+
+    function enhancePluginIcons() {
+        var cards;
+        var endpoint;
+        var refresh;
+        var i;
+
+        if (!window.fetch || window.location.search.indexOf('view=plugins') === -1) {
+            return;
+        }
+
+        cards = document.querySelectorAll('.monitor-admin section[id^="plugin-"]');
+        if (!cards.length) {
+            return;
+        }
+
+        for (i = 0; i < cards.length; i++) {
+            ensurePluginIconSlot(cards[i]);
+        }
+
+        refresh = /(?:^|[?&])refresh=1(?:&|$)/.test(window.location.search);
+        endpoint = 'plugin-icons.php' + (refresh ? '?refresh=1' : '');
+
+        fetch(endpoint, {
+            credentials: 'same-origin',
+            headers: {'Accept': 'application/json'}
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('plugin icons unavailable');
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                var icons;
+                var metadata;
+                var fallback;
+                var key;
+
+                if (!data || !data.ok) {
+                    throw new Error('plugin metadata unavailable');
+                }
+
+                icons = data.icons || {};
+                metadata = data.metadata || {};
+                fallback = data.fallback || '';
+
+                for (i = 0; i < cards.length; i++) {
+                    key = cards[i].id.substring(7);
+                    if (icons[key]) {
+                        insertPluginIcon(cards[i], icons[key], fallback);
+                    } else {
+                        markPluginIconUnavailable(cards[i]);
+                    }
+                    if (metadata[key]) {
+                        renderPluginMetadata(cards[i], metadata[key]);
+                    }
+                }
+            })
+            .catch(function () {
+                for (i = 0; i < cards.length; i++) {
+                    markPluginIconUnavailable(cards[i]);
+                }
+            });
+    }
+
+    function initEnhancements() {
+        enhanceOversizedImages();
+        enhancePluginIcons();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEnhancements);
+    } else {
+        initEnhancements();
+    }
+}());
+</script>
