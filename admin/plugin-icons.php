@@ -406,71 +406,108 @@ foreach ($repositories as $repo) {
     $repoName = isset($repo['name']) ? (string) $repo['name'] : '';
     $icons[$normalized] = MONITOR_PLUGIN_ICONS_resolveRepository($owner, $repo, $refresh, $manifest);
 
-    if (is_array($manifest)) {
-        $itemMetadata = MONITOR_PLUGIN_ICONS_metadata($manifest, 'remote_plugin_json');
+    /*
+     * Discovery is release-oriented. The repository default branch may target
+     * a newer runtime than the site even though an older stable release is
+     * still installable. Resolve stable releases first, then use master only
+     * as a metadata fallback when no compatible release metadata exists.
+     */
+    $latest = MONITOR_PLUGIN_CATALOG_latestVersion($owner, $repoName, $refresh);
+    $compatible = MONITOR_PLUGIN_CATALOG_latestCompatibleRelease(
+        $owner,
+        $repoName,
+        defined('VERSION') ? (string) VERSION : '',
+        PHP_VERSION,
+        $refresh
+    );
 
-        /*
-         * Discovery must answer "what can I install on this site?", not only
-         * "what is the newest release?". If the newest release requires a
-         * newer runtime, resolve the newest compatible stable release.
-         */
-        $latest = MONITOR_PLUGIN_CATALOG_latestVersion($owner, $repoName, $refresh);
+    if (is_array($compatible)) {
+        $requirements = isset($compatible['requirements'])
+            && is_array($compatible['requirements'])
+            ? $compatible['requirements'] : array();
+        $compatibleGeeklog = isset($requirements['geeklog'])
+            ? (string) $requirements['geeklog'] : '';
+        $compatiblePhp = isset($requirements['php'])
+            ? (string) $requirements['php'] : '';
+
+        $itemMetadata = array(
+            'id' => is_array($manifest) && isset($manifest['id'])
+                ? (string) $manifest['id'] : '',
+            'name' => is_array($manifest) && isset($manifest['name'])
+                ? (string) $manifest['name'] : '',
+            'requires' => array(
+                'geeklog' => $compatibleGeeklog,
+                'php' => $compatiblePhp
+            ),
+            'compatibility' => array(
+                'state' => 'compatible',
+                'geeklog' => $compatibleGeeklog !== ''
+                    ? MONITOR_PLUGIN_ICONS_requirementState(
+                        defined('VERSION') ? (string) VERSION : '',
+                        $compatibleGeeklog
+                    ) : 'not_declared',
+                'php' => $compatiblePhp !== ''
+                    ? MONITOR_PLUGIN_ICONS_requirementState(PHP_VERSION, $compatiblePhp)
+                    : 'not_declared',
+                'geeklog_current' => defined('VERSION') ? (string) VERSION : '',
+                'php_current' => PHP_VERSION
+            ),
+            'requirements_declared' => ($compatibleGeeklog !== '' || $compatiblePhp !== ''),
+            'manifest_available' => is_array($manifest),
+            'source' => isset($compatible['source']) ? (string) $compatible['source'] : 'compatible_release',
+            'latest_compatible_version' => isset($compatible['tag'])
+                ? (string) $compatible['tag'] : '',
+            'latest_compatible_url' => isset($compatible['url'])
+                ? (string) $compatible['url'] : ''
+        );
+
         if (is_array($latest)) {
             $itemMetadata['latest_overall_version'] = isset($latest['tag'])
                 ? (string) $latest['tag'] : '';
             $itemMetadata['latest_overall_url'] = isset($latest['url'])
                 ? (string) $latest['url'] : '';
 
-            $state = isset($itemMetadata['compatibility']['state'])
-                ? (string) $itemMetadata['compatibility']['state'] : 'unknown';
-
-            if ($state === 'incompatible') {
-                $compatible = MONITOR_PLUGIN_CATALOG_latestCompatibleRelease(
-                    $owner,
-                    $repoName,
-                    defined('VERSION') ? (string) VERSION : '',
-                    PHP_VERSION,
-                    $refresh
-                );
-
-                if (is_array($compatible)) {
-                    $requirements = isset($compatible['requirements'])
-                        && is_array($compatible['requirements'])
-                        ? $compatible['requirements'] : array();
-                    $compatibleGeeklog = isset($requirements['geeklog'])
-                        ? (string) $requirements['geeklog'] : '';
-                    $compatiblePhp = isset($requirements['php'])
-                        ? (string) $requirements['php'] : '';
-
-                    $itemMetadata['latest_compatible_version'] = isset($compatible['tag'])
-                        ? (string) $compatible['tag'] : '';
-                    $itemMetadata['latest_compatible_url'] = isset($compatible['url'])
-                        ? (string) $compatible['url'] : '';
-                    $itemMetadata['latest_overall_requires'] = $itemMetadata['requires'];
-                    $itemMetadata['requires'] = array(
-                        'geeklog' => $compatibleGeeklog,
-                        'php' => $compatiblePhp
+            if (!empty($itemMetadata['latest_overall_version'])
+                    && $itemMetadata['latest_overall_version']
+                        !== $itemMetadata['latest_compatible_version']) {
+                $overallRelease = null;
+                foreach (MONITOR_PLUGIN_CATALOG_releases($owner, $repoName, $refresh) as $release) {
+                    if (is_array($release)
+                            && isset($release['tag_name'])
+                            && (string) $release['tag_name'] === $itemMetadata['latest_overall_version']) {
+                        $overallRelease = $release;
+                        break;
+                    }
+                }
+                if (is_array($overallRelease)) {
+                    $overallReq = MONITOR_PLUGIN_CATALOG_releaseRequirements(
+                        $owner,
+                        $repoName,
+                        $overallRelease,
+                        $refresh
                     );
-                    $itemMetadata['requirements_declared'] =
-                        ($compatibleGeeklog !== '' || $compatiblePhp !== '');
-                    $itemMetadata['compatibility'] = array(
-                        'state' => 'compatible',
-                        'geeklog' => $compatibleGeeklog !== ''
-                            ? MONITOR_PLUGIN_ICONS_requirementState(
-                                defined('VERSION') ? (string) VERSION : '',
-                                $compatibleGeeklog
-                            ) : 'not_declared',
-                        'php' => $compatiblePhp !== ''
-                            ? MONITOR_PLUGIN_ICONS_requirementState(PHP_VERSION, $compatiblePhp)
-                            : 'not_declared',
-                        'geeklog_current' => defined('VERSION') ? (string) VERSION : '',
-                        'php_current' => PHP_VERSION
+                    $itemMetadata['latest_overall_requires'] = array(
+                        'geeklog' => isset($overallReq['geeklog'])
+                            ? (string) $overallReq['geeklog'] : '',
+                        'php' => isset($overallReq['php'])
+                            ? (string) $overallReq['php'] : ''
                     );
                 }
             }
         }
 
         $metadata[$normalized] = $itemMetadata;
+    } elseif (is_array($manifest)) {
+        $metadata[$normalized] = MONITOR_PLUGIN_ICONS_metadata(
+            $manifest,
+            'remote_plugin_json'
+        );
+        if (is_array($latest)) {
+            $metadata[$normalized]['latest_overall_version'] = isset($latest['tag'])
+                ? (string) $latest['tag'] : '';
+            $metadata[$normalized]['latest_overall_url'] = isset($latest['url'])
+                ? (string) $latest['url'] : '';
+        }
     } else {
         $metadata[$normalized] = array(
             'id' => '',
@@ -488,6 +525,7 @@ foreach ($repositories as $repo) {
             'source' => 'no_plugin_json'
         );
     }
+
 }
 
 echo json_encode(array(
