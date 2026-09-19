@@ -313,6 +313,10 @@ The old executable-code updater has been removed from the admin workflow.
 - [x] do not deploy code from a normal Monitor request;
 - [ ] add safe remote release metadata discovery if operationally useful;
 - [x] evaluate Geeklog/PHP compatibility metadata from remote `plugin.json`, with default-branch fallback when a release/tag manifest is unavailable;
+- [x] resolve the latest compatible standalone release when the newest release targets a newer Geeklog/PHP runtime;
+- [x] distinguish `current_compatible` (“Up to date for this Geeklog”) from a genuinely actionable update;
+- [x] preserve both `latest_compatible_version` and `latest_overall_version` for Agent/Eclipse/Hub;
+- [x] use bounded release compatibility discovery (maximum 10 stable releases) with source priority: tagged `plugin.json`, tagged `autoinstall.php`, release metadata, asset filename;
 - [ ] link to source/release and recommend an action.
 
 A dedicated updater/deployment component remains preferable to rebuilding deployment responsibilities inside Monitor.
