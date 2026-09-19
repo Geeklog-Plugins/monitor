@@ -246,6 +246,8 @@ Oversized image scanning is bounded and read-only; a future detailed inventory s
 - [x] environment/health information;
 - [x] Logs view;
 - [x] read-only Plugins view;
+- [x] homogeneous plugin cards: icon/name header, state badges on a dedicated row, compact two-column metadata;
+- [x] show compatibility badges only when an update is available, including explicit incompatible/unknown states;
 - [x] Security view;
 - [x] Ban capability visibility;
 - [x] Geeklog 2.2.2-compatible rendering using `COM_createHTMLDocument()`;
