@@ -327,44 +327,6 @@ function MONITOR_ADMIN_enabledBadge($enabled)
          . $style . '">' . MONITOR_ADMIN_h($label) . '</span>';
 }
 
-function MONITOR_ADMIN_pluginIcon($pluginName)
-{
-    global $_CONF;
-
-    $pluginName = trim((string) $pluginName);
-    if ($pluginName === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $pluginName)) {
-        return '';
-    }
-
-    $relative = 'images/' . $pluginName . '.png';
-    $pluginRoot = rtrim((string) $_CONF['path'], '/\\')
-        . DIRECTORY_SEPARATOR . 'plugins' . DIRECTORY_SEPARATOR . $pluginName;
-    $manifestPath = $pluginRoot . DIRECTORY_SEPARATOR . 'plugin.json';
-
-    if (is_file($manifestPath) && is_readable($manifestPath)) {
-        $raw = @file_get_contents($manifestPath);
-        $manifest = is_string($raw) ? json_decode($raw, true) : null;
-        if (is_array($manifest) && isset($manifest['icon']) && is_string($manifest['icon'])) {
-            $icon = trim($manifest['icon']);
-            if (strpos($icon, 'admin/') === 0 && strpos($icon, '..') === false) {
-                $relative = substr($icon, strlen('admin/'));
-            }
-        }
-    }
-
-    $filesystem = rtrim((string) $_CONF['path_html'], '/\\')
-        . DIRECTORY_SEPARATOR . 'admin' . DIRECTORY_SEPARATOR . 'plugins'
-        . DIRECTORY_SEPARATOR . $pluginName . DIRECTORY_SEPARATOR
-        . str_replace('/', DIRECTORY_SEPARATOR, $relative);
-
-    if (!is_file($filesystem)) {
-        return $_CONF['site_admin_url'] . '/plugins/monitor/images/unavailable.png';
-    }
-
-    return $_CONF['site_admin_url'] . '/plugins/' . rawurlencode($pluginName)
-        . '/' . str_replace('%2F', '/', rawurlencode($relative));
-}
-
 function MONITOR_ADMIN_updateCompatibilityBadge($plugin)
 {
     global $LANG_MONITOR_1;
@@ -396,22 +358,21 @@ function MONITOR_ADMIN_pluginCard($plugin)
     global $LANG_MONITOR_1;
 
     $anchor = MONITOR_PLUGIN_CATALOG_normalizeName($plugin['name']);
-    $iconUrl = MONITOR_ADMIN_pluginIcon($plugin['name']);
     $compatibilityBadge = MONITOR_ADMIN_updateCompatibilityBadge($plugin);
 
     $html = '<section id="plugin-' . MONITOR_ADMIN_h($anchor)
-          . '" style="border:1px solid #d7dde2;border-radius:8px;padding:13px;background:#fff">';
+          . '" data-plugin-state="' . MONITOR_ADMIN_h(isset($plugin['state']) ? $plugin['state'] : '') . '"'
+          . ' data-update-compatibility="' . MONITOR_ADMIN_h(isset($plugin['update_compatibility']) ? $plugin['update_compatibility'] : '') . '"'
+          . ' style="border:1px solid #d7dde2;border-radius:8px;padding:13px;background:#fff">';
 
     /*
      * Keep every card visually predictable:
-     * 1. icon + plugin name;
+     * 1. one resolver-managed icon + plugin name;
      * 2. state badges;
      * 3. version/requirement data;
      * 4. repository actions and update compatibility when relevant.
      */
-    $html .= '<div style="display:flex;align-items:center;gap:10px;min-height:52px">'
-          . '<img src="' . MONITOR_ADMIN_h($iconUrl) . '" alt="" '
-          . 'style="width:48px;height:48px;object-fit:contain;border-radius:7px;flex:0 0 48px">'
+    $html .= '<div class="monitor-plugin-title-with-icon" style="min-height:52px">'
           . '<strong style="font-size:1.12em;line-height:1.2">'
           . MONITOR_ADMIN_h($plugin['name']) . '</strong></div>';
 
