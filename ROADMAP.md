@@ -262,6 +262,9 @@ Oversized image scanning is bounded and read-only; a future detailed inventory s
 - [x] HTML escape log content;
 - [x] clear only by explicit POST + CSRF;
 - [x] never clear a log merely because it was emailed;
+- [x] render archive catalogue through Geeklog `ADMIN_simpleList()`;
+- [x] sortable archive columns for date, log name and size;
+- [x] open archive preview in a separate page/tab with explicit back links;
 - [ ] optional search/filter;
 - [ ] optional severity filtering;
 - [ ] optional explicit download action.
@@ -357,6 +360,7 @@ admin/index.php
 - [x] remove historical telemetry;
 - [x] fresh package build validated;
 - [x] configuration compatibility validated on 2.1.1/2.2.2;
+- [x] idempotently add missing `github_token` configuration rows for already-installed 1.4.0 sites when Configuration is opened, independently of site language;
 - [ ] execute deliberate interrupted-migration/retry test.
 
 ---
