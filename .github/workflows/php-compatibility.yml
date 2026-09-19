@@ -198,6 +198,17 @@ jobs:
           grep -q "include_remote' => false" services.inc.php
           echo 'Shared Monitor capability contract present.'
 
+      - name: Check target plugin requirement metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "remoteGeeklog" admin/index.php
+          grep -q "default_branch" admin/index.php
+          grep -q "MONITOR_PLUGIN_CATALOG_manifestRequirement" admin/index.php
+          grep -q "Some historical tags/releases do not expose plugin.json" lib/MonitorPluginVersions.php
+          grep -q "MONITOR_PLUGIN_CATALOG_repositories(false)" lib/MonitorPluginVersions.php
+          echo 'Target plugin requirement metadata fallback is present.'
+
       - name: Check lifecycle observation guardrails
         shell: bash
         run: |
