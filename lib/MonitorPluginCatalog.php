@@ -620,6 +620,289 @@ function MONITOR_PLUGIN_CATALOG_matchRepository($pluginName, $repositories)
     return null;
 }
 
+function MONITOR_PLUGIN_CATALOG_releases($owner, $repository, $refresh)
+{
+    if ($owner === '' || $repository === '') {
+        return array();
+    }
+
+    $url = 'https://api.github.com/repos/' . rawurlencode($owner)
+        . '/' . rawurlencode($repository) . '/releases?per_page=20';
+    $data = MONITOR_PLUGIN_CATALOG_getJson(
+        $url,
+        'releases|' . strtolower($owner . '/' . $repository),
+        43200,
+        $refresh
+    );
+
+    return is_array($data) ? $data : array();
+}
+
+function MONITOR_PLUGIN_CATALOG_repositoryFile($owner, $repository, $path, $ref, $refresh)
+{
+    if ($owner === '' || $repository === '' || $path === '' || $ref === '') {
+        return '';
+    }
+
+    $url = 'https://api.github.com/repos/' . rawurlencode($owner)
+        . '/' . rawurlencode($repository) . '/contents/'
+        . MONITOR_PLUGIN_CATALOG_encodePath($path)
+        . '?ref=' . rawurlencode($ref);
+    $data = MONITOR_PLUGIN_CATALOG_getJson(
+        $url,
+        'repository-file|' . strtolower($owner . '/' . $repository . '|' . $ref . '|' . $path),
+        86400,
+        $refresh
+    );
+
+    if (!is_array($data) || !isset($data['content'])) {
+        return '';
+    }
+
+    $content = (string) $data['content'];
+    if (isset($data['encoding']) && strtolower((string) $data['encoding']) === 'base64') {
+        $decoded = base64_decode(str_replace(array("\r", "\n"), '', $content), true);
+        return $decoded === false ? '' : $decoded;
+    }
+
+    return $content;
+}
+
+function MONITOR_PLUGIN_CATALOG_autoinstallRequirements($source)
+{
+    $source = (string) $source;
+    $requirements = array('geeklog' => '', 'php' => '');
+
+    if ($source === '') {
+        return $requirements;
+    }
+
+    if (preg_match("/['\"]pi_gl_version['\"]\s*=>\s*['\"]([^'\"]+)['\"]/", $source, $match)) {
+        $requirements['geeklog'] = trim((string) $match[1]);
+    } elseif (preg_match("/pi_gl_version\s*=\s*['\"]([^'\"]+)['\"]/", $source, $match)) {
+        $requirements['geeklog'] = trim((string) $match[1]);
+    }
+
+    if (preg_match("/version_compare\s*\(\s*PHP_VERSION\s*,\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]<['\"]\s*\)/i", $source, $match)) {
+        $requirements['php'] = trim((string) $match[1]);
+    }
+
+    return $requirements;
+}
+
+function MONITOR_PLUGIN_CATALOG_releaseTextRequirement($release, $kind)
+{
+    if (!is_array($release)) {
+        return '';
+    }
+
+    $kind = strtolower((string) $kind);
+    $body = isset($release['body']) ? (string) $release['body'] : '';
+
+    if ($kind === 'geeklog' && $body !== '') {
+        $patterns = array(
+            '/minimum\s+geeklog\s+version\s+required\s+is\s+v?([0-9]+(?:\.[0-9]+){1,3})/i',
+            '/requires?\s+geeklog\s+v?([0-9]+(?:\.[0-9]+){1,3})/i',
+            '/geeklog\s+v?([0-9]+(?:\.[0-9]+){1,3})\s*(?:\+|or\s+later)/i'
+        );
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $body, $match)) {
+                return trim((string) $match[1]);
+            }
+        }
+    }
+
+    if ($kind === 'php' && $body !== '') {
+        if (preg_match('/minimum\s+php\s+version\s+required\s+is\s+v?([0-9]+(?:\.[0-9]+){1,3})/i', $body, $match)) {
+            return trim((string) $match[1]);
+        }
+        if (preg_match('/requires?\s+php\s+v?([0-9]+(?:\.[0-9]+){1,3})/i', $body, $match)) {
+            return trim((string) $match[1]);
+        }
+    }
+
+    if ($kind === 'geeklog' && !empty($release['assets']) && is_array($release['assets'])) {
+        $releaseVersion = isset($release['tag_name'])
+            ? MONITOR_PLUGIN_CATALOG_versionFromTag($release['tag_name']) : '';
+
+        foreach ($release['assets'] as $asset) {
+            if (!is_array($asset) || empty($asset['name'])) {
+                continue;
+            }
+
+            preg_match_all('/([0-9]+(?:\.[0-9]+){1,3})/', (string) $asset['name'], $matches);
+            if (empty($matches[1])) {
+                continue;
+            }
+
+            $versions = $matches[1];
+            for ($i = count($versions) - 1; $i >= 0; $i--) {
+                if ($versions[$i] !== $releaseVersion) {
+                    return (string) $versions[$i];
+                }
+            }
+        }
+    }
+
+    return '';
+}
+
+function MONITOR_PLUGIN_CATALOG_releaseRequirements($owner, $repository, $release, $refresh)
+{
+    $result = array(
+        'geeklog' => '',
+        'php' => '',
+        'source' => 'unknown'
+    );
+
+    if (!is_array($release) || empty($release['tag_name'])) {
+        return $result;
+    }
+
+    $tag = (string) $release['tag_name'];
+    $manifest = MONITOR_PLUGIN_CATALOG_manifest($owner, $repository, $tag, $refresh);
+    if (is_array($manifest)) {
+        $result['geeklog'] = MONITOR_PLUGIN_CATALOG_manifestRequirement($manifest, 'geeklog');
+        $result['php'] = MONITOR_PLUGIN_CATALOG_manifestRequirement($manifest, 'php');
+        if ($result['geeklog'] !== '' || $result['php'] !== '') {
+            $result['source'] = 'plugin_json';
+        }
+    }
+
+    if ($result['geeklog'] === '' || $result['php'] === '') {
+        $source = MONITOR_PLUGIN_CATALOG_repositoryFile(
+            $owner,
+            $repository,
+            'autoinstall.php',
+            $tag,
+            $refresh
+        );
+        if ($source !== '') {
+            $auto = MONITOR_PLUGIN_CATALOG_autoinstallRequirements($source);
+            if ($result['geeklog'] === '' && $auto['geeklog'] !== '') {
+                $result['geeklog'] = $auto['geeklog'];
+                $result['source'] = 'autoinstall';
+            }
+            if ($result['php'] === '' && $auto['php'] !== '') {
+                $result['php'] = $auto['php'];
+                $result['source'] = 'autoinstall';
+            }
+        }
+    }
+
+    if ($result['geeklog'] === '') {
+        $result['geeklog'] = MONITOR_PLUGIN_CATALOG_releaseTextRequirement($release, 'geeklog');
+        if ($result['geeklog'] !== '') {
+            $result['source'] = 'release_metadata';
+        }
+    }
+    if ($result['php'] === '') {
+        $result['php'] = MONITOR_PLUGIN_CATALOG_releaseTextRequirement($release, 'php');
+        if ($result['php'] !== '' && $result['source'] === 'unknown') {
+            $result['source'] = 'release_metadata';
+        }
+    }
+
+    return $result;
+}
+
+function MONITOR_PLUGIN_CATALOG_requirementSatisfied($current, $required)
+{
+    $current = trim((string) $current);
+    $required = trim((string) $required);
+
+    if ($required === '') {
+        return null;
+    }
+    if ($current === '') {
+        return false;
+    }
+
+    return version_compare($current, $required, '>=');
+}
+
+function MONITOR_PLUGIN_CATALOG_releaseCompatibility($requirements, $siteGeeklog, $sitePhp)
+{
+    if (!is_array($requirements)) {
+        return 'unknown';
+    }
+
+    $declared = 0;
+    foreach (array('geeklog' => $siteGeeklog, 'php' => $sitePhp) as $kind => $current) {
+        $required = isset($requirements[$kind]) ? trim((string) $requirements[$kind]) : '';
+        if ($required === '') {
+            continue;
+        }
+        $declared++;
+        if (!MONITOR_PLUGIN_CATALOG_requirementSatisfied($current, $required)) {
+            return 'incompatible';
+        }
+    }
+
+    return $declared > 0 ? 'compatible' : 'unknown';
+}
+
+function MONITOR_PLUGIN_CATALOG_latestCompatibleRelease($owner, $repository, $siteGeeklog, $sitePhp, $refresh)
+{
+    $releases = MONITOR_PLUGIN_CATALOG_releases($owner, $repository, $refresh);
+    $candidates = array();
+
+    foreach ($releases as $release) {
+        if (!is_array($release) || !empty($release['draft']) || !empty($release['prerelease'])
+                || empty($release['tag_name'])) {
+            continue;
+        }
+
+        $version = MONITOR_PLUGIN_CATALOG_versionFromTag($release['tag_name']);
+        if ($version === '') {
+            continue;
+        }
+
+        $release['_monitor_version'] = $version;
+        $candidates[] = $release;
+    }
+
+    usort($candidates, function ($a, $b) {
+        return version_compare($b['_monitor_version'], $a['_monitor_version']);
+    });
+
+    /*
+     * Bound remote metadata work. This path is only used when the newest
+     * release is incompatible with the current runtime.
+     */
+    $checked = 0;
+    foreach ($candidates as $release) {
+        if ($checked >= 10) {
+            break;
+        }
+        $checked++;
+
+        $requirements = MONITOR_PLUGIN_CATALOG_releaseRequirements(
+            $owner,
+            $repository,
+            $release,
+            $refresh
+        );
+        if (MONITOR_PLUGIN_CATALOG_releaseCompatibility(
+                $requirements,
+                $siteGeeklog,
+                $sitePhp
+            ) !== 'compatible') {
+            continue;
+        }
+
+        return array(
+            'tag' => (string) $release['tag_name'],
+            'version' => (string) $release['_monitor_version'],
+            'url' => isset($release['html_url']) ? (string) $release['html_url'] : '',
+            'requirements' => $requirements,
+            'source' => 'compatible_release'
+        );
+    }
+
+    return null;
+}
+
 function MONITOR_PLUGIN_CATALOG_release($owner, $repository, $refresh)
 {
     if ($owner === '' || $repository === '') {
