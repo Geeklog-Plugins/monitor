@@ -131,8 +131,11 @@ jobs:
           grep -q "SEC_hasRights('monitor.admin')" admin/log-archives.php
           grep -q "ADMIN_simpleList" admin/log-archives.php
           grep -q "MONITOR_LOG_ADMIN_sortArchives" admin/log-archives.php
-          grep -q "target=\"_blank\"" admin/log-archives.php
           grep -q "log_archive_back" admin/log-archives.php
+          if grep -q 'target="_blank"' admin/log-archives.php; then
+            echo 'Log archive View links must stay in the same tab.'
+            exit 1
+          fi
           if grep -q "path_public_html" lib/MonitorLogRotation.php; then
             echo 'Log archives must stay outside public_html.'
             exit 1
