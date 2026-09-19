@@ -96,6 +96,37 @@
     border-radius: 50%;
     animation: monitor-plugin-icon-spin .8s linear infinite;
 }
+.monitor-discovery-compatibility {
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid #edf0f2;
+    font-size: .9em;
+}
+.monitor-discovery-requirements {
+    color: #5f666d;
+    margin-bottom: 6px;
+}
+.monitor-discovery-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+}
+.monitor-discovery-badge-compatible {
+    background: #e8f5e9;
+    color: #1b5e20;
+    border: 1px solid #a5d6a7;
+}
+.monitor-discovery-badge-incompatible {
+    background: #ffebee;
+    color: #b71c1c;
+    border: 1px solid #ef9a9a;
+}
+.monitor-discovery-badge-unknown {
+    background: #f5f5f5;
+    color: #555;
+    border: 1px solid #d7dde2;
+}
 .monitor-plugin-icon-slot.is-unavailable .monitor-plugin-icon-spinner {
     animation: none;
     width: 10px;
@@ -423,20 +454,66 @@
 
     function renderPluginMetadata(card, metadata) {
         var title = pluginCardTitle(card);
+        var requires;
+        var compatibility;
+        var values = [];
+        var block;
+        var requirements;
+        var badge;
+        var state;
 
         if (!metadata || !title) {
             return;
         }
 
-        /*
-         * Icon/identity enrichment stays client-side, but requirement and
-         * compatibility presentation is server-owned by the plugin card.
-         * This avoids duplicating Geeklog/PHP requirements and avoids a
-         * redundant "Compatible" badge when no update is available.
-         */
         if (metadata.name) {
             title.textContent = metadata.name;
         }
+
+        // Installed cards already render version and update compatibility on
+        // the server. Only discovery cards need pre-install compatibility here.
+        if (card.getAttribute('data-plugin-installed') !== '0') {
+            return;
+        }
+
+        requires = metadata.requires || {};
+        if (requires.geeklog) {
+            values.push('Geeklog ' + requires.geeklog + '+');
+        }
+        if (requires.php) {
+            values.push('PHP ' + requires.php + '+');
+        }
+
+        compatibility = metadata.compatibility || {};
+        state = compatibility.state || 'unknown';
+
+        block = card.querySelector('.monitor-discovery-compatibility');
+        if (!block) {
+            block = document.createElement('div');
+            block.className = 'monitor-discovery-compatibility';
+            card.appendChild(block);
+        }
+        block.textContent = '';
+
+        if (values.length) {
+            requirements = document.createElement('div');
+            requirements.className = 'monitor-discovery-requirements';
+            requirements.textContent = values.join(' · ');
+            block.appendChild(requirements);
+        }
+
+        badge = document.createElement('span');
+        badge.className = 'monitor-discovery-badge monitor-discovery-badge-' + state;
+
+        if (state === 'compatible') {
+            badge.textContent = 'Compatible with this site';
+        } else if (state === 'incompatible') {
+            badge.textContent = 'Not compatible with this site';
+        } else {
+            badge.textContent = 'Compatibility unknown';
+        }
+
+        block.appendChild(badge);
     }
 
     function enhancePluginIcons() {
