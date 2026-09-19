@@ -164,10 +164,15 @@ function MONITOR_SERVICE_plugins($args)
             $name = (string) $row['pi_name'];
             $installed = isset($row['pi_version']) ? (string) $row['pi_version'] : '';
             $isEnabled = !empty($row['pi_enabled']);
+            $isCorePlugin = MONITOR_PLUGIN_CATALOG_isCorePlugin($name);
+            $distributionSource = $isCorePlugin ? 'core' : 'standalone';
             $state = 'not_checked';
             $latest = '';
             $repositoryUrl = '';
             $versionUrl = '';
+            $geeklogRequirement = isset($row['pi_gl_version'])
+                ? (string) $row['pi_gl_version'] : '';
+            $coreGeeklogBaseline = '';
 
             if ($isEnabled) {
                 $enabled++;
@@ -175,7 +180,28 @@ function MONITOR_SERVICE_plugins($args)
                 $disabled++;
             }
 
-            if ($includeRemote && !empty($catalog['available'])) {
+            if ($includeRemote && $isCorePlugin) {
+                $localCore = MONITOR_PLUGIN_CATALOG_coreLocalMetadata($name);
+                $remoteCore = MONITOR_PLUGIN_CATALOG_coreRemoteMetadata($name, false);
+                $repositoryUrl = MONITOR_PLUGIN_CATALOG_corePluginUrl($name);
+                $versionUrl = $repositoryUrl;
+                $state = 'no_version';
+
+                if (is_array($localCore) && !empty($localCore['geeklog_requirement'])) {
+                    $geeklogRequirement = (string) $localCore['geeklog_requirement'];
+                }
+
+                if (is_array($remoteCore)) {
+                    $latest = isset($remoteCore['version']) ? (string) $remoteCore['version'] : '';
+                    $coreGeeklogBaseline = isset($remoteCore['geeklog_requirement'])
+                        ? (string) $remoteCore['geeklog_requirement'] : '';
+                    $state = MONITOR_PLUGIN_CATALOG_versionState($installed, $latest);
+                    if ($state === 'update') {
+                        $state = 'core_update';
+                        $updates++;
+                    }
+                }
+            } elseif ($includeRemote && !empty($catalog['available'])) {
                 $repo = MONITOR_PLUGIN_CATALOG_matchRepository($name, $repositories);
                 if (is_array($repo)) {
                     $repositoryUrl = isset($repo['url']) ? (string) $repo['url'] : '';
@@ -206,8 +232,9 @@ function MONITOR_SERVICE_plugins($args)
                 'name' => $name,
                 'installed_version' => $installed,
                 'enabled' => $isEnabled,
-                'geeklog_requirement' => isset($row['pi_gl_version'])
-                    ? (string) $row['pi_gl_version'] : '',
+                'geeklog_requirement' => $geeklogRequirement,
+                'distribution_source' => $distributionSource,
+                'core_geeklog_baseline' => $coreGeeklogBaseline,
                 'version_state' => $state,
                 'latest_version' => $latest,
                 'repository_url' => $repositoryUrl,
@@ -226,6 +253,7 @@ function MONITOR_SERVICE_plugins($args)
         'remote_checked' => $includeRemote,
         'remote_available' => $includeRemote && !empty($catalog['available']),
         'repository_owner' => $owner,
+        'core_repository' => 'Geeklog-Core/geeklog',
         'plugins' => $plugins
     ));
 }
