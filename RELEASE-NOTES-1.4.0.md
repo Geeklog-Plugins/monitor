@@ -21,6 +21,7 @@ Monitor 1.4.0 modernizes the plugin around a narrower role: **site health, diagn
 - Core cards expose only `Open Core plugin`; the redundant standalone `Open version` action is suppressed.
 - Current Core cards use a single compact `Version · Geeklog` line; Core updates still show `Installed` and `Available with Geeklog <version>`.
 - Update cards use the target plugin's remote `plugin.json` for Geeklog/PHP requirements, falling back to the repository default branch when historical tags do not expose the manifest.
+- When the newest standalone release is incompatible with the current runtime, Monitor now searches for the latest compatible release instead of stopping at `Not compatible`. An installed plugin already at that compatible level is shown as `Up to date for this Geeklog`, while the newer overall release and its runtime requirement remain visible.
 - Bounded, escaped log viewing and non-destructive log archive analysis.
 - Daily log rotation/archive support with private storage.
 - Geeklog administrative log archive list with sortable date, log and size columns; archive previews use a dedicated same-tab detail view with an explicit return link.
