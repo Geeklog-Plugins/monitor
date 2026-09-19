@@ -11,6 +11,7 @@ Monitor 1.4.0 modernizes the plugin around a narrower role: **site health, diagn
 - Safer client-IP handling based on validated `REMOTE_ADDR` by default.
 - Removal of artificial request sleeps and historical third-party telemetry.
 - Read-only plugin version/update advisor; Monitor no longer deploys plugin code.
+- Plugin cards now use a consistent icon/name header and dedicated status row; compatibility is shown only when an update is available.
 - Update cards use the target plugin's remote `plugin.json` for Geeklog/PHP requirements, falling back to the repository default branch when historical tags do not expose the manifest.
 - Bounded, escaped log viewing and non-destructive log archive analysis.
 - Daily log rotation/archive support with private storage.
