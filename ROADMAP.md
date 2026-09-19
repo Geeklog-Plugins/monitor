@@ -246,7 +246,9 @@ Oversized image scanning is bounded and read-only; a future detailed inventory s
 - [x] environment/health information;
 - [x] Logs view;
 - [x] read-only Plugins view;
-- [x] homogeneous plugin cards: icon/name header, state badges on a dedicated row, compact two-column metadata;
+- [x] homogeneous plugin cards: icon/name header, state badges on a dedicated row, compact metadata;
+- [x] stack Installed / Latest version in one block and normalize display versions by stripping a leading `v`;
+- [x] hide redundant runtime requirements on current/ahead standalone plugins; show them when evaluating an available update;
 - [x] use a single icon resolver (`plugin-icons.php`) and avoid duplicated server/client icon rendering;
 - [x] keep requirement/compatibility presentation server-owned to avoid duplicate metadata blocks;
 - [x] show compatibility badges only when an update is available, including explicit incompatible/unknown states;
