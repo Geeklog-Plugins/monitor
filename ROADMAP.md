@@ -259,6 +259,7 @@ Oversized image scanning is bounded and read-only; a future detailed inventory s
 - [x] resolve Core plugin metadata from local/remote `autoinstall.php` without executing plugin code;
 - [x] report newer bundled versions as `core_update` / “Available with Geeklog update”, never as an independent plugin update;
 - [x] hide standalone version link for Core plugins and keep only `Open Core plugin`;
+- [x] simplify Core cards to one semantic version block: `Version / Bundled with Geeklog` when current, and `Installed / Available with Geeklog <version>` when a Core update exists;
 - [x] Security view;
 - [x] Ban capability visibility;
 - [x] Geeklog 2.2.2-compatible rendering using `COM_createHTMLDocument()`;
