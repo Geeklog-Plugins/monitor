@@ -514,6 +514,45 @@ function MONITOR_ADMIN_plugins()
                 $withoutRepository++;
             }
 
+            $geeklogRequirement = !empty($row['pi_gl_version'])
+                ? (string) $row['pi_gl_version'] : $LANG_MONITOR_1['plugin_catalog_unknown'];
+
+            /*
+             * pi_gl_version describes the currently installed plugin. When an
+             * update is advertised, show the requirement of the target code
+             * instead. Prefer plugin.json at the version ref, then fall back to
+             * the repository default branch because some historical releases
+             * do not have a directly addressable manifest at their tag.
+             */
+            if ($state === 'update' && is_array($repo)) {
+                $manifest = null;
+                $repoName = isset($repo['name']) ? (string) $repo['name'] : '';
+                if ($remoteLabel !== '' && $repoName !== '') {
+                    $manifest = MONITOR_PLUGIN_CATALOG_manifest(
+                        $owner,
+                        $repoName,
+                        $remoteLabel,
+                        $refresh
+                    );
+                }
+                if (!is_array($manifest) && !empty($repo['default_branch']) && $repoName !== '') {
+                    $manifest = MONITOR_PLUGIN_CATALOG_manifest(
+                        $owner,
+                        $repoName,
+                        (string) $repo['default_branch'],
+                        $refresh
+                    );
+                }
+
+                $remoteGeeklog = MONITOR_PLUGIN_CATALOG_manifestRequirement(
+                    $manifest,
+                    'geeklog'
+                );
+                if ($remoteGeeklog !== '') {
+                    $geeklogRequirement = $remoteGeeklog;
+                }
+            }
+
             $installedNames[MONITOR_PLUGIN_CATALOG_normalizeName($name)] = true;
             $installedPlugins[] = array(
                 'name' => $name,
@@ -521,8 +560,7 @@ function MONITOR_ADMIN_plugins()
                 'enabled' => $enabled
                     ? $LANG_MONITOR_1['plugin_catalog_yes'] : $LANG_MONITOR_1['plugin_catalog_no'],
                 'enabled_bool' => $enabled,
-                'gl_version' => !empty($row['pi_gl_version'])
-                    ? $row['pi_gl_version'] : $LANG_MONITOR_1['plugin_catalog_unknown'],
+                'gl_version' => $geeklogRequirement,
                 'remote_label' => $remoteLabel,
                 'state' => $state,
                 'repository_url' => $repositoryUrl,
