@@ -294,7 +294,6 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
         }
 
         if (isset($plugin['version_state']) && $plugin['version_state'] === 'update') {
-            $updates++;
             $repoName = MONITOR_PLUGIN_VERSIONS_repositoryName(
                 isset($plugin['repository_url']) ? $plugin['repository_url'] : ''
             );
@@ -307,8 +306,6 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
             /*
              * Some historical tags/releases do not expose plugin.json at the
              * version ref even though the maintained default branch does.
-             * Fall back to the repository default branch so consumers receive
-             * the current target requirements instead of an empty/old value.
              */
             if (!is_array($manifest) && $owner !== '' && $repoName !== ''
                     && function_exists('MONITOR_PLUGIN_CATALOG_repositories')
@@ -337,12 +334,67 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
 
             if ($geeklogState === 'incompatible' || $phpState === 'incompatible') {
                 $overall = 'incompatible';
-                $incompatibleUpdates++;
             } elseif ($geeklogState === 'unknown' || $phpState === 'unknown') {
                 $overall = 'unknown';
-                $unknownCompatibilityUpdates++;
-            } else {
-                $compatibleUpdates++;
+            }
+
+            /*
+             * A newer overall release may target a newer Geeklog/PHP runtime.
+             * In that case resolve the newest release compatible with this site
+             * and expose both versions to Agent/Eclipse/Hub.
+             */
+            if ($overall === 'incompatible' && $owner !== '' && $repoName !== ''
+                    && function_exists('MONITOR_PLUGIN_CATALOG_latestCompatibleRelease')) {
+                $compatible = MONITOR_PLUGIN_CATALOG_latestCompatibleRelease(
+                    $owner,
+                    $repoName,
+                    $siteGeeklog,
+                    $sitePhp,
+                    false
+                );
+
+                if (is_array($compatible)) {
+                    $plugin['latest_overall_version'] = $latestTag;
+                    $plugin['latest_overall_requirements'] = array(
+                        'geeklog_min' => $geeklogRequired,
+                        'php_min' => $phpRequired
+                    );
+                    $plugin['latest_compatible_version'] = isset($compatible['tag'])
+                        ? (string) $compatible['tag'] : '';
+                    if (!empty($compatible['url'])) {
+                        $plugin['version_url'] = (string) $compatible['url'];
+                    }
+
+                    $compatibleReq = isset($compatible['requirements'])
+                        && is_array($compatible['requirements'])
+                        ? $compatible['requirements'] : array();
+                    $geeklogRequired = isset($compatibleReq['geeklog'])
+                        ? (string) $compatibleReq['geeklog'] : '';
+                    $phpRequired = isset($compatibleReq['php'])
+                        ? (string) $compatibleReq['php'] : '';
+                    $geeklogState = MONITOR_PLUGIN_VERSIONS_requirementState(
+                        $siteGeeklog,
+                        $geeklogRequired
+                    );
+                    $phpState = MONITOR_PLUGIN_VERSIONS_requirementState(
+                        $sitePhp,
+                        $phpRequired
+                    );
+                    $overall = 'compatible';
+
+                    $compatibleVersion = isset($compatible['version'])
+                        ? (string) $compatible['version'] : '';
+                    $resolvedState = $referenceVersion !== '' && $compatibleVersion !== ''
+                        ? MONITOR_PLUGIN_CATALOG_versionState($referenceVersion, $compatibleVersion)
+                        : 'unknown';
+
+                    if ($resolvedState === 'current' || $resolvedState === 'ahead') {
+                        $plugin['version_state'] = 'current_compatible';
+                    } else {
+                        $plugin['version_state'] = $resolvedState;
+                    }
+                    $plugin['latest_version'] = $plugin['latest_compatible_version'];
+                }
             }
 
             $plugin['remote_requirements'] = array(
@@ -356,6 +408,17 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
                 'geeklog_current' => $siteGeeklog,
                 'php_current' => $sitePhp
             );
+
+            if ($plugin['version_state'] === 'update') {
+                $updates++;
+                if ($overall === 'incompatible') {
+                    $incompatibleUpdates++;
+                } elseif ($overall === 'unknown') {
+                    $unknownCompatibilityUpdates++;
+                } else {
+                    $compatibleUpdates++;
+                }
+            }
         }
 
         $plugins[$index] = $plugin;
