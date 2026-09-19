@@ -361,7 +361,8 @@ function MONITOR_ADMIN_pluginCard($plugin)
     $compatibilityBadge = MONITOR_ADMIN_updateCompatibilityBadge($plugin);
 
     $html = '<section id="plugin-' . MONITOR_ADMIN_h($anchor)
-          . '" data-plugin-state="' . MONITOR_ADMIN_h(isset($plugin['state']) ? $plugin['state'] : '') . '"'
+          . '" data-plugin-installed="1"'
+          . ' data-plugin-state="' . MONITOR_ADMIN_h(isset($plugin['state']) ? $plugin['state'] : '') . '"'
           . ' data-update-compatibility="' . MONITOR_ADMIN_h(isset($plugin['update_compatibility']) ? $plugin['update_compatibility'] : '') . '"'
           . ' style="border:1px solid #d7dde2;border-radius:8px;padding:13px;background:#fff">';
 
@@ -421,7 +422,8 @@ function MONITOR_ADMIN_discoveryCard($repo)
     global $LANG_MONITOR_1;
 
     $anchor = MONITOR_PLUGIN_CATALOG_normalizeName($repo['name']);
-    $html = '<section id="plugin-' . MONITOR_ADMIN_h($anchor) . '" style="border:1px solid #d7dde2;border-radius:8px;padding:12px;background:#fff">'
+    $html = '<section id="plugin-' . MONITOR_ADMIN_h($anchor)
+          . '" data-plugin-installed="0" style="border:1px solid #d7dde2;border-radius:8px;padding:12px;background:#fff">'
           . '<strong>' . MONITOR_ADMIN_h($repo['name']) . '</strong>';
 
     if (!empty($repo['description'])) {
