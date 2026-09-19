@@ -232,6 +232,8 @@ jobs:
               'Not compatible with this site',
               'Requirements not declared',
               'Metadata unavailable',
+              'Latest compatible version',
+              'Newer release',
           ]
           for needle in required_template:
               assert needle in template, 'Missing template UI contract: ' + needle
