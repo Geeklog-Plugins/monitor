@@ -31,6 +31,19 @@ require_once $plugin_path . 'services.inc.php';
 
 require_once $_CONF['path_system'] . 'classes/config.class.php';
 $c = config::get_instance();
+
+/*
+ * Early 1.4.0 installations may already report pi_version 1.4.0 while missing
+ * configuration rows added later during the development cycle. Repair those
+ * rows when the native Configuration page is opened, independently of the
+ * active site language, then reload the persisted Monitor configuration.
+ */
+if (isset($_SERVER['SCRIPT_NAME'])
+        && basename($_SERVER['SCRIPT_NAME']) === 'configuration.php') {
+    require_once $plugin_path . 'lib/MonitorConfigCompat.php';
+    MONITOR_repairConfiguration140();
+}
+
 $_MONITOR_CONF = $c->get_config('monitor');
 
 $_TABLES['monitor_ban'] = $_DB_table_prefix . 'monitor_ban';
