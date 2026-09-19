@@ -286,6 +286,7 @@ jobs:
           assert 'plugin_catalog_core_plugin' in language
           assert 'plugin_catalog_core_update' in language
           assert 'plugin_catalog_bundled_with_geeklog' in language
+          assert "' &nbsp;·&nbsp; Geeklog '" in admin
           assert 'plugin_catalog_available_with_geeklog' in language
           assert "state'] === 'core_update'" in admin
           assert "distribution_source'] !== 'core'" in admin, (
