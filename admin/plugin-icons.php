@@ -286,6 +286,8 @@ function MONITOR_PLUGIN_ICONS_metadata($manifest, $source)
             'geeklog_current' => $currentGeeklog,
             'php_current' => PHP_VERSION
         ),
+        'requirements_declared' => $declared > 0,
+        'manifest_available' => true,
         'source' => $source
     );
 }
@@ -404,6 +406,22 @@ foreach ($repositories as $repo) {
     $icons[$normalized] = MONITOR_PLUGIN_ICONS_resolveRepository($owner, $repo, $refresh, $manifest);
     if (is_array($manifest)) {
         $metadata[$normalized] = MONITOR_PLUGIN_ICONS_metadata($manifest, 'remote_plugin_json');
+    } else {
+        $metadata[$normalized] = array(
+            'id' => '',
+            'name' => '',
+            'requires' => array('geeklog' => '', 'php' => ''),
+            'compatibility' => array(
+                'state' => 'metadata_unavailable',
+                'geeklog' => 'unknown',
+                'php' => 'unknown',
+                'geeklog_current' => defined('VERSION') ? (string) VERSION : '',
+                'php_current' => PHP_VERSION
+            ),
+            'requirements_declared' => false,
+            'manifest_available' => false,
+            'source' => 'no_plugin_json'
+        );
     }
 }
 
