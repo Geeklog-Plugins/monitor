@@ -470,6 +470,128 @@ function MONITOR_PLUGIN_CATALOG_normalizeName($name)
     return preg_replace('/[^a-z0-9]+/', '', strtolower((string) $name));
 }
 
+function MONITOR_PLUGIN_CATALOG_corePlugins()
+{
+    return array(
+        'calendar',
+        'links',
+        'polls',
+        'recaptcha',
+        'spamx',
+        'staticpages',
+        'xmlsitemap'
+    );
+}
+
+function MONITOR_PLUGIN_CATALOG_isCorePlugin($pluginName)
+{
+    return in_array(
+        strtolower(trim((string) $pluginName)),
+        MONITOR_PLUGIN_CATALOG_corePlugins(),
+        true
+    );
+}
+
+function MONITOR_PLUGIN_CATALOG_corePluginUrl($pluginName)
+{
+    if (!MONITOR_PLUGIN_CATALOG_isCorePlugin($pluginName)) {
+        return '';
+    }
+
+    return 'https://github.com/Geeklog-Core/geeklog/tree/master/plugins/'
+        . rawurlencode(strtolower(trim((string) $pluginName)));
+}
+
+function MONITOR_PLUGIN_CATALOG_coreMetadataFromAutoinstall($source)
+{
+    $source = (string) $source;
+    if ($source === '') {
+        return null;
+    }
+
+    $version = '';
+    $geeklog = '';
+
+    if (preg_match("/['\"]pi_version['\"]\s*=>\s*['\"]([^'\"]+)['\"]/", $source, $match)) {
+        $version = trim((string) $match[1]);
+    }
+    if (preg_match("/['\"]pi_gl_version['\"]\s*=>\s*['\"]([^'\"]+)['\"]/", $source, $match)) {
+        $geeklog = trim((string) $match[1]);
+    }
+
+    if ($version === '' && $geeklog === '') {
+        return null;
+    }
+
+    return array(
+        'version' => $version,
+        'geeklog_requirement' => $geeklog
+    );
+}
+
+function MONITOR_PLUGIN_CATALOG_coreLocalMetadata($pluginName)
+{
+    global $_CONF;
+
+    if (!MONITOR_PLUGIN_CATALOG_isCorePlugin($pluginName) || empty($_CONF['path'])) {
+        return null;
+    }
+
+    $path = rtrim((string) $_CONF['path'], '/\\')
+        . '/plugins/' . strtolower(trim((string) $pluginName))
+        . '/autoinstall.php';
+
+    if (!is_file($path) || !is_readable($path)) {
+        return null;
+    }
+
+    $source = @file_get_contents($path);
+
+    return $source === false
+        ? null : MONITOR_PLUGIN_CATALOG_coreMetadataFromAutoinstall($source);
+}
+
+function MONITOR_PLUGIN_CATALOG_coreRemoteMetadata($pluginName, $refresh)
+{
+    $pluginName = strtolower(trim((string) $pluginName));
+    if (!MONITOR_PLUGIN_CATALOG_isCorePlugin($pluginName)) {
+        return null;
+    }
+
+    $url = 'https://api.github.com/repos/Geeklog-Core/geeklog/contents/plugins/'
+        . rawurlencode($pluginName) . '/autoinstall.php?ref=master';
+    $data = MONITOR_PLUGIN_CATALOG_getJson(
+        $url,
+        'core-plugin-autoinstall|' . $pluginName . '|master',
+        43200,
+        $refresh
+    );
+
+    if (!is_array($data) || empty($data['content'])) {
+        return null;
+    }
+
+    $encoding = isset($data['encoding']) ? strtolower((string) $data['encoding']) : '';
+    $content = (string) $data['content'];
+    if ($encoding === 'base64') {
+        $content = base64_decode(str_replace(array("\r", "\n"), '', $content), true);
+        if ($content === false) {
+            return null;
+        }
+    }
+
+    $metadata = MONITOR_PLUGIN_CATALOG_coreMetadataFromAutoinstall($content);
+    if (!is_array($metadata)) {
+        return null;
+    }
+
+    $metadata['repository_url'] = MONITOR_PLUGIN_CATALOG_corePluginUrl($pluginName);
+    $metadata['source'] = 'geeklog-core';
+
+    return $metadata;
+}
+
+
 function MONITOR_PLUGIN_CATALOG_matchRepository($pluginName, $repositories)
 {
     if (!is_array($repositories)) {
