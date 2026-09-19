@@ -233,6 +233,7 @@ jobs:
               'Requirements not declared',
               'Metadata unavailable',
               'Latest compatible version',
+              "values = [];",
               'Newer release',
           ]
           for needle in required_template:
