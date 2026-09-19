@@ -369,6 +369,17 @@ function MONITOR_ADMIN_updateCompatibilityBadge($plugin)
          . $style . '">' . MONITOR_ADMIN_h($label) . '</span>';
 }
 
+function MONITOR_ADMIN_displayVersion($version)
+{
+    $version = trim((string) $version);
+
+    if (preg_match('/^[vV](?=[0-9])/', $version)) {
+        return substr($version, 1);
+    }
+
+    return $version;
+}
+
 function MONITOR_ADMIN_pluginCard($plugin)
 {
     global $LANG_MONITOR_1;
@@ -411,27 +422,39 @@ function MONITOR_ADMIN_pluginCard($plugin)
     $html .= '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;margin-top:13px;font-size:.93em">';
 
     if (isset($plugin['distribution_source']) && $plugin['distribution_source'] === 'core') {
-        $html .= '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_installed_version']) . '</span><br><strong>'
-              . MONITOR_ADMIN_h($plugin['installed']) . '</strong></div>'
-              . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_core_version']) . '</span><br><strong>'
-              . MONITOR_ADMIN_h($plugin['remote_label']) . '</strong></div>'
+        $html .= '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_installed_version']) . '</span> <strong>'
+              . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['installed'])) . '</strong><br>'
+              . '<span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_core_version']) . '</span> <strong>'
+              . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['remote_label'])) . '</strong></div>'
               . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_current_geeklog']) . '</span><br><strong>'
-              . MONITOR_ADMIN_h(MONITOR_PLUGIN_VERSIONS_siteGeeklogVersion()) . '</strong></div>'
-              . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_geeklog_baseline']) . '</span><br><strong>'
-              . MONITOR_ADMIN_h(!empty($plugin['core_geeklog_baseline'])
-                    ? $plugin['core_geeklog_baseline'] : $LANG_MONITOR_1['plugin_catalog_unknown'])
-              . '</strong></div>';
-    } else {
-        $html .= '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_installed_version']) . '</span><br><strong>'
-              . MONITOR_ADMIN_h($plugin['installed']) . '</strong></div>'
-              . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_version']) . '</span><br><strong>'
-              . MONITOR_ADMIN_h($plugin['remote_label']) . '</strong></div>'
-              . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_geeklog']) . '</span><br><strong>'
-              . MONITOR_ADMIN_h($plugin['gl_version']) . '</strong></div>';
+              . MONITOR_ADMIN_h(MONITOR_PLUGIN_VERSIONS_siteGeeklogVersion()) . '</strong></div>';
 
-        if (!empty($plugin['php_requirement'])) {
-            $html .= '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_php_requirement']) . '</span><br><strong>'
-                  . MONITOR_ADMIN_h($plugin['php_requirement']) . '</strong></div>';
+        if (!empty($plugin['core_geeklog_baseline'])
+                && $plugin['core_geeklog_baseline'] !== MONITOR_PLUGIN_VERSIONS_siteGeeklogVersion()) {
+            $html .= '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_geeklog_baseline']) . '</span><br><strong>'
+                  . MONITOR_ADMIN_h($plugin['core_geeklog_baseline']) . '</strong></div>';
+        }
+    } else {
+        $html .= '<div style="grid-column:1 / -1">'
+              . '<span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_installed_version']) . '</span> <strong>'
+              . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['installed'])) . '</strong><br>'
+              . '<span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_version']) . '</span> <strong>'
+              . MONITOR_ADMIN_h(MONITOR_ADMIN_displayVersion($plugin['remote_label'])) . '</strong>'
+              . '</div>';
+
+        /*
+         * Requirements are useful mainly when evaluating an available update.
+         * For current/ahead plugins they duplicate information without helping
+         * the administrator make a decision.
+         */
+        if (isset($plugin['state']) && $plugin['state'] === 'update') {
+            $html .= '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_geeklog']) . '</span><br><strong>'
+                  . MONITOR_ADMIN_h($plugin['gl_version']) . '</strong></div>';
+
+            if (!empty($plugin['php_requirement'])) {
+                $html .= '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_php_requirement']) . '</span><br><strong>'
+                      . MONITOR_ADMIN_h($plugin['php_requirement']) . '</strong></div>';
+            }
         }
     }
 
