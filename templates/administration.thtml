@@ -463,6 +463,10 @@
         var requirements;
         var badge;
         var state;
+        var versionInfo;
+        var newerInfo;
+        var overallRequires;
+        var blocked = [];
 
         if (!metadata || !title) {
             return;
@@ -502,6 +506,31 @@
             card.appendChild(block);
         }
         block.textContent = '';
+
+        if (metadata.latest_compatible_version) {
+            versionInfo = document.createElement('div');
+            versionInfo.className = 'monitor-discovery-requirements';
+            versionInfo.textContent = 'Latest compatible version '
+                + String(metadata.latest_compatible_version).replace(/^[vV](?=[0-9])/, '');
+            block.appendChild(versionInfo);
+        }
+
+        if (metadata.latest_compatible_version && metadata.latest_overall_version
+                && metadata.latest_compatible_version !== metadata.latest_overall_version) {
+            overallRequires = metadata.latest_overall_requires || {};
+            newerInfo = document.createElement('div');
+            newerInfo.className = 'monitor-discovery-requirements';
+            if (overallRequires.geeklog) {
+                blocked.push('requires Geeklog ' + overallRequires.geeklog);
+            }
+            if (overallRequires.php) {
+                blocked.push('requires PHP ' + overallRequires.php);
+            }
+            newerInfo.textContent = 'Newer release '
+                + String(metadata.latest_overall_version).replace(/^[vV](?=[0-9])/, '')
+                + (blocked.length ? ' · ' + blocked.join(' · ') : '');
+            block.appendChild(newerInfo);
+        }
 
         if (values.length) {
             requirements = document.createElement('div');
