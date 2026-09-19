@@ -75,6 +75,7 @@ $LANG_MONITOR_1 = array(
     'log_archive_actions' => 'Actions',
     'log_archive_view' => 'View',
     'log_archive_download' => 'Download',
+    'log_archive_back' => 'Back to log archives',
     'log_archive_preview_limited' => 'This preview shows only the most recent 512 KiB of the archive. Download the file to retrieve the complete daily log.',
     'log_email_title' => 'Daily log summary',
     'log_email_lines' => 'Lines scanned',
@@ -266,15 +267,3 @@ $LANG_configsubgroups =& $GLOBALS['LANG_configsubgroups'];
 $LANG_tab =& $GLOBALS['LANG_tab'];
 $LANG_fs =& $GLOBALS['LANG_fs'];
 $LANG_confignames =& $GLOBALS['LANG_confignames'];
-
-/*
- * Early Monitor 1.4.0 development builds could persist an incomplete 2.2.x
- * configuration hierarchy. Repair it only when the Geeklog configuration UI
- * is being opened; normal frontend requests remain read-only.
- */
-if (isset($_SERVER['SCRIPT_NAME'])
-        && basename($_SERVER['SCRIPT_NAME']) === 'configuration.php'
-        && isset($_CONF['path'])) {
-    require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorConfigCompat.php';
-    MONITOR_repairConfiguration140();
-}
