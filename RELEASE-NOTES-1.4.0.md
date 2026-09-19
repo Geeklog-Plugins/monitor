@@ -13,6 +13,7 @@ Monitor 1.4.0 modernizes the plugin around a narrower role: **site health, diagn
 - Read-only plugin version/update advisor; Monitor no longer deploys plugin code.
 - Bounded, escaped log viewing and non-destructive log archive analysis.
 - Daily log rotation/archive support with private storage.
+- Geeklog administrative log archive list with sortable date, log and size columns; archive previews open separately with an explicit return link.
 - Structured health, change, plugin, log and configuration-audit services.
 - Content lifecycle observation through Geeklog save/delete notifications without copying content.
 - Multisite/shared-files-aware upgrade design with idempotent migrations.
@@ -40,6 +41,10 @@ The root-level `plugin.json` manifest exposes static identity, icon and minimum 
 Monitor services require `monitor.admin`, except the configuration audit which preserves its Root-only boundary. Service responses do not expose filesystem paths, raw configuration values, generated SQL or private archive paths.
 
 State-changing administration actions remain explicit, permission checked and CSRF protected.
+
+## Configuration compatibility
+
+Already-installed 1.4.0 development builds that do not yet contain the optional `github_token` configuration row are repaired idempotently when the Geeklog Configuration page is opened. This repair is now independent of the active site language. `MONITOR_GITHUB_TOKEN` remains the higher-priority runtime source when present.
 
 ## Upgrade notes
 
