@@ -126,9 +126,8 @@ if ($archivePath !== '' && isset($_GET['download']) && $_GET['download'] === '1'
 $content = MONITOR_ADMIN_NAV_render('log_archives');
 
 /*
- * A selected archive is a dedicated detail view. The list opens it in a new
- * browser tab/window and this page provides an explicit route back to the
- * sortable archive catalogue.
+ * A selected archive is a dedicated detail view in the same browser tab.
+ * The page provides an explicit route back to the sortable archive catalogue.
  */
 if ($archivePath !== '') {
     $size = filesize($archivePath);
@@ -199,7 +198,7 @@ if ($archivePath !== '') {
                 'log' => isset($archive['log']) ? $archive['log'] : '',
                 'size' => isset($archive['size']) ? $archive['size'] : null,
                 'actions' => '<a href="' . MONITOR_LOG_ADMIN_h($viewUrl)
-                    . '" target="_blank" rel="noopener noreferrer">'
+                    . '">'
                     . MONITOR_LOG_ADMIN_h($LANG_MONITOR_1['log_archive_view'])
                     . '</a> &nbsp; <a href="' . MONITOR_LOG_ADMIN_h($downloadUrl)
                     . '">' . MONITOR_LOG_ADMIN_h($LANG_MONITOR_1['log_archive_download'])
