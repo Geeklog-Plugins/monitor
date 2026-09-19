@@ -11,6 +11,7 @@ Monitor 1.4.0 modernizes the plugin around a narrower role: **site health, diagn
 - Safer client-IP handling based on validated `REMOTE_ADDR` by default.
 - Removal of artificial request sleeps and historical third-party telemetry.
 - Read-only plugin version/update advisor; Monitor no longer deploys plugin code.
+- Update cards use the target plugin's remote `plugin.json` for Geeklog/PHP requirements, falling back to the repository default branch when historical tags do not expose the manifest.
 - Bounded, escaped log viewing and non-destructive log archive analysis.
 - Daily log rotation/archive support with private storage.
 - Geeklog administrative log archive list with sortable date, log and size columns; archive previews use a dedicated same-tab detail view with an explicit return link.
@@ -50,7 +51,7 @@ Already-installed 1.4.0 development builds that do not yet contain the optional 
 
 The package declares version **1.4.0** and minimum Geeklog version **2.1.1**. Upgrade logic is sequential and records 1.4.0 only after required migrations succeed.
 
-Before production rollout on shared-files multisite installations, validate the transition with at least two sites using separate persisted plugin states. See `docs/UPGRADE-1.4.0.md` and `ROADMAP.md` for the remaining release gates.
+The scheduled-task runtime and two-site shared-files/multisite upgrade paths have been validated. See `docs/UPGRADE-1.4.0.md` and `ROADMAP.md` for the remaining release gates.
 
 ## Distribution
 
