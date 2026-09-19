@@ -298,7 +298,7 @@ The old executable-code updater has been removed from the admin workflow.
 - [x] show local plugin/version state read-only;
 - [x] do not deploy code from a normal Monitor request;
 - [ ] add safe remote release metadata discovery if operationally useful;
-- [ ] evaluate Geeklog/PHP compatibility metadata;
+- [x] evaluate Geeklog/PHP compatibility metadata from remote `plugin.json`, with default-branch fallback when a release/tag manifest is unavailable;
 - [ ] link to source/release and recommend an action.
 
 A dedicated updater/deployment component remains preferable to rebuilding deployment responsibilities inside Monitor.
@@ -323,8 +323,8 @@ Current scheduled work includes bounded legacy-observation cleanup and diagnosti
 - [x] keep persisted state site-scoped;
 - [x] make schema migration idempotent;
 - [x] avoid requiring sibling sites to upgrade simultaneously at code level;
-- [ ] validate two sites sharing Monitor files with separate databases/configurations;
-- [ ] explicitly test upgrade of site A while site B still has previous persisted state.
+- [x] validate two sites sharing Monitor files with separate databases/configurations;
+- [x] explicitly test upgrade of site A while site B still has previous persisted state.
 
 ---
 
@@ -437,7 +437,7 @@ Monitor 1.4.0 is not intended to become:
 - [x] PHP 5.6 lint CI passes;
 - [x] PHP 8.1 lint CI passes;
 - [x] no known PHP 8 warning/fatal remains in the tested normal Monitor/configuration workflows;
-- [ ] two-site shared-files upgrade transition test.
+- [x] two-site shared-files upgrade transition test.
 
 ## Simplification
 
