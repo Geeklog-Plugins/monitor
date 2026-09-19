@@ -14,6 +14,8 @@ Monitor 1.4.0 modernizes the plugin around a narrower role: **site health, diagn
 - Plugin cards now use a consistent icon/name header and dedicated status row; compatibility is shown only when an update is available.
 - Plugin cards use a single icon resolver and no longer duplicate icons or append a second Geeklog/PHP compatibility block.
 - Discover cards now show declared Geeklog/PHP requirements and whether the plugin is compatible with the current site before installation.
+- Core-bundled official plugins (`calendar`, `links`, `polls`, `recaptcha`, `spamx`, `staticpages`, `xmlsitemap`) remain in the Installed plugins list with a `Core plugin` badge and Core-specific version semantics.
+- A newer Core-bundled plugin is reported as `Available with Geeklog update` rather than as a standalone plugin update.
 - Update cards use the target plugin's remote `plugin.json` for Geeklog/PHP requirements, falling back to the repository default branch when historical tags do not expose the manifest.
 - Bounded, escaped log viewing and non-destructive log archive analysis.
 - Daily log rotation/archive support with private storage.
