@@ -14,6 +14,7 @@ require_once '../../auth.inc.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorBanAdapter.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorHealth.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorPluginCatalog.php';
+require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorPluginVersions.php';
 require_once $_CONF['path'] . 'plugins/monitor/lib/MonitorAdminNavigation.php';
 
 if (!SEC_hasRights('monitor.admin')) {
@@ -326,31 +327,120 @@ function MONITOR_ADMIN_enabledBadge($enabled)
          . $style . '">' . MONITOR_ADMIN_h($label) . '</span>';
 }
 
+function MONITOR_ADMIN_pluginIcon($pluginName)
+{
+    global $_CONF;
+
+    $pluginName = trim((string) $pluginName);
+    if ($pluginName === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $pluginName)) {
+        return '';
+    }
+
+    $relative = 'images/' . $pluginName . '.png';
+    $pluginRoot = rtrim((string) $_CONF['path'], '/\\')
+        . DIRECTORY_SEPARATOR . 'plugins' . DIRECTORY_SEPARATOR . $pluginName;
+    $manifestPath = $pluginRoot . DIRECTORY_SEPARATOR . 'plugin.json';
+
+    if (is_file($manifestPath) && is_readable($manifestPath)) {
+        $raw = @file_get_contents($manifestPath);
+        $manifest = is_string($raw) ? json_decode($raw, true) : null;
+        if (is_array($manifest) && isset($manifest['icon']) && is_string($manifest['icon'])) {
+            $icon = trim($manifest['icon']);
+            if (strpos($icon, 'admin/') === 0 && strpos($icon, '..') === false) {
+                $relative = substr($icon, strlen('admin/'));
+            }
+        }
+    }
+
+    $filesystem = rtrim((string) $_CONF['path_html'], '/\\')
+        . DIRECTORY_SEPARATOR . 'admin' . DIRECTORY_SEPARATOR . 'plugins'
+        . DIRECTORY_SEPARATOR . $pluginName . DIRECTORY_SEPARATOR
+        . str_replace('/', DIRECTORY_SEPARATOR, $relative);
+
+    if (!is_file($filesystem)) {
+        return $_CONF['site_admin_url'] . '/plugins/monitor/images/unavailable.png';
+    }
+
+    return $_CONF['site_admin_url'] . '/plugins/' . rawurlencode($pluginName)
+        . '/' . str_replace('%2F', '/', rawurlencode($relative));
+}
+
+function MONITOR_ADMIN_updateCompatibilityBadge($plugin)
+{
+    global $LANG_MONITOR_1;
+
+    if (!isset($plugin['state']) || $plugin['state'] !== 'update') {
+        return '';
+    }
+
+    $state = isset($plugin['update_compatibility'])
+        ? (string) $plugin['update_compatibility'] : 'unknown';
+
+    if ($state === 'compatible') {
+        $label = $LANG_MONITOR_1['plugin_catalog_update_compatible'];
+        $style = 'background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;';
+    } elseif ($state === 'incompatible') {
+        $label = $LANG_MONITOR_1['plugin_catalog_update_incompatible'];
+        $style = 'background:#ffebee;color:#b71c1c;border:1px solid #ef9a9a;';
+    } else {
+        $label = $LANG_MONITOR_1['plugin_catalog_compatibility_unknown'];
+        $style = 'background:#f5f5f5;color:#555;border:1px solid #d7dde2;';
+    }
+
+    return '<span style="display:inline-block;padding:3px 8px;border-radius:12px;font-weight:bold;font-size:.9em;'
+         . $style . '">' . MONITOR_ADMIN_h($label) . '</span>';
+}
+
 function MONITOR_ADMIN_pluginCard($plugin)
 {
     global $LANG_MONITOR_1;
 
     $anchor = MONITOR_PLUGIN_CATALOG_normalizeName($plugin['name']);
-    $html = '<section id="plugin-' . MONITOR_ADMIN_h($anchor) . '" style="border:1px solid #d7dde2;border-radius:8px;padding:13px;background:#fff">';
-    $html .= '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">'
-          . '<strong style="font-size:1.08em">' . MONITOR_ADMIN_h($plugin['name']) . '</strong>'
-          . '<div style="display:flex;flex-wrap:wrap;gap:6px">'
-          . MONITOR_ADMIN_enabledBadge(!empty($plugin['enabled_bool']))
-          . MONITOR_ADMIN_pluginBadge($plugin['state']) . '</div></div>';
+    $iconUrl = MONITOR_ADMIN_pluginIcon($plugin['name']);
+    $compatibilityBadge = MONITOR_ADMIN_updateCompatibilityBadge($plugin);
 
-    $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin-top:11px;font-size:.93em">'
+    $html = '<section id="plugin-' . MONITOR_ADMIN_h($anchor)
+          . '" style="border:1px solid #d7dde2;border-radius:8px;padding:13px;background:#fff">';
+
+    /*
+     * Keep every card visually predictable:
+     * 1. icon + plugin name;
+     * 2. state badges;
+     * 3. version/requirement data;
+     * 4. repository actions and update compatibility when relevant.
+     */
+    $html .= '<div style="display:flex;align-items:center;gap:10px;min-height:52px">'
+          . '<img src="' . MONITOR_ADMIN_h($iconUrl) . '" alt="" '
+          . 'style="width:48px;height:48px;object-fit:contain;border-radius:7px;flex:0 0 48px">'
+          . '<strong style="font-size:1.12em;line-height:1.2">'
+          . MONITOR_ADMIN_h($plugin['name']) . '</strong></div>';
+
+    $html .= '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;min-height:28px">'
+          . MONITOR_ADMIN_enabledBadge(!empty($plugin['enabled_bool']))
+          . MONITOR_ADMIN_pluginBadge($plugin['state']);
+
+    if ($compatibilityBadge !== '') {
+        $html .= $compatibilityBadge;
+    }
+    $html .= '</div>';
+
+    $html .= '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;margin-top:13px;font-size:.93em">'
           . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_installed_version']) . '</span><br><strong>'
           . MONITOR_ADMIN_h($plugin['installed']) . '</strong></div>'
           . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_latest_version']) . '</span><br><strong>'
           . MONITOR_ADMIN_h($plugin['remote_label']) . '</strong></div>'
-          . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_enabled']) . '</span><br>'
-          . MONITOR_ADMIN_enabledBadge(!empty($plugin['enabled_bool'])) . '</div>'
           . '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_geeklog']) . '</span><br><strong>'
-          . MONITOR_ADMIN_h($plugin['gl_version']) . '</strong></div>'
-          . '</div>';
+          . MONITOR_ADMIN_h($plugin['gl_version']) . '</strong></div>';
+
+    if (!empty($plugin['php_requirement'])) {
+        $html .= '<div><span style="color:#666">' . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_php_requirement']) . '</span><br><strong>'
+              . MONITOR_ADMIN_h($plugin['php_requirement']) . '</strong></div>';
+    }
+
+    $html .= '</div>';
 
     if ($plugin['repository_url'] !== '') {
-        $html .= '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:12px;font-size:.92em">'
+        $html .= '<div style="margin-top:12px;padding-top:10px;border-top:1px solid #eceff1;display:flex;flex-wrap:wrap;gap:12px;font-size:.92em">'
               . '<a href="' . MONITOR_ADMIN_h($plugin['repository_url']) . '" target="_blank" rel="noopener noreferrer">'
               . MONITOR_ADMIN_h($LANG_MONITOR_1['plugin_catalog_open_repository']) . '</a>';
         if ($plugin['remote_url'] !== '') {
@@ -516,6 +606,8 @@ function MONITOR_ADMIN_plugins()
 
             $geeklogRequirement = !empty($row['pi_gl_version'])
                 ? (string) $row['pi_gl_version'] : $LANG_MONITOR_1['plugin_catalog_unknown'];
+            $phpRequirement = '';
+            $updateCompatibility = '';
 
             /*
              * pi_gl_version describes the currently installed plugin. When an
@@ -548,8 +640,33 @@ function MONITOR_ADMIN_plugins()
                     $manifest,
                     'geeklog'
                 );
+                $remotePhp = MONITOR_PLUGIN_CATALOG_manifestRequirement(
+                    $manifest,
+                    'php'
+                );
                 if ($remoteGeeklog !== '') {
                     $geeklogRequirement = $remoteGeeklog;
+                }
+                if ($remotePhp !== '') {
+                    $phpRequirement = $remotePhp;
+                }
+
+                $geeklogState = MONITOR_PLUGIN_VERSIONS_requirementState(
+                    MONITOR_PLUGIN_VERSIONS_siteGeeklogVersion(),
+                    $remoteGeeklog
+                );
+                $phpState = MONITOR_PLUGIN_VERSIONS_requirementState(
+                    PHP_VERSION,
+                    $remotePhp
+                );
+
+                if ($geeklogState === 'incompatible' || $phpState === 'incompatible') {
+                    $updateCompatibility = 'incompatible';
+                } elseif ($geeklogState === 'compatible' && $phpState !== 'incompatible'
+                        && ($remotePhp === '' || $phpState === 'compatible')) {
+                    $updateCompatibility = 'compatible';
+                } else {
+                    $updateCompatibility = 'unknown';
                 }
             }
 
@@ -561,6 +678,8 @@ function MONITOR_ADMIN_plugins()
                     ? $LANG_MONITOR_1['plugin_catalog_yes'] : $LANG_MONITOR_1['plugin_catalog_no'],
                 'enabled_bool' => $enabled,
                 'gl_version' => $geeklogRequirement,
+                'php_requirement' => $phpRequirement,
+                'update_compatibility' => $updateCompatibility,
                 'remote_label' => $remoteLabel,
                 'state' => $state,
                 'repository_url' => $repositoryUrl,
