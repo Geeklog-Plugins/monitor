@@ -299,6 +299,51 @@ jobs:
           print('Geeklog Core plugin integration is present.')
           PY
 
+      - name: Check latest compatible release resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          catalog = Path('lib/MonitorPluginCatalog.php').read_text(encoding='utf-8')
+          admin = Path('admin/index.php').read_text(encoding='utf-8')
+          versions = Path('lib/MonitorPluginVersions.php').read_text(encoding='utf-8')
+          language = Path('language/english.php').read_text(encoding='utf-8')
+
+          required_catalog = [
+              'MONITOR_PLUGIN_CATALOG_releases',
+              'MONITOR_PLUGIN_CATALOG_repositoryFile',
+              'MONITOR_PLUGIN_CATALOG_autoinstallRequirements',
+              'MONITOR_PLUGIN_CATALOG_releaseRequirements',
+              'MONITOR_PLUGIN_CATALOG_latestCompatibleRelease',
+              'if ($checked >= 10)',
+              "'source' => 'compatible_release'",
+          ]
+          for needle in required_catalog:
+              assert needle in catalog, 'Missing compatible-release catalog contract: ' + needle
+
+          required_admin = [
+              'latest_compatible_active',
+              'latest_overall_label',
+              'current_compatible',
+              'MONITOR_PLUGIN_CATALOG_latestCompatibleRelease',
+          ]
+          for needle in required_admin:
+              assert needle in admin, 'Missing compatible-release admin contract: ' + needle
+
+          for needle in (
+              'latest_overall_version',
+              'latest_compatible_version',
+              'current_compatible',
+          ):
+              assert needle in versions, 'Missing compatible-release service contract: ' + needle
+
+          assert 'plugin_catalog_current_compatible' in language
+          assert 'plugin_catalog_latest_compatible_version' in language
+          print('Latest compatible release resolution is present.')
+          PY
+
       - name: Check target plugin requirement metadata
         shell: bash
         run: |
