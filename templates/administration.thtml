@@ -512,7 +512,21 @@
             versionInfo.className = 'monitor-discovery-requirements';
             versionInfo.textContent = 'Latest compatible version '
                 + String(metadata.latest_compatible_version).replace(/^[vV](?=[0-9])/, '');
+
+            if (requires.geeklog) {
+                versionInfo.textContent += ' · Geeklog ' + requires.geeklog + '+';
+            }
+            if (requires.php) {
+                versionInfo.textContent += ' · PHP ' + requires.php + '+';
+            }
+
             block.appendChild(versionInfo);
+
+            /*
+             * The compatible-release line already carries its runtime
+             * requirements, so do not repeat them again below.
+             */
+            values = [];
         }
 
         if (metadata.latest_compatible_version && metadata.latest_overall_version
