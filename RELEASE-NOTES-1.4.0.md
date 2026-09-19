@@ -12,6 +12,7 @@ Monitor 1.4.0 modernizes the plugin around a narrower role: **site health, diagn
 - Removal of artificial request sleeps and historical third-party telemetry.
 - Read-only plugin version/update advisor; Monitor no longer deploys plugin code.
 - Plugin cards now use a consistent icon/name header and dedicated status row; compatibility is shown only when an update is available.
+- Installed and latest versions are now stacked in one compact block, leading `v` prefixes are removed for display, and redundant Geeklog/PHP requirements are hidden for current or locally newer standalone plugins.
 - Plugin cards use a single icon resolver and no longer duplicate icons or append a second Geeklog/PHP compatibility block.
 - Discover cards now show declared Geeklog/PHP requirements and whether the plugin is compatible with the current site before installation.
 - Discovery metadata now distinguishes `Requirements not declared` from `Metadata unavailable`; Monitor does not infer compatibility from repository descriptions or README text.
