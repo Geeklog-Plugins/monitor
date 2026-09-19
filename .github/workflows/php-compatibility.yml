@@ -212,6 +212,7 @@ jobs:
 
           required_admin = [
               'function MONITOR_ADMIN_updateCompatibilityBadge',
+              'function MONITOR_ADMIN_displayVersion',
               'monitor-plugin-title-with-icon',
               'update_compatibility',
               'data-plugin-installed="0"',
@@ -250,6 +251,8 @@ jobs:
           for needle in required_icons:
               assert needle in icons, 'Missing discovery compatibility logic: ' + needle
 
+          assert "state'] === 'update'" in admin
+          assert "grid-column:1 / -1" in admin
           assert 'plugin_catalog_update_incompatible' in language
           print('Plugin catalog UI contracts are present.')
           PY
