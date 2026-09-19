@@ -122,7 +122,9 @@
     color: #b71c1c;
     border: 1px solid #ef9a9a;
 }
-.monitor-discovery-badge-unknown {
+.monitor-discovery-badge-unknown,
+.monitor-discovery-badge-requirements_missing,
+.monitor-discovery-badge-metadata_unavailable {
     background: #f5f5f5;
     color: #555;
     border: 1px solid #d7dde2;
@@ -487,6 +489,12 @@
         compatibility = metadata.compatibility || {};
         state = compatibility.state || 'unknown';
 
+        if (metadata.manifest_available === false) {
+            state = 'metadata_unavailable';
+        } else if (metadata.requirements_declared === false) {
+            state = 'requirements_missing';
+        }
+
         block = card.querySelector('.monitor-discovery-compatibility');
         if (!block) {
             block = document.createElement('div');
@@ -509,6 +517,10 @@
             badge.textContent = 'Compatible with this site';
         } else if (state === 'incompatible') {
             badge.textContent = 'Not compatible with this site';
+        } else if (state === 'requirements_missing') {
+            badge.textContent = 'Requirements not declared';
+        } else if (state === 'metadata_unavailable') {
+            badge.textContent = 'Metadata unavailable';
         } else {
             badge.textContent = 'Compatibility unknown';
         }
