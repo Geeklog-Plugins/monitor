@@ -19,6 +19,7 @@ Monitor 1.4.0 modernizes the plugin around a narrower role: **site health, diagn
 - Core-bundled official plugins (`calendar`, `links`, `polls`, `recaptcha`, `spamx`, `staticpages`, `xmlsitemap`) remain in the Installed plugins list with a `Core plugin` badge and Core-specific version semantics.
 - A newer Core-bundled plugin is reported as `Available with Geeklog update` rather than as a standalone plugin update.
 - Core cards expose only `Open Core plugin`; the redundant standalone `Open version` action is suppressed.
+- Core cards now avoid duplicating Installed/Latest Core values when current: they show `Version` and `Bundled with Geeklog`, while Core updates show `Installed` and `Available with Geeklog <version>`.
 - Update cards use the target plugin's remote `plugin.json` for Geeklog/PHP requirements, falling back to the repository default branch when historical tags do not expose the manifest.
 - Bounded, escaped log viewing and non-destructive log archive analysis.
 - Daily log rotation/archive support with private storage.
