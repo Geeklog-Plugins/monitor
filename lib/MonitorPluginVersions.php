@@ -275,6 +275,29 @@ function MONITOR_PLUGIN_VERSIONS_enrichServiceEnvelope($envelope)
                 $manifest = MONITOR_PLUGIN_CATALOG_manifest($owner, $repoName, $latestTag, false);
             }
 
+            /*
+             * Some historical tags/releases do not expose plugin.json at the
+             * version ref even though the maintained default branch does.
+             * Fall back to the repository default branch so consumers receive
+             * the current target requirements instead of an empty/old value.
+             */
+            if (!is_array($manifest) && $owner !== '' && $repoName !== ''
+                    && function_exists('MONITOR_PLUGIN_CATALOG_repositories')
+                    && function_exists('MONITOR_PLUGIN_CATALOG_matchRepository')) {
+                $catalog = MONITOR_PLUGIN_CATALOG_repositories(false);
+                $repositories = isset($catalog['repositories']) && is_array($catalog['repositories'])
+                    ? $catalog['repositories'] : array();
+                $repo = MONITOR_PLUGIN_CATALOG_matchRepository($repoName, $repositories);
+                if (is_array($repo) && !empty($repo['default_branch'])) {
+                    $manifest = MONITOR_PLUGIN_CATALOG_manifest(
+                        $owner,
+                        $repoName,
+                        (string) $repo['default_branch'],
+                        false
+                    );
+                }
+            }
+
             $geeklogRequired = function_exists('MONITOR_PLUGIN_CATALOG_manifestRequirement')
                 ? MONITOR_PLUGIN_CATALOG_manifestRequirement($manifest, 'geeklog') : '';
             $phpRequired = function_exists('MONITOR_PLUGIN_CATALOG_manifestRequirement')
