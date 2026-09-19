@@ -219,6 +219,18 @@ jobs:
           fi
           echo 'Plugin card UI semantics are present.'
 
+      - name: Check discovery compatibility cards
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'data-plugin-installed="0"' admin/index.php
+          grep -q "monitor-discovery-compatibility" templates/administration.thtml
+          grep -q "Compatible with this site" templates/administration.thtml
+          grep -q "Not compatible with this site" templates/administration.thtml
+          grep -q "declared > 0" admin/plugin-icons.php
+          grep -q "not_declared" admin/plugin-icons.php
+          echo 'Discovery compatibility cards are present.'
+
       - name: Check target plugin requirement metadata
         shell: bash
         run: |
