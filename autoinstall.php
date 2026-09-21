@@ -3,7 +3,7 @@
 /**
  * Monitor plugin autoinstall helpers.
  *
- * Compatibility target for Monitor 1.4.0:
+ * Compatibility target for Monitor 1.5.0:
  * - Geeklog 2.1.1 through 2.2.2
  * - PHP 5.6 through 8.1
  *
@@ -19,7 +19,7 @@ function plugin_autoinstall_monitor($pi_name)
     $info = array(
         'pi_name'         => $pi_name,
         'pi_display_name' => $pi_display_name,
-        'pi_version'      => '1.4.0',
+        'pi_version'      => '1.5.0',
         'pi_gl_version'   => '2.1.1',
         'pi_homepage'     => 'https://github.com/hostellerie/monitor'
     );
@@ -65,7 +65,7 @@ function plugin_load_configuration_monitor($pi_name)
 /**
  * Check runtime compatibility before installation or upgrade.
  *
- * Monitor 1.4.0 deliberately uses the common PHP subset supported by PHP 5.6
+ * Monitor 1.5.0 deliberately uses the common PHP subset supported by PHP 5.6
  * through PHP 8.1. Future PHP versions may work but are not claimed here until
  * tested. We reject versions older than the supported baseline and Geeklog
  * versions older than 2.1.1.
