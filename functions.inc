@@ -17,6 +17,15 @@ if (isset($_SERVER['PHP_SELF']) &&
     die('This file can not be used on its own.');
 }
 
+/*
+ * functions.inc can be loaded from inside Geeklog plugin-management
+ * functions (for example PLG_enableStateChange()). In that case the included
+ * file inherits the caller's local scope, and Geeklog's database table prefix
+ * is not necessarily imported there. Make the dependency explicit so table
+ * registration also works during plugin activation/reactivation.
+ */
+global $_DB_table_prefix;
+
 $plugin_path = $_CONF['path'] . 'plugins/monitor/';
 $langfile = $plugin_path . 'language/' . $_CONF['language'] . '.php';
 
