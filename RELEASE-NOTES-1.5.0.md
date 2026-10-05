@@ -41,3 +41,23 @@ After upgrading, verify:
 3. Plugins > Discover is sorted alphabetically.
 4. GitHub version metadata refreshes correctly with and without a configured token.
 5. `dist/monitor_1.5.0_2.1.1.zip` is the only tracked distribution archive.
+
+## Languages
+
+Monitor 1.5.0 now includes the completed UTF-8 language set for:
+
+- Chinese Simplified
+- Chinese Traditional
+- French Canada
+- French France
+- German
+- German Formal
+- Hebrew
+- Italian
+- Japanese
+- Persian
+- Russian
+- Spanish
+- Spanish Argentina
+
+The language files are aligned with the final 1.5.0 English key set, including the new configuration tooltips, and CI verifies key and placeholder parity.
