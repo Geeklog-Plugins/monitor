@@ -332,7 +332,10 @@ A dedicated updater/deployment component remains preferable to rebuilding deploy
 - [x] add native Geeklog Configuration tooltips for Monitor settings;
 - [x] adapt GitHub tag-cache freshness to authentication state (4 h anonymous, 1 h authenticated) while preserving explicit refresh;
 - [x] sort Discover plugins alphabetically;
-- [x] keep dist limited to the current installable archive and make concurrent archive publication safe;
+- [x] keep dist limited to the current installable archive and make concurrent archive publication safe.
+
+## Post-1.5 diagnostic roadmap
+
 - [ ] add a provider-aware SEO diagnostic view for missing, unusually short/long or duplicate metadata without hard-coding third-party plugin SQL;
 - [ ] add language-package diagnostics for missing/incomplete files and placeholder mismatches by reusing shared language-audit conventions;
 - [ ] add orphaned-plugin diagnostics for database registrations whose plugin files are missing, with explicit inventory and confirmed cleanup only;
