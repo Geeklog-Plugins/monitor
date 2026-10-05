@@ -42,15 +42,15 @@ require_once $_CONF['path_system'] . 'classes/config.class.php';
 $c = config::get_instance();
 
 /*
- * Early 1.4.0 installations may already report pi_version 1.4.0 while missing
- * configuration rows added later during the development cycle. Repair those
- * rows when the native Configuration page is opened, independently of the
- * active site language, then reload the persisted Monitor configuration.
+ * Repair configuration metadata whenever the native Configuration page opens.
+ * This is intentionally independent of pi_version: early/development 1.5.0
+ * packages may already be recorded as 1.5.0 and therefore never enter the
+ * normal upgrade path. The repair is idempotent and preserves stored values.
  */
 if (isset($_SERVER['SCRIPT_NAME'])
         && basename($_SERVER['SCRIPT_NAME']) === 'configuration.php') {
     require_once $plugin_path . 'lib/MonitorConfigCompat.php';
-    MONITOR_repairConfiguration140();
+    MONITOR_repairConfiguration();
 }
 
 $_MONITOR_CONF = $c->get_config('monitor');
