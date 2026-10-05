@@ -123,8 +123,7 @@ jobs:
               # The branch may have advanced after the pre-push check. In that
               # case this archive belongs to an older source commit and must not
               # overwrite the newer branch head.
-              BRANCH="${GITHUB_REF#refs/heads/}"
-          git fetch origin "$BRANCH"
+              git fetch origin "$BRANCH"
               REMOTE_AFTER_PUSH="$(git rev-parse origin/$BRANCH)"
               if [ "$REMOTE_AFTER_PUSH" != "$GITHUB_SHA" ]; then
                 echo "Branch advanced during archive publication; skipping stale dist push."
