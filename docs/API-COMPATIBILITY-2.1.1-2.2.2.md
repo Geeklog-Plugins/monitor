@@ -85,7 +85,7 @@ Before tagging Monitor 1.5.0:
 1. Geeklog 2.1.1: fresh install, dashboard, logs, security, plugin list, configuration page.
 2. Geeklog 2.2.2: same checks.
 3. Upgrade from an existing Monitor 1.3.x installation where available.
-4. Verify `dist/monitor_1.4.0_2.1.1.zip` installs cleanly on both targets.
+4. Verify `dist/monitor_1.5.0_2.1.1.zip` installs cleanly on both targets.
 5. Verify the ZIP contains no path component beginning with `.`.
 
 Known runtime evidence at the time of this audit: fresh install and Monitor administration confirmed working on Geeklog 2.1.1. Geeklog 2.2.2 exposed the removed `COM_siteHeader()` / `COM_siteFooter()` API usage; Monitor was corrected to `COM_createHTMLDocument()` and CI now prevents regression.
