@@ -2,7 +2,7 @@
 
 /* Reminder: always indent with 4 spaces (no tabs). */
 // +---------------------------------------------------------------------------+
-// | Monitor Plugin 1.4.0                                                      |
+// | Monitor Plugin 1.5.0                                                      |
 // +---------------------------------------------------------------------------+
 // | admin/index.php                                                           |
 // |                                                                           |
@@ -855,7 +855,10 @@ function MONITOR_ADMIN_plugins()
     }
 
     $sortRepos = function ($a, $b) {
-        return strcmp($b['updated_at'], $a['updated_at']);
+        $aName = isset($a['name']) ? (string) $a['name'] : '';
+        $bName = isset($b['name']) ? (string) $b['name'] : '';
+
+        return strcasecmp($aName, $bName);
     };
     usort($recent, $sortRepos);
     usort($legacy, $sortRepos);
