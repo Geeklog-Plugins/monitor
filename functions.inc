@@ -1,7 +1,7 @@
 <?php
 
 // +---------------------------------------------------------------------------+
-// | Monitor Plugin 1.4.0                                                      |
+// | Monitor Plugin 1.5.0                                                      |
 // +---------------------------------------------------------------------------+
 // | functions.inc                                                             |
 // |                                                                           |
@@ -16,6 +16,15 @@ if (isset($_SERVER['PHP_SELF']) &&
         strpos(strtolower($_SERVER['PHP_SELF']), 'functions.inc') !== false) {
     die('This file can not be used on its own.');
 }
+
+/*
+ * functions.inc can be loaded from inside Geeklog plugin-management
+ * functions (for example PLG_enableStateChange()). In that case the included
+ * file inherits the caller's local scope, and Geeklog's database table prefix
+ * is not necessarily imported there. Make the dependency explicit so table
+ * registration also works during plugin activation/reactivation.
+ */
+global $_DB_table_prefix;
 
 $plugin_path = $_CONF['path'] . 'plugins/monitor/';
 $langfile = $plugin_path . 'language/' . $_CONF['language'] . '.php';
@@ -33,15 +42,15 @@ require_once $_CONF['path_system'] . 'classes/config.class.php';
 $c = config::get_instance();
 
 /*
- * Early 1.4.0 installations may already report pi_version 1.4.0 while missing
- * configuration rows added later during the development cycle. Repair those
- * rows when the native Configuration page is opened, independently of the
- * active site language, then reload the persisted Monitor configuration.
+ * Repair configuration metadata whenever the native Configuration page opens.
+ * This is intentionally independent of pi_version: early/development 1.5.0
+ * packages may already be recorded as 1.5.0 and therefore never enter the
+ * normal upgrade path. The repair is idempotent and preserves stored values.
  */
 if (isset($_SERVER['SCRIPT_NAME'])
         && basename($_SERVER['SCRIPT_NAME']) === 'configuration.php') {
     require_once $plugin_path . 'lib/MonitorConfigCompat.php';
-    MONITOR_repairConfiguration140();
+    MONITOR_repairConfiguration();
 }
 
 $_MONITOR_CONF = $c->get_config('monitor');
@@ -93,6 +102,21 @@ function plugin_geticon_monitor()
     global $_CONF;
 
     return $_CONF['site_admin_url'] . '/plugins/monitor/images/monitor.png';
+}
+
+/**
+ * Return concise native Geeklog Configuration tooltips.
+ *
+ * @param string $id Configuration option id
+ * @return string Tooltip text or an empty string when unavailable
+ */
+function plugin_getconfigtooltip_monitor($id)
+{
+    global $LANG_MONITOR_1;
+
+    $key = 'config_tooltip_' . trim((string) $id);
+
+    return isset($LANG_MONITOR_1[$key]) ? (string) $LANG_MONITOR_1[$key] : '';
 }
 
 /**

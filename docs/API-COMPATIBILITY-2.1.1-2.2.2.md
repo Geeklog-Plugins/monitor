@@ -1,4 +1,4 @@
-# Monitor 1.4.0 — Geeklog API compatibility audit
+# Monitor 1.5.0 — Geeklog API compatibility audit
 
 Target matrix:
 
@@ -12,7 +12,7 @@ This audit follows the Geeklog-Plugins memorandum and verifies the Geeklog APIs 
 | API | Monitor use | 2.1.1 | 2.2.2 | Decision |
 |---|---|---:|---:|---|
 | `COM_createHTMLDocument()` | Final admin page rendering and access-denied page | yes | yes | Required common rendering API |
-| `COM_siteHeader()` / `COM_siteFooter()` | Legacy rendering | legacy | removed | Forbidden in Monitor 1.4.0; CI rejects reintroduction |
+| `COM_siteHeader()` / `COM_siteFooter()` | Legacy rendering | legacy | removed | Forbidden in Monitor 1.5.0; CI rejects reintroduction |
 | `COM_output()` | Sends the completed document | yes | yes | Keep |
 | `COM_createLink()` | Admin navigation links | yes | yes | Keep |
 | `COM_applyFilter()` | Small scalar request filters | yes | yes | Keep; validation still happens separately |
@@ -80,12 +80,12 @@ CI also checks that the required Geeklog 2.2.x configuration-language arrays are
 
 ## Runtime release checks
 
-Before tagging Monitor 1.4.0:
+Before tagging Monitor 1.5.0:
 
 1. Geeklog 2.1.1: fresh install, dashboard, logs, security, plugin list, configuration page.
 2. Geeklog 2.2.2: same checks.
 3. Upgrade from an existing Monitor 1.3.x installation where available.
-4. Verify `dist/monitor_1.4.0_2.1.1.zip` installs cleanly on both targets.
+4. Verify `dist/monitor_1.5.0_2.1.1.zip` installs cleanly on both targets.
 5. Verify the ZIP contains no path component beginning with `.`.
 
 Known runtime evidence at the time of this audit: fresh install and Monitor administration confirmed working on Geeklog 2.1.1. Geeklog 2.2.2 exposed the removed `COM_siteHeader()` / `COM_siteFooter()` API usage; Monitor was corrected to `COM_createHTMLDocument()` and CI now prevents regression.

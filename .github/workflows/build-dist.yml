@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - monitor-1.4.0
+      - monitor-1.5.0
     paths-ignore:
       - 'dist/**'
 
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build monitor_1.4.0_2.1.1.zip
+    name: Build monitor_1.5.0_2.1.1.zip
     runs-on: ubuntu-latest
 
     steps:
@@ -62,14 +62,14 @@ jobs:
           set -euo pipefail
           (
             cd package
-            zip -r -9 ../dist/monitor_1.4.0_2.1.1.zip monitor
+            zip -r -9 ../dist/monitor_1.5.0_2.1.1.zip monitor
           )
 
       - name: Validate ZIP contents
         shell: bash
         run: |
           set -euo pipefail
-          ARCHIVE='dist/monitor_1.4.0_2.1.1.zip'
+          ARCHIVE='dist/monitor_1.5.0_2.1.1.zip'
           test -s "$ARCHIVE"
           unzip -t "$ARCHIVE"
           unzip -Z1 "$ARCHIVE" | grep -qx 'monitor/autoinstall.php'
@@ -90,18 +90,18 @@ jobs:
         shell: bash
         run: |
           ls -lh dist/
-          sha256sum dist/monitor_1.4.0_2.1.1.zip
+          sha256sum dist/monitor_1.5.0_2.1.1.zip
 
       - name: Commit dist archive to branch
-        if: github.ref == 'refs/heads/monitor-1.4.0'
+        if: github.ref == 'refs/heads/monitor-1.5.0'
         shell: bash
         run: |
           set -euo pipefail
 
           # Each run builds the commit that triggered it. If the branch moved
           # while the ZIP was being built, do not publish a stale archive.
-          git fetch origin monitor-1.4.0
-          REMOTE_HEAD="$(git rev-parse origin/monitor-1.4.0)"
+          git fetch origin monitor-1.5.0
+          REMOTE_HEAD="$(git rev-parse origin/monitor-1.5.0)"
           if [ "$REMOTE_HEAD" != "$GITHUB_SHA" ]; then
             echo "Branch advanced from $GITHUB_SHA to $REMOTE_HEAD; skipping stale dist commit."
             exit 0
@@ -109,19 +109,33 @@ jobs:
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -f dist/monitor_1.4.0_2.1.1.zip
+          # Stage the complete dist state so obsolete tracked archives are removed
+          # instead of surviving because only the current ZIP was added explicitly.
+          git add -A dist/
 
           if git diff --cached --quiet; then
             echo 'Distribution archive is already up to date.'
           else
-            git commit -m 'Update Monitor 1.4.0 distribution archive'
-            git push origin HEAD:monitor-1.4.0
+            git commit -m 'Update Monitor 1.5.0 distribution archive'
+            if ! git push origin HEAD:monitor-1.5.0; then
+              # The branch may have advanced after the pre-push check. In that
+              # case this archive belongs to an older source commit and must not
+              # overwrite the newer branch head.
+              git fetch origin monitor-1.5.0
+              REMOTE_AFTER_PUSH="$(git rev-parse origin/monitor-1.5.0)"
+              if [ "$REMOTE_AFTER_PUSH" != "$GITHUB_SHA" ]; then
+                echo "Branch advanced during archive publication; skipping stale dist push."
+                exit 0
+              fi
+              echo 'Archive push failed while the branch head was unchanged.' >&2
+              exit 1
+            fi
           fi
 
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4
         with:
-          name: monitor_1.4.0_2.1.1-dist
-          path: dist/monitor_1.4.0_2.1.1.zip
+          name: monitor_1.5.0_2.1.1-dist
+          path: dist/monitor_1.5.0_2.1.1.zip
           if-no-files-found: error
           retention-days: 30

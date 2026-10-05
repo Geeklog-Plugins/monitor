@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Small compatibility helpers shared by Monitor 1.4.0 components.
+ * Small compatibility helpers shared by Monitor 1.5.0 components.
  *
  * Keep this file compatible with PHP 5.6 through PHP 8.1.
  *

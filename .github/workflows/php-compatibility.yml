@@ -76,9 +76,10 @@ jobs:
           grep -q "add('emails', \$_monitor_DEFAULT\['emails'\], 'text', 0, 0, null" install_defaults.php
           grep -q "add('repository', \$_monitor_DEFAULT\['repository'\], 'text', 0, 0, null" install_defaults.php
           grep -q "selectionArray = -1" lib/MonitorConfigCompat.php
-          grep -q "MONITOR_repairConfiguration140" functions.inc
+          grep -q "MONITOR_repairConfiguration();" functions.inc
           grep -q "basename(\$_SERVER\['SCRIPT_NAME'\]) === 'configuration.php'" functions.inc
-          grep -q "name = 'github_token'" lib/MonitorConfigCompat.php
+          grep -q "'github_token' => ''" lib/MonitorConfigCompat.php
+          grep -q "name IN ('emails', 'repository', 'github_token')" lib/MonitorConfigCompat.php
           test -f language/english_utf-8.php
 
       - name: Check shared Monitor navigation
@@ -337,7 +338,6 @@ jobs:
 
           for needle in (
               'latest_overall_version',
-              'Discovery is release-oriented',
               'latest_compatible_version',
               'current_compatible',
           ):

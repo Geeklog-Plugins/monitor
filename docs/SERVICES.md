@@ -1,6 +1,6 @@
 # Monitor read-only services
 
-Monitor 1.4.0 exposes structured diagnostics through Geeklog's native `PLG_invokeService()` dispatcher. The service layer is intended for trusted Geeklog consumers such as Hub, Connector and administrative presentation layers such as Eclipse.
+Monitor 1.5.0 exposes structured diagnostics through Geeklog's native `PLG_invokeService()` dispatcher. The service layer is intended for trusted Geeklog consumers such as Hub, Connector and administrative presentation layers such as Eclipse.
 
 ## Design rules
 
@@ -176,16 +176,16 @@ Typical item:
 array(
     'name'                => 'monitor',
     'installed_version'   => '1.3.1',
-    'code_version'        => '1.4.0',
+    'code_version'        => '1.5.0',
     'upgrade_required'    => true,
     'local_version_state' => 'upgrade_required',
     'enabled'             => true,
     'geeklog_requirement' => '2.1.1',
     'distribution_source' => 'standalone',
-    'latest_version'      => 'v1.4.0',
+    'latest_version'      => 'v1.5.0',
     'version_state'       => 'current',
     'repository_url'      => 'https://github.com/example/monitor',
-    'version_url'         => 'https://github.com/example/monitor/releases/tag/v1.4.0'
+    'version_url'         => 'https://github.com/example/monitor/releases/tag/v1.5.0'
 )
 ```
 

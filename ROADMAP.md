@@ -1,8 +1,8 @@
-# Monitor 1.4.0 Roadmap
+# Monitor 1.5.0 Roadmap
 
 ## Vision
 
-Monitor 1.4.0 is a modernization and simplification release.
+Monitor 1.5.0 builds on the 1.4.0 modernization baseline with reliability, configuration UX and plugin-catalog improvements.
 
 The objective is not to turn Monitor into a collection of unrelated administration tools. Monitor should become the reference Geeklog plugin for **site health, diagnostics, operational security monitoring, alerts and actionable recommendations**.
 
@@ -326,6 +326,22 @@ A dedicated updater/deployment component remains preferable to rebuilding deploy
 
 ---
 
+## 1.5.0 release additions
+
+- [x] fix plugin reactivation table-prefix scope;
+- [x] add native Geeklog Configuration tooltips for Monitor settings;
+- [x] add an idempotent same-version 1.5.0 configuration repair path so early 1.5.0 installations do not require a version bump;
+- [x] adapt GitHub tag-cache freshness to authentication state (4 h anonymous, 1 h authenticated) while preserving explicit refresh;
+- [x] sort Discover plugins alphabetically;
+- [x] keep dist limited to the current installable archive and make concurrent archive publication safe.
+
+## Post-1.5 diagnostic roadmap
+
+- [ ] add a provider-aware SEO diagnostic view for missing, unusually short/long or duplicate metadata without hard-coding third-party plugin SQL;
+- [ ] add language-package diagnostics for missing/incomplete files and placeholder mismatches by reusing shared language-audit conventions;
+- [ ] add orphaned-plugin diagnostics for database registrations whose plugin files are missing, with explicit inventory and confirmed cleanup only;
+- [ ] keep marketing/content-cluster relationship ownership in Hub; Monitor may only expose diagnostics about missing relationship capabilities or unlinked content.
+
 # Phase 10 - Scheduled tasks (P1)
 
 Current scheduled work includes bounded legacy-observation cleanup and diagnostic table checks.
@@ -372,7 +388,7 @@ admin/index.php
 
 # Phase 13 - Installation and upgrade quality (P1)
 
-- [x] code version set to 1.4.0 with real migration path;
+- [x] code version set to 1.5.0 while preserving the 1.4.0 migration path;
 - [x] minimum Geeklog metadata set to 2.1.1;
 - [x] sequential migration logic;
 - [x] idempotent schema changes;
@@ -394,7 +410,7 @@ admin/index.php
 - [x] CI/build workflows documented by repository structure;
 - [x] installable archive generated under `dist/`;
 - [x] configuration API lessons contributed back to the Geeklog development memorandum;
-- [x] add `RELEASE-NOTES-1.4.0.md` with the release summary and upgrade notes;
+- [x] preserve `RELEASE-NOTES-1.4.0.md` as historical release documentation;\n- [x] add `RELEASE-NOTES-1.5.0.md` with the current release summary and upgrade notes;
 - [ ] consider `SECURITY.md` for public release maintenance expectations.
 
 ---
@@ -419,13 +435,13 @@ Monitor follows the shared capability contract in the development memorandum rat
 - [ ] validate Agent discovery against the current Agent development branch;
 - [ ] validate Hub interoperability audit recognition when the Hub implementation reaches that phase.
 
-The release of Monitor 1.4.0 is not blocked by future consumer implementations as long as the provider contract remains stable, read-only and covered by CI guardrails.
+The release of Monitor 1.5.0 is not blocked by future consumer implementations as long as the provider contract remains stable, read-only and covered by CI guardrails.
 
 ---
 
-# Features explicitly not targeted for Monitor 1.4.0
+# Features explicitly not targeted for Monitor 1.5.0
 
-Monitor 1.4.0 is not intended to become:
+Monitor 1.5.0 is not intended to become:
 
 - a replacement WAF;
 - a full replacement for Ban;
@@ -439,7 +455,7 @@ Monitor 1.4.0 is not intended to become:
 
 ---
 
-# 1.4.0 release gates
+# 1.5.0 release gates
 
 ## Security
 
@@ -489,7 +505,7 @@ Monitor 1.4.0 is not intended to become:
 
 ---
 
-# Longer-term direction after 1.4.0
+# Longer-term direction after 1.5.0
 
 Potential future work should be driven by operational value rather than feature count:
 

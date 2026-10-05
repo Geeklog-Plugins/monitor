@@ -1,7 +1,7 @@
 <?php
 
 // +---------------------------------------------------------------------------+
-// | Monitor Plugin 1.4.0                                                      |
+// | Monitor Plugin 1.5.0                                                      |
 // +---------------------------------------------------------------------------+
 // | lib/MonitorPluginCatalog.php                                              |
 // |                                                                           |
@@ -936,12 +936,21 @@ function MONITOR_PLUGIN_CATALOG_tags($owner, $repository, $refresh)
         return array();
     }
 
+    /*
+     * Version tags need to be fresher than the repository catalog, but
+     * anonymous GitHub API access has a much smaller hourly quota. Keep a
+     * conservative four-hour cache without authentication and shorten it to
+     * one hour when a GitHub token is configured. Manual refresh still bypasses
+     * the cache through the existing $refresh flag.
+     */
+    $cacheMaxAge = MONITOR_PLUGIN_CATALOG_token() !== '' ? 3600 : 14400;
+
     $url = 'https://api.github.com/repos/' . rawurlencode($owner)
         . '/' . rawurlencode($repository) . '/tags?per_page=30';
     $data = MONITOR_PLUGIN_CATALOG_getJson(
         $url,
         'tags|' . strtolower($owner . '/' . $repository),
-        43200,
+        $cacheMaxAge,
         $refresh
     );
 

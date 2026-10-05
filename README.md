@@ -2,9 +2,9 @@
 
 Monitor is being modernized as the Geeklog plugin for **site health, diagnostics, operational security monitoring, alerts and actionable recommendations**.
 
-The `monitor-1.4.0` branch is a development branch and should be tested before production deployment.
+The `monitor-1.5.0` branch is a development branch and should be tested before production deployment.
 
-## Monitor 1.4.0 direction
+## Monitor 1.5.0 direction
 
 The plugin follows a simple rule:
 
@@ -21,7 +21,7 @@ See [ROADMAP.md](ROADMAP.md) for the full modernization plan.
 
 ## Current development dashboard
 
-The 1.4.0 administration interface is being reduced to four responsibilities:
+The 1.5.0 administration interface is being reduced to four responsibilities:
 
 - **Overview** — structured health checks for Geeklog, PHP, paths, logs, disk space and Monitor state;
 - **Logs** — bounded, escaped log viewing with explicit CSRF-protected clearing;
@@ -59,7 +59,7 @@ The development branch removes or changes several historical behaviours:
 
 ## Shared interoperability
 
-Monitor 1.4.0 exposes provider-owned, read-only operational data for capability-aware consumers such as Agent, Eclipse and Hub.
+Monitor 1.5.0 exposes provider-owned, read-only operational data for capability-aware consumers such as Agent, Eclipse and Hub.
 
 The plugin declares the shared capabilities:
 
@@ -75,7 +75,7 @@ A static `plugin.json` manifest also exposes Monitor identity, icon and minimum 
 
 ## Development notes
 
-The code version and installer metadata now declare **Monitor 1.4.0**. The release remains subject to the release gates documented in `ROADMAP.md`, especially the two-site shared-files upgrade test, interrupted-migration/retry test, Ban-present integration test and complete scheduled-task runtime test.
+The code version and installer metadata now declare **Monitor 1.5.0**. The release remains subject to the release gates documented in `ROADMAP.md`, with the interrupted-migration/retry test remaining as the principal release gate.
 
 ## Issues and contributions
 

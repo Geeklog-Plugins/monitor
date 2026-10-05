@@ -46,7 +46,7 @@ function MONITOR_HEALTH_result($id, $label, $status, $value, $recommendation, $d
 }
 
 /**
- * Collect Monitor 1.4.0 health checks.
+ * Collect Monitor 1.5.0 health checks.
  *
  * @return array
  */
@@ -65,8 +65,8 @@ function MONITOR_HEALTH_collect()
         $phpSupported ? 'ok' : 'warning',
         PHP_VERSION,
         $phpSupported
-            ? 'PHP is inside the tested Monitor 1.4.0 range.'
-            : 'Monitor 1.4.0 is currently tested on PHP 5.6 through 8.1.'
+            ? 'PHP is inside the tested Monitor 1.5.0 range.'
+            : 'Monitor 1.5.0 is currently tested on PHP 5.6 through 8.1.'
     );
 
     $geeklogVersion = defined('VERSION') ? VERSION : 'unknown';
@@ -82,7 +82,7 @@ function MONITOR_HEALTH_collect()
         'Geeklog',
         $geeklogStatus,
         $geeklogVersion,
-        'Monitor 1.4.0 currently targets Geeklog 2.1.1 through 2.2.2.'
+        'Monitor 1.5.0 currently targets Geeklog 2.1.1 through 2.2.2.'
     );
 
     $checks[] = MONITOR_HEALTH_pathCheck(
