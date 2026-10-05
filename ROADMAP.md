@@ -330,6 +330,7 @@ A dedicated updater/deployment component remains preferable to rebuilding deploy
 
 - [x] fix plugin reactivation table-prefix scope;
 - [x] add native Geeklog Configuration tooltips for Monitor settings;
+- [x] add an idempotent same-version 1.5.0 configuration repair path so early 1.5.0 installations do not require a version bump;
 - [x] adapt GitHub tag-cache freshness to authentication state (4 h anonymous, 1 h authenticated) while preserving explicit refresh;
 - [x] sort Discover plugins alphabetically;
 - [x] keep dist limited to the current installable archive and make concurrent archive publication safe.
