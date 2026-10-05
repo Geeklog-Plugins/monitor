@@ -384,7 +384,7 @@ admin/index.php
 
 # Phase 13 - Installation and upgrade quality (P1)
 
-- [x] code version set to 1.4.0 with real migration path;
+- [x] code version set to 1.5.0 while preserving the 1.4.0 migration path;
 - [x] minimum Geeklog metadata set to 2.1.1;
 - [x] sequential migration logic;
 - [x] idempotent schema changes;
@@ -406,7 +406,7 @@ admin/index.php
 - [x] CI/build workflows documented by repository structure;
 - [x] installable archive generated under `dist/`;
 - [x] configuration API lessons contributed back to the Geeklog development memorandum;
-- [x] add `RELEASE-NOTES-1.4.0.md` with the release summary and upgrade notes;
+- [x] preserve `RELEASE-NOTES-1.4.0.md` as historical release documentation;\n- [x] add `RELEASE-NOTES-1.5.0.md` with the current release summary and upgrade notes;
 - [ ] consider `SECURITY.md` for public release maintenance expectations.
 
 ---
@@ -451,7 +451,7 @@ Monitor 1.5.0 is not intended to become:
 
 ---
 
-# 1.4.0 release gates
+# 1.5.0 release gates
 
 ## Security
 
@@ -501,7 +501,7 @@ Monitor 1.5.0 is not intended to become:
 
 ---
 
-# Longer-term direction after 1.4.0
+# Longer-term direction after 1.5.0
 
 Potential future work should be driven by operational value rather than feature count:
 
