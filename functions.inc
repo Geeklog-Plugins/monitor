@@ -1,7 +1,7 @@
 <?php
 
 // +---------------------------------------------------------------------------+
-// | Monitor Plugin 1.4.0                                                      |
+// | Monitor Plugin 1.5.0                                                      |
 // +---------------------------------------------------------------------------+
 // | functions.inc                                                             |
 // |                                                                           |
@@ -102,6 +102,21 @@ function plugin_geticon_monitor()
     global $_CONF;
 
     return $_CONF['site_admin_url'] . '/plugins/monitor/images/monitor.png';
+}
+
+/**
+ * Return concise native Geeklog Configuration tooltips.
+ *
+ * @param string $id Configuration option id
+ * @return string Tooltip text or an empty string when unavailable
+ */
+function plugin_getconfigtooltip_monitor($id)
+{
+    global $LANG_MONITOR_1;
+
+    $key = 'config_tooltip_' . trim((string) $id);
+
+    return isset($LANG_MONITOR_1[$key]) ? (string) $LANG_MONITOR_1[$key] : '';
 }
 
 /**
