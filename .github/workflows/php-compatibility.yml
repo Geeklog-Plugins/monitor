@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - monitor-1.4.0
+      - monitor-1.5.0
+      - monitor-1.5.0-lang
   pull_request:
 
 permissions:
@@ -81,6 +83,66 @@ jobs:
           grep -q "'github_token' => ''" lib/MonitorConfigCompat.php
           grep -q "name IN ('emails', 'repository', 'github_token')" lib/MonitorConfigCompat.php
           test -f language/english_utf-8.php
+
+      - name: Check language package parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          expected = [
+              'chinese_simplified_utf-8.php',
+              'chinese_traditional_utf-8.php',
+              'french_canada_utf-8.php',
+              'french_france_utf-8.php',
+              'german_formal_utf-8.php',
+              'german_utf-8.php',
+              'hebrew_utf-8.php',
+              'italian_utf-8.php',
+              'japanese_utf-8.php',
+              'persian_utf-8.php',
+              'russian_utf-8.php',
+              'spanish_argentina_utf-8.php',
+              'spanish_utf-8.php',
+          ]
+
+          key_re = re.compile(r"^\\s*'([^']+)'\\s*=>", re.MULTILINE)
+          placeholder_re = re.compile(r'%(?:\\d+\\$)?[sd]')
+
+          english = Path('language/english.php').read_text(encoding='utf-8')
+          english_keys = key_re.findall(english)
+          english_values = {}
+          for line in english.splitlines():
+              match = re.match(r"^\\s*'([^']+)'\\s*=>\\s*'(.*)'[,]?\\s*$", line)
+              if match:
+                  english_values[match.group(1)] = match.group(2)
+
+          for filename in expected:
+              path = Path('language') / filename
+              assert path.is_file(), 'Missing language file: ' + filename
+              source = path.read_text(encoding='utf-8')
+              keys = key_re.findall(source)
+              assert keys == english_keys, 'Language key drift: ' + filename
+
+              values = {}
+              for line in source.splitlines():
+                  match = re.match(r"^\\s*'([^']+)'\\s*=>\\s*'(.*)'[,]?\\s*$", line)
+                  if match:
+                      values[match.group(1)] = match.group(2)
+
+              for key, value in english_values.items():
+                  if key not in values:
+                      continue
+                  expected_placeholders = sorted(placeholder_re.findall(value))
+                  actual_placeholders = sorted(placeholder_re.findall(values[key]))
+                  assert actual_placeholders == expected_placeholders, (
+                      'Placeholder mismatch in %s for %s' % (filename, key)
+                  )
+
+          print('All Monitor UTF-8 language files match the English key and placeholder contract.')
+          PY
 
       - name: Check shared Monitor navigation
         shell: bash

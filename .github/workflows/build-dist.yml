@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - monitor-1.5.0
+      - monitor-1.5.0-lang
     paths-ignore:
       - 'dist/**'
 
@@ -93,15 +94,16 @@ jobs:
           sha256sum dist/monitor_1.5.0_2.1.1.zip
 
       - name: Commit dist archive to branch
-        if: github.ref == 'refs/heads/monitor-1.5.0'
+        if: github.ref == 'refs/heads/monitor-1.5.0' || github.ref == 'refs/heads/monitor-1.5.0-lang'
         shell: bash
         run: |
           set -euo pipefail
 
           # Each run builds the commit that triggered it. If the branch moved
           # while the ZIP was being built, do not publish a stale archive.
-          git fetch origin monitor-1.5.0
-          REMOTE_HEAD="$(git rev-parse origin/monitor-1.5.0)"
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          git fetch origin "$BRANCH"
+          REMOTE_HEAD="$(git rev-parse origin/$BRANCH)"
           if [ "$REMOTE_HEAD" != "$GITHUB_SHA" ]; then
             echo "Branch advanced from $GITHUB_SHA to $REMOTE_HEAD; skipping stale dist commit."
             exit 0
@@ -117,12 +119,12 @@ jobs:
             echo 'Distribution archive is already up to date.'
           else
             git commit -m 'Update Monitor 1.5.0 distribution archive'
-            if ! git push origin HEAD:monitor-1.5.0; then
+            if ! git push origin HEAD:"$BRANCH"; then
               # The branch may have advanced after the pre-push check. In that
               # case this archive belongs to an older source commit and must not
               # overwrite the newer branch head.
-              git fetch origin monitor-1.5.0
-              REMOTE_AFTER_PUSH="$(git rev-parse origin/monitor-1.5.0)"
+              git fetch origin "$BRANCH"
+              REMOTE_AFTER_PUSH="$(git rev-parse origin/$BRANCH)"
               if [ "$REMOTE_AFTER_PUSH" != "$GITHUB_SHA" ]; then
                 echo "Branch advanced during archive publication; skipping stale dist push."
                 exit 0

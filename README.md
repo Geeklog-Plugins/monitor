@@ -73,6 +73,12 @@ The data remains owned and calculated by Monitor. Consumers use Geeklog's servic
 
 A static `plugin.json` manifest also exposes Monitor identity, icon and minimum Geeklog/PHP requirements without executing plugin code.
 
+## Languages
+
+Monitor 1.5.0 includes UTF-8 translations for English plus Chinese Simplified, Chinese Traditional, French Canada, French France, German, German Formal, Hebrew, Italian, Japanese, Persian, Russian, Spanish and Spanish Argentina.
+
+The translated files are kept in key and placeholder parity with the canonical English language file through CI checks.
+
 ## Development notes
 
 The code version and installer metadata now declare **Monitor 1.5.0**. The release remains subject to the release gates documented in `ROADMAP.md`, with the interrupted-migration/retry test remaining as the principal release gate.
