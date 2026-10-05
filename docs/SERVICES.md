@@ -176,16 +176,16 @@ Typical item:
 array(
     'name'                => 'monitor',
     'installed_version'   => '1.3.1',
-    'code_version'        => '1.4.0',
+    'code_version'        => '1.5.0',
     'upgrade_required'    => true,
     'local_version_state' => 'upgrade_required',
     'enabled'             => true,
     'geeklog_requirement' => '2.1.1',
     'distribution_source' => 'standalone',
-    'latest_version'      => 'v1.4.0',
+    'latest_version'      => 'v1.5.0',
     'version_state'       => 'current',
     'repository_url'      => 'https://github.com/example/monitor',
-    'version_url'         => 'https://github.com/example/monitor/releases/tag/v1.4.0'
+    'version_url'         => 'https://github.com/example/monitor/releases/tag/v1.5.0'
 )
 ```
 
