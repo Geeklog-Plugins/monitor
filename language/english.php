@@ -283,9 +283,9 @@ $GLOBALS['LANG_fs']['monitor'] = array(
 );
 
 $GLOBALS['LANG_confignames']['monitor'] = array(
-    'emails' => 'List of email addresses for optional Monitor notifications (comma-separated)',
-    'repository' => 'GitHub repository owner reserved for plugin release metadata (default: Geeklog-Plugins). Leave blank to disable remote metadata checks.',
-    'github_token' => 'Optional GitHub token for API metadata requests. Prefer a fine-grained read-only token. MONITOR_GITHUB_TOKEN environment variable takes priority.'
+    'emails' => 'Notification email addresses',
+    'repository' => 'GitHub repository owner',
+    'github_token' => 'GitHub API token'
 );
 
 $LANG_configsections =& $GLOBALS['LANG_configsections'];
