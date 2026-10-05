@@ -117,7 +117,19 @@ jobs:
             echo 'Distribution archive is already up to date.'
           else
             git commit -m 'Update Monitor 1.5.0 distribution archive'
-            git push origin HEAD:monitor-1.5.0
+            if ! git push origin HEAD:monitor-1.5.0; then
+              # The branch may have advanced after the pre-push check. In that
+              # case this archive belongs to an older source commit and must not
+              # overwrite the newer branch head.
+              git fetch origin monitor-1.5.0
+              REMOTE_AFTER_PUSH="$(git rev-parse origin/monitor-1.5.0)"
+              if [ "$REMOTE_AFTER_PUSH" != "$GITHUB_SHA" ]; then
+                echo "Branch advanced during archive publication; skipping stale dist push."
+                exit 0
+              fi
+              echo 'Archive push failed while the branch head was unchanged.' >&2
+              exit 1
+            fi
           fi
 
       - name: Upload dist artifact
