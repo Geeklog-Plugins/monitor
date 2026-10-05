@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - monitor-1.4.0
+      - monitor-1.5.0
+      - monitor-1.5.0-lang
   pull_request:
 
 permissions:
