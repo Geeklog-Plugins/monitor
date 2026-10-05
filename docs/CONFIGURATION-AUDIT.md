@@ -1,6 +1,6 @@
 # Monitor configuration audit
 
-Monitor 1.4.0 includes a read-only configuration audit for Geeklog multisite and legacy configuration diagnostics.
+Monitor 1.5.0 includes a read-only configuration audit for Geeklog multisite and legacy configuration diagnostics.
 
 ## Purpose
 
@@ -46,7 +46,7 @@ This avoids side effects from loading the configuration file a second time and k
 
 Open Monitor administration and select **Configuration audit**.
 
-The implementation targets the same modernization matrix as Monitor 1.4.0:
+The implementation targets the same modernization matrix as Monitor 1.5.0:
 
 - Geeklog 2.1.1 through 2.2.2;
 - PHP 5.6 through 8.1.
