@@ -334,6 +334,7 @@ A dedicated updater/deployment component remains preferable to rebuilding deploy
 - [x] adapt GitHub tag-cache freshness to authentication state (4 h anonymous, 1 h authenticated) while preserving explicit refresh;
 - [x] sort Discover plugins alphabetically;
 - [x] keep dist limited to the current installable archive and make concurrent archive publication safe.
+- [x] integrate the completed 13-language UTF-8 set from the historical `lang` branch on top of the merged 1.5.0 baseline, with key/placeholder parity checks;
 
 ## Post-1.5 diagnostic roadmap
 
