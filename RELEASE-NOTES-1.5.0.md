@@ -26,6 +26,10 @@ Repository and manifest caches keep their longer lifetimes.
 
 Monitor remains a diagnostic/service plugin. Relationship ownership, content clusters and marketing mapping belong to Hub rather than Monitor. Planned Monitor diagnostics may report SEO metadata issues, incomplete language packages and orphaned plugin registrations, but should consume provider-owned contracts where available instead of adding third-party SQL coupling.
 
+## Same-version 1.5.0 repair
+
+Some development or early 1.5.0 installations may already have `pi_version = 1.5.0` before the final configuration fixes are deployed. Monitor therefore repairs its configuration metadata idempotently when the native Geeklog Configuration page is opened, without requiring a 1.5.1 version bump. Existing administrator values are preserved; only missing settings or invalid configuration metadata are repaired. Updated language labels and help text come directly from the shipped language files and therefore do not require database migration.
+
 ## Upgrade notes
 
 No destructive migration is introduced by 1.5.0. Existing 1.4.0 migration and compatibility repair logic remains in place for older installations.
