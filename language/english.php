@@ -1,7 +1,7 @@
 <?php
 
 // +---------------------------------------------------------------------------+
-// | Monitor Plugin 1.4.0                                                      |
+// | Monitor Plugin 1.5.0                                                      |
 // +---------------------------------------------------------------------------+
 // | english.php                                                               |
 // +---------------------------------------------------------------------------+
@@ -53,6 +53,9 @@ $LANG_MONITOR_1 = array(
     'security_no_legacy_table' => 'No legacy Monitor security table is present.',
     'security_no_observations' => 'No recent security observations.',
     'read_only_advice'      => 'Monitor observes and recommends by default. Changes require an explicit administrator action.',
+    'config_tooltip_emails' => 'Optional comma-separated recipients for Monitor notifications. Leave empty to disable email notifications.',
+    'config_tooltip_repository' => 'GitHub owner whose public repositories Monitor checks for plugin metadata and versions. Leave blank to disable remote checks.',
+    'config_tooltip_github_token' => 'Optional fine-grained read-only GitHub token. MONITOR_GITHUB_TOKEN takes priority. Authenticated checks have a higher API quota and use a shorter tag cache.',
 
     // Media diagnostics
     'media_oversized_single' => '1 image exceeds the recommended limits.',
